@@ -1,0 +1,98 @@
+{
+  "expo": {
+    "name": "Barbers Bar",
+    "slug": "barbers-bar",
+    "version": "1.0.7",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "barbersbar",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.barbersbar.app",
+      "googleServicesFile": "./app/GoogleService-Info.plist",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "infoPlist": {
+        "NSCameraUsageDescription": "האפליקציה צריכה גישה למצלמה כדי לצלם תמונות פרופיל ולהעלות תמונות לגלריית המספרה",
+        "NSPhotoLibraryUsageDescription": "האפליקציה צריכה גישה לגלריה כדי לבחור תמונות פרופיל ולהעלות תמונות למספרה",
+        "NSContactsUsageDescription": "האפליקציה צריכה גישה לאנשי הקשר כדי לאפשר שיתוף פרטי המספרה בקלות",
+        "NSLocationWhenInUseUsageDescription": "האפליקציה צריכה גישה למיקום כדי להראות לך כיוונים למספרה ולספק שירות טוב יותר",
+        "NSUserNotificationsUsageDescription": "האפליקציה צריכה גישה להתראות כדי לעדכן אותך על התורים שלך ולשלוח התראות חשובות מהמספרה",
+        "NSCalendarsUsageDescription": "האפליקציה צריכה גישה ליומן כדי להוסיף ולנהל את התורים שלך.",
+        "LSApplicationQueriesSchemes": ["waze", "whatsapp"]
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "versionCode": 9,
+      "package": "com.barbersbar.app",
+      "googleServicesFile": "./app/google-services.json",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "ACCESS_NETWORK_STATE",
+        "INTERNET",
+        "RECEIVE_BOOT_COMPLETED",
+        "WAKE_LOCK",
+        "VIBRATE"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash.png",
+          "imageWidth": 300,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        }
+      ],
+      "expo-notifications",
+      "expo-font",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static",
+            "modularHeaders": true,
+            "ccacheEnabled": true,
+            "deploymentTarget": "13.4"
+          },
+          "android": {
+            "targetSdkVersion": 34,
+            "compileSdkVersion": 34,
+            "enableLargeHeap": true
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "3db35a0e-d2db-4dbd-9138-7647c42f9fae"
+      }
+    },
+    "owner": "orel895",
+    "updates": {
+      "url": "https://u.expo.dev/3db35a0e-d2db-4dbd-9138-7647c42f9fae"
+    }
+  }
+}
