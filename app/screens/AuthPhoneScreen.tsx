@@ -398,12 +398,12 @@ export default function AuthPhoneScreen() {
             <Text style={styles.modalTitle}>תנאי שימוש ומדיניות פרטיות</Text>
             <ScrollView style={styles.modalScrollView}>
               <Text style={styles.modalText}>
-                <Text style={styles.sectionTitle}>תנאי שימוש ומדיניות פרטיות - Barbers Bar{'\n\n'}</Text>
+                <Text style={styles.sectionTitle}>תנאי שימוש ומדיניות פרטיות - Test Salon{'\n\n'}</Text>
                 
                 <Text style={styles.subsectionTitle}>תנאי שימוש{'\n\n'}</Text>
                 
                 <Text style={styles.subsectionTitle}>1. קבלת השירות{'\n'}</Text>
-                • האפליקציה מיועדת לקביעת תורים במספרה Barbers Bar{'\n'}
+                • האפליקציה מיועדת לקביעת תורים במספרה Test Salon{'\n'}
                 • יש לספק מידע מדויק ומלא בעת קביעת התור{'\n'}
                 • המספרה שומרת לעצמה את הזכות לסרב לתת שירות במקרים חריגים{'\n'}
                 • השימוש באפליקציה מותר מגיל 13 ומעלה{'\n\n'}
@@ -471,14 +471,14 @@ export default function AuthPhoneScreen() {
                 • שינויים מהותיים יובאו לידיעת המשתמשים{'\n\n'}
                 
                 <Text style={styles.subsectionTitle}>7. יצירת קשר{'\n'}</Text>
-                • לשאלות על מדיניות הפרטיות: info@barbersbar.co.il{'\n'}
-                • כתובת: רפיח ים 13, תל אביב{'\n'}
-                • טלפון: 054-8353232{'\n'}
+                • לשאלות על מדיניות הפרטיות: info@Test Salon.co.il{'\n'}
+                • כתובת: רחוב בדיקה 123, עיר בדיקה'\n'}
+                • טלפון: +972523456789{'\n'}
                 • שעות פעילות: א'-ה' 9:00-20:00, ו' 9:00-15:00{'\n\n'}
                 
                 <Text style={styles.contactInfo}>
                   {require('../../constants/contactInfo').CONTACT_INFO.contactText}{'\n'}
-                  מייל: info@barbersbar.co.il{'\n'}
+                  מייל: info@Test Salon.co.il{'\n'}
                   תאריך עדכון אחרון: {new Date().toLocaleDateString('he-IL')}
                 </Text>
               </Text>

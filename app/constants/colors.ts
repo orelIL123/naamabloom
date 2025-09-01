@@ -39,7 +39,7 @@ export const colors = {
   overlay: 'rgba(0, 0, 0, 0.5)',
   overlayDark: 'rgba(0, 0, 0, 0.8)',
   
-  // Barber shop specific colors
+  // Test Salon specific colors
   barberGold: '#ffd700',
   barberSilver: '#c0c0c0',
   barberBronze: '#cd7f32',

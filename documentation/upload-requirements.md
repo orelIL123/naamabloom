@@ -1,4 +1,4 @@
-# Upload Requirements for BarbersBar App Template
+# Upload Requirements for Test Salon App Template
 
 ## Placeholder Replacements
 - `{{PROJECT_NAME}}`: Replace with the new project's name

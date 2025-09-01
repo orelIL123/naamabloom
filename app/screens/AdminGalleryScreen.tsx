@@ -84,7 +84,7 @@ const AdminGalleryScreen: React.FC<AdminGalleryScreenProps> = ({ onNavigate, onB
   const [shopStorageImages, setShopStorageImages] = useState<string[]>([]);
 
   // Add state for about us text
-  const [aboutUsText, setAboutUsText] = useState('ברוכים הבאים ל-Barbers Bar – מספרה משפחתית עם יחס אישי, מקצועיות ואווירה חמה. נשמח לראותכם!');
+  const [aboutUsText, setAboutUsText] = useState('ברוכים הבאים ל-Test Salon – מספרה משפחתית עם יחס אישי, מקצועיות ואווירה חמה. נשמח לראותכם!');
   const [editingAboutUs, setEditingAboutUs] = useState(false);
 
   useEffect(() => {

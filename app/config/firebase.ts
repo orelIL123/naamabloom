@@ -319,13 +319,13 @@ export const setBusinessConfig = async (config: BusinessConfig): Promise<void> =
   }
 };
 
-// Initialize BarbersBar business configuration
+// Initialize Test Salon business configuration
 export const initializeBarbersBarConfig = async (): Promise<void> => {
   try {
     const barbersBarConfig: BusinessConfig = {
-      businessId: "barbersbar",
-      businessName: "Barbers Bar",
-      ownerPhone: "+972523985505",
+      businessId: "Test Salon",
+      businessName: "Test Salon",
+      ownerPhone: "+972523456789",
       cancelPolicy: {
         hoursBeforeAppointment: 2,
         message: "אי אפשר לבטל - תתקשר למספרה"
@@ -333,15 +333,15 @@ export const initializeBarbersBarConfig = async (): Promise<void> => {
     };
 
     // Check if config already exists
-    const existingConfig = await getBusinessConfig("barbersbar");
+    const existingConfig = await getBusinessConfig("Test Salon");
     if (!existingConfig) {
       await setBusinessConfig(barbersBarConfig);
-      console.log('✅ BarbersBar business config initialized successfully');
+      console.log('✅ Test Salon business config initialized successfully');
     } else {
-      console.log('ℹ️ BarbersBar business config already exists');
+      console.log('ℹ️ Test Salon business config already exists');
     }
   } catch (error) {
-    console.error('Error initializing BarbersBar config:', error);
+    console.error('Error initializing Test Salon config:', error);
     throw error;
   }
 };

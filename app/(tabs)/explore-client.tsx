@@ -109,7 +109,7 @@ const ShopScreen: React.FC<ShopScreenProps> = ({
     if (selectedItem) {
       const message = `שלום רן! 👋\n\nאני מעוניין/ת לרכוש את המוצר הבא:\n📦 ${selectedItem.name}\n💰 מחיר: ${selectedItem.price}₪\n\n${selectedItem.description ? `📝 תיאור: ${selectedItem.description}\n\n` : ''}אשמח לפרטים נוספים.\nתודה!`;
       const encodedMessage = encodeURIComponent(message);
-      const whatsappUrl = `https://wa.me/9720548353232?text=${encodedMessage}`;
+      const whatsappUrl = `https://wa.me/972+972523456789?text=${encodedMessage}`;
       
       Linking.openURL(whatsappUrl).catch(() => {
         Alert.alert('שגיאה', 'לא ניתן לפתוח את WhatsApp');

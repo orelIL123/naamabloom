@@ -36,7 +36,7 @@ export default function AuthChoiceScreen() {
         style={styles.logo}
         resizeMode="contain"
       />
-          <Text style={styles.appName}>Barbers Bar</Text>
+          <Text style={styles.appName}>Test Salon</Text>
           <Text style={styles.tagline}>המספרה המקצועית שלך</Text>
         </View>
 
@@ -71,10 +71,10 @@ export default function AuthChoiceScreen() {
             <Text style={styles.modalTitle}>תנאי שימוש ומדיניות פרטיות</Text>
             <ScrollView style={styles.modalScrollView}>
               <Text style={styles.modalText}>
-                <Text style={styles.sectionTitle}>תנאי שימוש - Barbers Bar{'\n\n'}</Text>
+                <Text style={styles.sectionTitle}>תנאי שימוש - Test Salon{'\n\n'}</Text>
                 
                 <Text style={styles.subsectionTitle}>1. קבלת השירות{'\n'}</Text>
-                • השירות מיועד לקביעת תורים במספרה Barbers Bar{'\n'}
+                • השירות מיועד לקביעת תורים במספרה Test Salon{'\n'}
                 • יש לספק מידע מדויק ומלא בעת קביעת התור{'\n'}
                 • המספרה שומרת לעצמה את הזכות לסרב לתת שירות במקרים חריגים{'\n\n'}
                 
@@ -122,7 +122,7 @@ export default function AuthChoiceScreen() {
                 
                 <Text style={styles.contactInfo}>
                   {require('../../constants/contactInfo').CONTACT_INFO.contactText}{'\n'}
-                  מייל: info@barbersbar.co.il
+                  מייל: info@Test Salon.co.il
                 </Text>
               </Text>
             </ScrollView>

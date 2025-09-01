@@ -1,4 +1,4 @@
-# BarbersBar App Deployment Guide
+# Test Salon App Deployment Guide
 
 ## Prerequisites
 - Node.js 18.x or later

@@ -32,7 +32,7 @@ export default function AuthChoiceScreen() {
             style={styles.logo}
             resizeMode="contain"
           />
-          <Text style={styles.appName}>Barbers Bar</Text>
+          <Text style={styles.appName}>Test Salon</Text>
           <Text style={styles.tagline}>המספרה המקצועית שלך</Text>
           <Text style={styles.authInfo}>התחברות עם אימייל או מספר טלפון</Text>
         </View>

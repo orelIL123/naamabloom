@@ -166,7 +166,7 @@ export default function AuthPhoneScreen() {
             style={styles.logo}
             resizeMode="contain"
           />
-          <Text style={styles.appName}>Barbers Bar</Text>
+          <Text style={styles.appName}>Test Salon</Text>
         </View>
 
         <Text style={styles.subtitle}>

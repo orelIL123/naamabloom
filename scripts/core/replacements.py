@@ -94,6 +94,15 @@ def generate_replacements(business_info: Dict) -> Dict[str, str]:
         r'\bBarber Shop\b': business_info.get('businessName', 'Business Name'),
         r'\bBARBER SHOP\b': business_info.get('businessName', 'Business Name').upper(),
         r'\bbarber shop\b': business_info.get('businessName', 'Business Name').lower(),
+        r'\bBarbers Bar\b': business_info.get('businessName', 'Business Name'),
+        r'\bBARBERS BAR\b': business_info.get('businessName', 'Business Name').upper(),
+        
+        # Hebrew welcome messages and specific UI text
+        r'ברוכים הבאים ל-Barbers Bar': f"ברוכים הבאים ל-{business_info.get('businessName', 'Business Name')}",
+        r'שלום, ברוכים הבאים': f"שלום, ברוכים הבאים ל-{business_info.get('businessName', 'Business Name')}",
+        r'ל-Barbers Bar': f"ל-{business_info.get('businessName', 'Business Name')}",
+        r'של Barbers Bar': f"של {business_info.get('businessName', 'Business Name')}",
+        r'למספרה של רן אלגריסי': f"למספרה של {business_info.get('businessName', 'Business Name')}",
         
         # Email patterns
         r'\binfo@barbersbar\.com?\b': f"info@{domain}",

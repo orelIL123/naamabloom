@@ -107,7 +107,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onNavigate, onBack }) =
   };
 
   const handleSupport = () => {
-    Linking.openURL('mailto:support@barbersbar.com?subject=תמיכה באפליקציה').catch(() => {
+    Linking.openURL('mailto:support@Test Salon.com?subject=תמיכה באפליקציה').catch(() => {
       Alert.alert('שגיאה', 'לא ניתן לפתוח את אפליקציית המייל');
     });
   };
@@ -289,7 +289,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onNavigate, onBack }) =
 
           {/* App Info */}
           <View style={styles.appInfo}>
-            <Text style={styles.appInfoText}>Barbers Bar App</Text>
+            <Text style={styles.appInfoText}>Test Salon App</Text>
             <Text style={styles.appVersionText}>{t('common.version') || 'גרסה'} 1.0.0</Text>
             <Text style={styles.appCreditText}>{t('home.powered_by')}</Text>
           </View>

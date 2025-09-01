@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Barbers Bar",
+    "name": "Test Salon",
     "slug": "barbers-bar",
     "version": "1.0.7",
     "runtimeVersion": {
@@ -8,11 +8,11 @@
     },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "barbersbar",
+    "scheme": "Test Salon",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.barbersbar.app",
+      "bundleIdentifier": "com.Test Salon.app",
       "googleServicesFile": "./app/GoogleService-Info.plist",
       "config": {
         "usesNonExemptEncryption": false
@@ -33,7 +33,7 @@
         "backgroundColor": "#ffffff"
       },
       "versionCode": 9,
-      "package": "com.barbersbar.app",
+      "package": "com.Test Salon.app",
       "googleServicesFile": "./app/google-services.json",
       "permissions": [
         "CAMERA",

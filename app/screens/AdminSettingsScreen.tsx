@@ -25,9 +25,9 @@ const AdminSettingsScreen: React.FC<AdminSettingsScreenProps> = ({ onNavigate, o
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
   
   // Settings states
-  const [welcomeMessage, setWelcomeMessage] = useState('שלום, ברוכים הבאים');
-  const [subtitleMessage, setSubtitleMessage] = useState('ל-Barbers Bar');
-  const [aboutUsText, setAboutUsText] = useState('ברוכים הבאים למספרה של רן אלגריסי! כאן תיהנו מחוויה אישית, מקצועית ומפנקת, עם יחס חם לכל לקוח. רן, בעל ניסיון של שנים בתחום, מזמין אתכם להתרווח, להתחדש ולהרגיש בבית.');
+  const [welcomeMessage, setWelcomeMessage] = useState('שלום, ברוכים הבאים ל-Test Salon');
+  const [subtitleMessage, setSubtitleMessage] = useState('ל-Test Salon');
+  const [aboutUsText, setAboutUsText] = useState('ברוכים הבאים למספרה של Test Salon! כאן תיהנו מחוויה אישית, מקצועית ומפנקת, עם יחס חם לכל לקוח. רן, בעל ניסיון של שנים בתחום, מזמין אתכם להתרווח, להתחדש ולהרגיש בבית.');
   const [popupMessage, setPopupMessage] = useState('');
 
   useEffect(() => {
@@ -50,13 +50,13 @@ const AdminSettingsScreen: React.FC<AdminSettingsScreenProps> = ({ onNavigate, o
       const welcomeDoc = await getDoc(doc(db, 'settings', 'homeMessages'));
       if (welcomeDoc.exists()) {
         const data = welcomeDoc.data();
-        setWelcomeMessage(data.welcome || 'שלום, ברוכים הבאים');
-        setSubtitleMessage(data.subtitle || 'ל-Barbers Bar');
+        setWelcomeMessage(data.welcome || 'שלום, ברוכים הבאים ל-Test Salon');
+        setSubtitleMessage(data.subtitle || 'ל-Test Salon');
       } else {
         // Create default if doesn't exist
         await setDoc(doc(db, 'settings', 'homeMessages'), {
-          welcome: 'שלום, ברוכים הבאים',
-          subtitle: 'ל-Barbers Bar',
+          welcome: 'שלום, ברוכים הבאים ל-Test Salon',
+          subtitle: 'ל-Test Salon',
           createdAt: new Date()
         });
       }
@@ -68,7 +68,7 @@ const AdminSettingsScreen: React.FC<AdminSettingsScreenProps> = ({ onNavigate, o
         setAboutUsText(data.text || '');
       } else {
         // Create default if doesn't exist
-        const defaultAboutText = 'ברוכים הבאים למספרה של רן אלגריסי! כאן תיהנו מחוויה אישית, מקצועית ומפנקת, עם יחס חם לכל לקוח. רן, בעל ניסיון של שנים בתחום, מזמין אתכם להתרווח, להתחדש ולהרגיש בבית.';
+        const defaultAboutText = 'ברוכים הבאים למספרה של Test Salon! כאן תיהנו מחוויה אישית, מקצועית ומפנקת, עם יחס חם לכל לקוח. רן, בעל ניסיון של שנים בתחום, מזמין אתכם להתרווח, להתחדש ולהרגיש בבית.';
         await setDoc(doc(db, 'settings', 'aboutUsText'), {
           text: defaultAboutText,
           createdAt: new Date()
@@ -179,7 +179,7 @@ const AdminSettingsScreen: React.FC<AdminSettingsScreenProps> = ({ onNavigate, o
               style={styles.textInput}
               value={welcomeMessage}
               onChangeText={setWelcomeMessage}
-              placeholder="שלום, ברוכים הבאים"
+              placeholder="שלום, ברוכים הבאים ל-Test Salon"
               textAlign="right"
               multiline
             />
@@ -191,7 +191,7 @@ const AdminSettingsScreen: React.FC<AdminSettingsScreenProps> = ({ onNavigate, o
               style={styles.textInput}
               value={subtitleMessage}
               onChangeText={setSubtitleMessage}
-              placeholder="ל-Barbers Bar"
+              placeholder="ל-Test Salon"
               textAlign="right"
               multiline
             />

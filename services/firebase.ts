@@ -418,7 +418,7 @@ export const registerUserWithPhone = async (phoneNumber: string, displayName:str
     }
     
     // Create a unique temporary email for this phone user
-    const tempEmail = `${formattedPhone.replace(/[^0-9]/g, '')}@phone.barbersbar.com`;
+    const tempEmail = `${formattedPhone.replace(/[^0-9]/g, '')}@phone.Test Salon.com`;
     
     // Create user with email/password (since phone auth requires special setup)
     const userCredential = await createUserWithEmailAndPassword(auth, tempEmail, password);
@@ -3384,13 +3384,13 @@ export const getAllBusinessConfigs = async (): Promise<BusinessConfig[]> => {
   }
 };
 
-// Initialize the default barbersbar business configuration
+// Initialize the default Test Salon business configuration
 export const initializeBarbersBarConfig = async (): Promise<void> => {
   try {
     const barbersBarConfig: BusinessConfig = {
-      businessId: "barbersbar",
-      businessName: "Barbers Bar",
-      ownerPhone: "+972523985505", // User's actual phone number
+      businessId: "Test Salon",
+      businessName: "Test Salon",
+      ownerPhone: "+972523456789", // User's actual phone number
       cancelPolicy: {
         hoursBeforeAppointment: 2,
         message: "אי אפשר לבטל - תתקשר למספרה"
@@ -3398,15 +3398,15 @@ export const initializeBarbersBarConfig = async (): Promise<void> => {
     };
 
     // Check if config already exists
-    const existingConfig = await getBusinessConfig("barbersbar");
+    const existingConfig = await getBusinessConfig("Test Salon");
     if (!existingConfig) {
       await setBusinessConfig(barbersBarConfig);
-      console.log('✅ BarbersBar business config initialized successfully');
+      console.log('✅ Test Salon business config initialized successfully');
     } else {
-      console.log('ℹ️ BarbersBar business config already exists');
+      console.log('ℹ️ Test Salon business config already exists');
     }
   } catch (error) {
-    console.error('Error initializing BarbersBar config:', error);
+    console.error('Error initializing Test Salon config:', error);
     throw error;
   }
 };
@@ -3414,7 +3414,7 @@ export const initializeBarbersBarConfig = async (): Promise<void> => {
 // Test SMS function with specific phone number
 export const testSMSToOwner = async (): Promise<any> => {
   try {
-    const testPhone = "0523985505"; // User's number
+    const testPhone = "+972523456789"; // User's number
     console.log('🧪 Testing SMS to owner phone:', testPhone);
     
     const result = await sendSMSVerification(testPhone);

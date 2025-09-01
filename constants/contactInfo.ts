@@ -1,20 +1,20 @@
 // Centralized contact information for consistency across the app
 export const CONTACT_INFO = {
   // Business Information
-  businessName: 'Barbers Bar',
-  address: 'רפיח ים 13',
-  phone: '054-8353232',
-  phoneFormatted: '+9720548353232',
-  email: 'info@barbersbar.com',
+  businessName: 'Test Salon',
+  address: 'רחוב בדיקה 123, עיר בדיקה',
+  phone: '+972523456789',
+  phoneFormatted: '+972+972523456789',
+  email: 'info@Test Salon.com',
   
   // Support/Admin Contact
-  supportEmail: 'support@barbersbar.com',
-  adminPhone: '+9720548353232',
+  supportEmail: 'support@Test Salon.com',
+  adminPhone: '+972+972523456789',
   
   // Display formats for UI
-  displayAddress: 'רפיח ים 13',
-  displayPhone: '054-8353232',
-  contactText: 'לשאלות או בקשות: רפיח ים 13, טלפון: 054-8353232',
+  displayAddress: 'רחוב בדיקה 123, עיר בדיקה',
+  displayPhone: '+972523456789',
+  contactText: 'לשאלות או בקשות: רחוב בדיקה 123, עיר בדיקה',
   
   // Business hours
   businessHours: {

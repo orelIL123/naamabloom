@@ -55,10 +55,10 @@ Legacy content issues: 8 (reduced from 70)
 ```
 
 ### Content Replacement Examples
-- Business names: `Barbersbar` → `{businessName}`
-- Phones: `+972548353232` → `{ownerPhoneE164}`
-- Emails: `info@barbersbar.com` → `info@{domain}`
-- Addresses: `רפיח ים 13` → `{businessAddress}`
+- Business names: `Test Salon` → `{businessName}`
+- Phones: `+972523456789` → `{ownerPhoneE164}`
+- Emails: `info@Test Salon.com` → `info@{domain}`
+- Addresses: `רחוב בדיקה 123, עיר בדיקהnessAddress}`
 
 ## How to Open PR
 

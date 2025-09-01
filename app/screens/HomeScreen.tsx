@@ -81,9 +81,9 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isBarber, setIsBarber] = useState(false);
-  const [welcomeMessage, setWelcomeMessage] = useState('ברוכים הבאים ל-Barbers Bar!');
+  const [welcomeMessage, setWelcomeMessage] = useState('ברוכים הבאים ל-Test Salon!');
   const [subtitleMessage, setSubtitleMessage] = useState('המספרה המקצועית שלך');
-  const [aboutUsMessage, setAboutUsMessage] = useState('ברוכים הבאים ל-Barbers Bar! כאן תיהנו מחוויה אישית, מקצועית ומפנקת, עם יחס חם לכל לקוח. רן אגלריסי, בעל ניסיון של שנים בתחום, מזמין אתכם להתרווח, להתחדש ולהרגיש בבית.');
+  const [aboutUsMessage, setAboutUsMessage] = useState('ברוכים הבאים ל-Test Salon! כאן תיהנו מחוויה אישית, מקצועית ומפנקת, עם יחס חם לכל לקוח. רן אגלריסי, בעל ניסיון של שנים בתחום, מזמין אתכם להתרווח, להתחדש ולהרגיש בבית.');
   const [showPopup, setShowPopup] = useState(false);
   const [popupMessage, setPopupMessage] = useState('');
 
@@ -285,9 +285,9 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
       console.log('🌐 Preview mode detected, using fallback data');
       setImagesLoading(false);
       setLoading(false);
-      setWelcomeMessage('ברוכים הבאים ל-Barbers Bar!');
+      setWelcomeMessage('ברוכים הבאים ל-Test Salon!');
       setSubtitleMessage('המספרה המקצועית שלך');
-      setAboutUsMessage('ברוכים הבאים ל-Barbers Bar! כאן תיהנו מחוויה אישית, מקצועית ומפנקת, עם יחס חם לכל לקוח. רן אגלריסי, בעל ניסיון של שנים בתחום, מזמין אתכם להתרווח, להתחדש ולהרגיש בבית.');
+      setAboutUsMessage('ברוכים הבאים ל-Test Salon! כאן תיהנו מחוויה אישית, מקצועית ומפנקת, עם יחס חם לכל לקוח. רן אגלריסי, בעל ניסיון של שנים בתחום, מזמין אתכם להתרווח, להתחדש ולהרגיש בבית.');
       return;
     }
 
@@ -528,7 +528,7 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
       }, 2, 'Fetch welcome messages');
 
       if (welcomeData) {
-        setWelcomeMessage(welcomeData.welcome || 'ברוכים הבאים ל-Barbers Bar!');
+        setWelcomeMessage(welcomeData.welcome || 'ברוכים הבאים ל-Test Salon!');
         setSubtitleMessage(welcomeData.subtitle || 'המספרה המקצועית שלך');
       }
 
@@ -539,7 +539,7 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
       }, 2, 'Fetch about us text');
 
       if (aboutData) {
-        setAboutUsMessage(aboutData.text || 'ברוכים הבאים ל-Barbers Bar! כאן תיהנו מחוויה אישית, מקצועית ומפנקת, עם יחס חם לכל לקוח. רן אגלריסי, בעל ניסיון של שנים בתחום, מזמין אתכם להתרווח, להתחדש ולהרגיש בבית.');
+        setAboutUsMessage(aboutData.text || 'ברוכים הבאים ל-Test Salon! כאן תיהנו מחוויה אישית, מקצועית ומפנקת, עם יחס חם לכל לקוח. רן אגלריסי, בעל ניסיון של שנים בתחום, מזמין אתכם להתרווח, להתחדש ולהרגיש בבית.');
       }
 
       console.log('✅ Messages loaded successfully');
@@ -868,7 +868,7 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
   };
 
   const handleCallPress = () => {
-    const phoneNumber = '0548353232';
+    const phoneNumber = '+972523456789';
     Linking.openURL(`tel:${phoneNumber}`);
   };
 
@@ -877,8 +877,7 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
   };
 
   const handleWazePress = () => {
-    // Waze navigation to Barbers Bar - רפיח ים 13, נתיבות
-    const address = 'רפיח ים 13, נתיבות';
+    // Waze navigation to Test Salon - רחוב בדיקה 123, עיר בדיקהnst address = 'רחוב בדיקה 123, עיר בדיקה';
     
     // Use HTTPS URL with address - works without LSApplicationQueriesSchemes
     const wazeUrl = `https://waze.com/ul?q=${encodeURIComponent(address)}&navigate=yes&z=17`;
@@ -888,7 +887,7 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
   };
 
   const handleOrelWhatsAppPress = () => {
-    const phoneNumber = '0523985505';
+    const phoneNumber = '+972523456789';
     const message = 'שלום! אני מעוניין באפליקציה לעסק שלי';
     
     // Try different WhatsApp URL formats for different platforms
@@ -910,7 +909,7 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
   };
 
   const handleBarberWhatsAppPress = () => {
-    const phoneNumber = '0548353232'; // מספר הטלפון של הספר (רן)
+    const phoneNumber = '+972523456789'; // מספר הטלפון של הספר (רן)
     const message = 'שלום! אני מעוניין לקבוע תור';
     
     // Use HTTPS URL - works without LSApplicationQueriesSchemes
@@ -961,7 +960,7 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
   return (
     <SafeAreaView style={styles.container}>
       <TopNav 
-        title="Barbers Bar" 
+        title="Test Salon" 
         onMenuPress={() => setSideMenuVisible(true)}
         onBellPress={handleNotificationPress}
       />
@@ -1185,7 +1184,7 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
               />
               <View style={styles.contactItem}>
                 <Ionicons name="call" size={20} color="#3b82f6" />
-                <Text style={styles.contactText}>0548353232</Text>
+                <Text style={styles.contactText}>+972523456789</Text>
               </View>
               <View style={styles.contactItem}>
                 <Ionicons name="location" size={20} color="#3b82f6" />
@@ -1296,10 +1295,10 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
             <Text style={styles.modalTitle}>תנאי שימוש ומדיניות פרטיות</Text>
             <ScrollView style={styles.modalScrollView}>
               <Text style={styles.modalText}>
-                <Text style={styles.sectionTitle}>תנאי שימוש - Barbers Bar{'\n'}</Text>
+                <Text style={styles.sectionTitle}>תנאי שימוש - Test Salon{'\n'}</Text>
                 
                 <Text style={styles.subsectionTitle}>1. קבלת השירות{'\n'}</Text>
-                • השירות מיועד לקביעת תורים במספרה Barbers Bar{'\n'}
+                • השירות מיועד לקביעת תורים במספרה Test Salon{'\n'}
                 • יש לספק מידע מדויק ומלא בעת קביעת התור{'\n'}
                 • המספרה שומרת לעצמה את הזכות לסרב לתת שירות במקרים חריגים{'\n\n'}
                 
@@ -1347,7 +1346,7 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
                 
                 <Text style={styles.contactInfoText}>
                   {require('../../constants/contactInfo').CONTACT_INFO.contactText}{'\n'}
-                  מייל: info@barbersbar.co.il
+                  מייל: info@Test Salon.co.il
                 </Text>
               </Text>
             </ScrollView>

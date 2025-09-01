@@ -88,7 +88,7 @@ export default function AppNavigator() {
     case 'splash':
       return (
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Barbers Bar</Text>
+          <Text style={styles.loadingText}>Test Salon</Text>
         </View>
       );
     
