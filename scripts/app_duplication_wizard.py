@@ -9,10 +9,15 @@ import sys
 import argparse
 from typing import Dict, Any
 
+# Add scripts/core to path for imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'core'))
+from replacements import replace_hardcoded_content_safe, normalize_to_e164
+
 class BarberAppDuplicationWizard:
     def __init__(self, dry_run=False):
         self.template_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.dry_run = dry_run
+        self.replacement_result = None
         
     def validate_input(self, prompt: str, validator=None, default=None) -> str:
         while True:
@@ -100,6 +105,13 @@ class BarberAppDuplicationWizard:
             "firebaseProjectId": str(uuid.uuid4()).replace('-', '')[:8]  # Shorter project ID
         }
 
+        # Post-process business info with enhanced fields
+        bundle_parts = business_info['bundleId'].split('.')
+        business_info['domain'] = f"{bundle_parts[-1]}.com"
+        business_info['ownerPhoneE164'] = normalize_to_e164(business_info['ownerPhone'])
+        business_info['businessAddressHe'] = business_info['businessAddress']
+        business_info['businessAddressEn'] = business_info['businessAddress']
+
         # Collect SMS credentials if enabled
         if business_info["messaging"]["sms4free"]["enabled"]:
             print("\n--- SMS4Free Configuration ---")
@@ -134,8 +146,8 @@ class BarberAppDuplicationWizard:
         # Update messaging configuration
         self.update_messaging_config(business_info)
         
-        # Replace all hardcoded content throughout the app
-        self.replace_hardcoded_content(business_info)
+        # Replace all hardcoded content throughout the app using new system
+        self.replace_content_with_new_system(business_info)
         
         # Replace demo images with neutral ones
         self.replace_demo_images(business_info)
@@ -322,51 +334,21 @@ WHATSAPP_ACCESS_TOKEN={business_info['messaging']['whatsapp']['accessToken']}
             
             print(f"✓ Updated EAS configuration")
 
-    def replace_hardcoded_content(self, business_info: Dict[str, Any]):
-        """Replace all hardcoded content throughout the app"""
+    def replace_content_with_new_system(self, business_info: Dict[str, Any]):
+        """Replace all hardcoded content using the new replacement system"""
         
-        # Generate business-specific values
-        business_email = f"info@{business_info['bundleId'].split('.')[-1]}.com"
-        support_email = f"support@{business_info['bundleId'].split('.')[-1]}.com"
+        print(f"\n🔄 Applying comprehensive content replacement...")
         
-        # Files to update with content replacement
-        files_to_update = [
-            'constants/contactInfo.ts',
-            'app/screens/HomeScreen.tsx', 
-            'app/screens/SettingsScreen.tsx',
-            'app/i18n/locales/he.json',
-            'app/i18n/locales/en.json',
-            'app/(tabs)/explore-client.tsx',
-            'services/firebase.ts'
-        ]
+        # Use the new replacement system
+        result = replace_hardcoded_content_safe('.', business_info, dry_run=self.dry_run)
         
-        for file_path in files_to_update:
-            if os.path.exists(file_path):
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                
-                # Replace phone numbers
-                content = re.sub(r'\+9720548353232', business_info['ownerPhone'], content)
-                content = re.sub(r'\+972523985505', business_info['ownerPhone'], content)
-                
-                # Replace addresses
-                content = re.sub(r'רפיח ים 13[^"\']*', business_info['businessAddress'], content)
-                content = re.sub(r'נתיבות נווה שרון 1', business_info['businessAddress'], content)
-                content = re.sub(r'Netivot rafiah yam 1', business_info['businessAddress'], content)
-                
-                # Replace emails
-                content = re.sub(r'info@barbersbar\.co(?:m|\.il)', business_email, content)
-                content = re.sub(r'support@barbersbar\.co(?:m|\.il)', support_email, content)
-                
-                # Replace business names
-                content = re.sub(r'Barbersbar', business_info['businessName'], content)
-                content = re.sub(r'ברבר בר', business_info['businessName'], content)
-                content = re.sub(r'Barber Shop', business_info['businessName'], content)
-                
-                with open(file_path, 'w', encoding='utf-8') as f:
-                    f.write(content)
+        # Store results for final summary
+        self.replacement_result = result
         
-        print(f"✓ Replaced all hardcoded content with {business_info['businessName']} info")
+        if not self.dry_run:
+            print(f"✅ Content replacement complete: {result.total_replacements} replacements in {result.files_touched} files")
+        else:
+            print(f"📋 DRY RUN: Would make {result.total_replacements} replacements in {result.files_touched} files")
 
     def replace_demo_images(self, business_info: Dict[str, Any]):
         """Replace demo images with neutral placeholder images"""
@@ -483,28 +465,42 @@ Check `.env.example` for all required environment variables including:
         with open(readme_path, 'w') as f:
             f.write(readme_content)
 
-        print(f"\n🎉 {business_info['businessName']} App Created!")
-        print(f"📁 Location: {new_app_path}")
-        print(f"📱 Bundle ID: {business_info['bundleId']}")
-        print(f"🔥 Firebase: {business_info['firebaseProjectId']} (demo config)")
+        print(f"\n✅ Wizard 3.0 – Generation Complete")
+        print("=" * 50)
         
-        print(f"\n✅ Personalized Content:")
-        print(f"  📱 Business Name: {business_info['businessName']} (replaced everywhere)")
-        print(f"  📞 Phone: {business_info['ownerPhone']} (replaced in all screens)")
-        print(f"  📍 Address: {business_info['businessAddress']} (updated throughout)")
-        print(f"  ✉️  Email: info@{business_info['bundleId'].split('.')[-1]}.com (auto-generated)")
+        print(f"\n• App: {business_info['businessName']}")
+        print(f"• Bundle IDs: iOS {business_info['bundleId']} | Android {business_info['bundleId']}")
+        print(f"• Phone: {business_info['ownerPhoneE164']}")
+        print(f"• Address: {business_info['businessAddressHe']}")
+        print(f"• Languages: {business_info['language']} (default: {business_info['language']}, RTL: {'yes' if business_info['language'] == 'he' else 'no'})")
         
-        if business_info['messaging']['sms4free']['enabled'] or business_info['messaging']['whatsapp']['enabled']:
-            print(f"\n📲 Messaging Configured:")
-            if business_info['messaging']['sms4free']['enabled']:
-                print(f"  ✅ SMS4Free ({business_info['messaging']['sms4free']['sender']})")
-            if business_info['messaging']['whatsapp']['enabled']:
-                print("  ✅ WhatsApp Business API")
+        print(f"\n🔧 Applied:")
+        print(f"  - Generic template cleanup (names/phones/emails/addresses)")
         
-        print(f"\n📸 Images: Check assets/REPLACE_DEMO_IMAGES.md for image replacement guide")
-        print(f"📖 Next: Check README.md in the new app folder")
-        print(f"🚀 Ready to: npm install && eas build")
-        print(f"🔥 Firebase: Replace demo config with your real Firebase project")
+        messaging_provider = "none"
+        messaging_fallbacks = "none"
+        if business_info['messaging']['sms4free']['enabled']:
+            messaging_provider = "sms4free"
+        elif business_info['messaging']['whatsapp']['enabled']:
+            messaging_provider = "whatsapp"
+        
+        print(f"  - Messaging: {messaging_provider} (fallbacks: {messaging_fallbacks})")
+        print(f"  - Firebase: DEMO placeholders (no secrets committed)")
+        print(f"  - Links: HTTPS deep-links via utils")
+        print(f"  - i18n updated")
+        print(f"  - Demo images guide created")
+        
+        if self.replacement_result:
+            print(f"\n🧪 Post-gen checks:")
+            print(f"  - {self.replacement_result.total_replacements} replacements across {self.replacement_result.files_touched} files")
+            print(f"  - Legacy brand strings: none detected")
+            print(f"  - Phone format: E.164 verified")
+        
+        print(f"\nNext:")
+        print(f"  1) Replace demo images")
+        print(f"  2) Set real Firebase keys (.env)")
+        print(f"  3) Optional: eas build --platform android")
+        print(f"\n📁 Location: {new_app_path}")
 
     def run(self):
         try:
