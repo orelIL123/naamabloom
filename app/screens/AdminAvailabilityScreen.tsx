@@ -447,7 +447,7 @@ const AdminAvailabilityScreen: React.FC<AdminAvailabilityScreenProps> = ({ onNav
                     }
                   }}
                 >
-                  <Ionicons name="refresh" size={20} color="#3b82f6" />
+                  <Ionicons name="refresh" size={20} color="#FF00AA" />
                   <Text style={styles.refreshButtonText}>עדכן שעות</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => setModalVisible(false)}>
@@ -690,12 +690,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f8ff',
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#3b82f6',
+    borderColor: '#FF00AA',
     gap: 6,
   },
   refreshButtonText: {
     fontSize: 14,
-    color: '#3b82f6',
+    color: '#FF00AA',
     fontWeight: '600',
   },
   modalTitle: {

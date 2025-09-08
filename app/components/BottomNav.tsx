@@ -68,7 +68,7 @@ export default function BottomNav({ onOrderPress, onTabPress, activeTab }: {
         {/* Left side - Home and Call */}
         <View style={styles.leftSide}>
           <TouchableOpacity style={styles.iconBtn} onPress={() => onTabPress && onTabPress('home')}>
-            <Ionicons name="home" size={26} color={activeTab === 'home' ? "#3b82f6" : "#9ca3af"} />
+            <Ionicons name="home" size={26} color={activeTab === 'home' ? "#FF00AA" : "#9ca3af"} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconBtn} onPress={handleCallPress}>
             <Ionicons name="call" size={26} color="#9ca3af" />
@@ -78,7 +78,7 @@ export default function BottomNav({ onOrderPress, onTabPress, activeTab }: {
         {/* Center FAB (Order) - properly centered */}
         <View style={styles.centerFab}>
           <LinearGradient
-            colors={['#3b82f6', '#60a5fa', '#3b82f6']}
+            colors={['#FF00AA', '#FF00AA', '#FF00AA']}
             style={styles.fabGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
@@ -96,10 +96,10 @@ export default function BottomNav({ onOrderPress, onTabPress, activeTab }: {
         {/* Right side - Settings and Profile */}
         <View style={styles.rightSide}>
           <TouchableOpacity style={styles.iconBtn} onPress={() => onTabPress && onTabPress('team')}>
-            <Ionicons name="people" size={26} color={activeTab === 'team' ? "#3b82f6" : "#9ca3af"} />
+            <Ionicons name="people" size={26} color={activeTab === 'team' ? "#FF00AA" : "#9ca3af"} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconBtn} onPress={() => onTabPress && onTabPress('profile')}>
-            <Ionicons name="person" size={26} color={activeTab === 'profile' ? "#3b82f6" : "#9ca3af"} />
+            <Ionicons name="person" size={26} color={activeTab === 'profile' ? "#FF00AA" : "#9ca3af"} />
           </TouchableOpacity>
         </View>
       </View>
@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
     top: -36, // half of FAB height (72/2)
     transform: [{ translateX: -36 }],
     zIndex: 10,
-    shadowColor: "#3b82f6",
+    shadowColor: "#FF00AA",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
     shadowRadius: 16,
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
     borderRadius: screenWidth < 380 ? 34 : 38,
     padding: 2,
     transform: [{ translateY: -12 }],
-    shadowColor: "#3b82f6",
+    shadowColor: "#FF00AA",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.6,
     shadowRadius: 12,

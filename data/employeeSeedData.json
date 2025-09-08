@@ -1,0 +1,17 @@
+{
+  "businessName": "naama bloom",
+  "totalEmployees": 1,
+  "employees": [
+    {
+      "name": "נעעמה בלום",
+      "phone": "0536202292",
+      "specialization": "מעצבת גבות",
+      "experience": "לא צוין",
+      "isMainBarber": true,
+      "available": true,
+      "barberId": "barber_1",
+      "userId": "user_naama_bloom_barber_1",
+      "phoneE164": "+972536202292"
+    }
+  ]
+}

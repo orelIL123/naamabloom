@@ -554,7 +554,7 @@ const AdminHomeScreen: React.FC<AdminHomeScreenProps> = ({ onNavigate, onBack })
           onPress={() => setShowNextAppointmentModal(true)}
         >
           <LinearGradient
-            colors={['#3b82f6', '#1d4ed8']}
+            colors={['#FF00AA', '#1d4ed8']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.nextAppointmentBubbleGradient}
@@ -581,7 +581,7 @@ const AdminHomeScreen: React.FC<AdminHomeScreenProps> = ({ onNavigate, onBack })
             
             <View style={styles.nextAppointmentModalContent}>
               <View style={styles.nextAppointmentInfo}>
-                <Ionicons name="person" size={24} color="#3b82f6" />
+                <Ionicons name="person" size={24} color="#FF00AA" />
                 <View style={styles.nextAppointmentInfoText}>
                   <Text style={styles.nextAppointmentLabel}>לקוח:</Text>
                   <Text style={styles.nextAppointmentValue}>{nextAppointment.clientName}</Text>
@@ -589,7 +589,7 @@ const AdminHomeScreen: React.FC<AdminHomeScreenProps> = ({ onNavigate, onBack })
               </View>
               
               <View style={styles.nextAppointmentInfo}>
-                <Ionicons name="call" size={24} color="#3b82f6" />
+                <Ionicons name="call" size={24} color="#FF00AA" />
                 <View style={styles.nextAppointmentInfoText}>
                   <Text style={styles.nextAppointmentLabel}>טלפון:</Text>
                   <TouchableOpacity 
@@ -601,13 +601,13 @@ const AdminHomeScreen: React.FC<AdminHomeScreenProps> = ({ onNavigate, onBack })
                     style={styles.phoneButton}
                   >
                     <Text style={styles.nextAppointmentValue}>{nextAppointment.clientPhone}</Text>
-                    <Ionicons name="call" size={16} color="#3b82f6" style={{ marginLeft: 8 }} />
+                    <Ionicons name="call" size={16} color="#FF00AA" style={{ marginLeft: 8 }} />
                   </TouchableOpacity>
                 </View>
               </View>
               
               <View style={styles.nextAppointmentInfo}>
-                <Ionicons name="calendar" size={24} color="#3b82f6" />
+                <Ionicons name="calendar" size={24} color="#FF00AA" />
                 <View style={styles.nextAppointmentInfoText}>
                   <Text style={styles.nextAppointmentLabel}>תאריך:</Text>
                   <Text style={styles.nextAppointmentValue}>
@@ -633,7 +633,7 @@ const AdminHomeScreen: React.FC<AdminHomeScreenProps> = ({ onNavigate, onBack })
               </View>
               
               <View style={styles.nextAppointmentInfo}>
-                <Ionicons name="time" size={24} color="#3b82f6" />
+                <Ionicons name="time" size={24} color="#FF00AA" />
                 <View style={styles.nextAppointmentInfoText}>
                   <Text style={styles.nextAppointmentLabel}>שעה:</Text>
                   <Text style={styles.nextAppointmentValue}>{nextAppointment.time}</Text>
@@ -641,7 +641,7 @@ const AdminHomeScreen: React.FC<AdminHomeScreenProps> = ({ onNavigate, onBack })
               </View>
               
               <View style={styles.nextAppointmentInfo}>
-                <Ionicons name="cut" size={24} color="#3b82f6" />
+                <Ionicons name="cut" size={24} color="#FF00AA" />
                 <View style={styles.nextAppointmentInfoText}>
                   <Text style={styles.nextAppointmentLabel}>ספר:</Text>
                   <Text style={styles.nextAppointmentValue}>{nextAppointment.barberName}</Text>
@@ -994,12 +994,12 @@ const styles = StyleSheet.create({
   phoneButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    backgroundColor: 'rgba(255, 0, 170, 0.1)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#3b82f6',
+    borderColor: '#FF00AA',
   },
   nextAppointmentModalActions: {
     padding: 20,

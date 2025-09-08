@@ -103,6 +103,14 @@ def generate_replacements(business_info: Dict) -> Dict[str, str]:
         r'ל-Barbers Bar': f"ל-{business_info.get('businessName', 'Business Name')}",
         r'של Barbers Bar': f"של {business_info.get('businessName', 'Business Name')}",
         r'למספרה של רן אלגריסי': f"למספרה של {business_info.get('businessName', 'Business Name')}",
+        r'ברוכים הבאים ל-Test Salon!': f"ברוכים הבאים ל-{business_info.get('businessName', 'Business Name')}!",
+        
+        # TopNav title replacement
+        r'title="Test Salon"': f'title="{business_info.get("businessName", "Business Name")}"',
+        
+        # Custom welcome message replacement
+        r"setWelcomeMessage\('ברוכים הבאים ל-Test Salon!'\)": f"setWelcomeMessage('{business_info.get('welcomeMessage', f'ברוכים הבאים ל-{business_info.get('businessName', 'Business Name')}!')}')",
+        r"welcomeMessage\|\|.*t\('home\.welcome'\)": f'"{business_info.get("welcomeMessage", f"ברוכים הבאים ל-{business_info.get('businessName', 'Business Name')}!")}"',
         
         # Email patterns
         r'\binfo@barbersbar\.com?\b': f"info@{domain}",
@@ -130,6 +138,30 @@ def generate_replacements(business_info: Dict) -> Dict[str, str]:
         r'https://wa\.me/972548353232': f"https://wa.me/{owner_phone_e164.replace('+', '')}",
         r'https://wa\.me/972523985505': f"https://wa.me/{owner_phone_e164.replace('+', '')}",
     }
+    
+    # Add color replacements if primary color is provided
+    primary_color = business_info.get('primaryColor')
+    if primary_color:
+        color_replacements = {
+            # Replace all occurrences of the default blue color (#3b82f6) 
+            r'#3b82f6': primary_color,
+            r'#60a5fa': primary_color,  # Lighter blue variant
+            r'rgba\(59,\s*130,\s*246': f'rgba({int(primary_color[1:3], 16)}, {int(primary_color[3:5], 16)}, {int(primary_color[5:7], 16)}',
+            
+            # Color constants in colors.ts
+            r"neonBlue:\s*'#3b82f6'": f"neonBlue: '{primary_color}'",
+            r"gradientStart:\s*'#3b82f6'": f"gradientStart: '{primary_color}'",
+            r"gradientEnd:\s*'#60a5fa'": f"gradientEnd: '{primary_color}'",
+            
+            # Tailwind config primary color
+            r"primary:\s*'#[0-9a-fA-F]{6}'": f"primary: '{primary_color}'",
+            
+            # CSS color values in styles
+            r'color:\s*#3b82f6': f'color: {primary_color}',
+            r'backgroundColor:\s*#3b82f6': f'backgroundColor: {primary_color}',
+            r'borderColor:\s*#3b82f6': f'borderColor: {primary_color}',
+        }
+        replacements.update(color_replacements)
     
     return replacements
 

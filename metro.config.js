@@ -5,6 +5,19 @@ const config = getDefaultConfig(__dirname);
 // Ensure these extensions are resolved properly
 config.resolver.sourceExts.push('cjs');
 
+// Add asset extensions
+const defaultAssetExts = require('metro-config/src/defaults/defaults').assetExts;
+config.resolver.assetExts = [
+  ...defaultAssetExts,
+  'png',
+  'jpg',
+  'jpeg',
+  'gif',
+  'JPG',
+  'PNG'
+];
+
+
 // Enable symlinks for better development
 config.resolver.symlinks = true;
 

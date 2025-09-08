@@ -1,5 +1,34 @@
 {
   "project_info": {
+    "project_number": "448973562994",
+    "project_id": "naama-bloom-88733",
+    "storage_bucket": "naama-bloom-88733.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:448973562994:android:0a1bbe41bb6acc2eb1ceeb",
+        "android_client_info": {
+          "package_name": "com.naama.bloom"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyApnBzRb7EIepMiXWiLplMdqX26BQ0s_Lc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
+{
+  "project_info": {
     "project_number": "53851377123",
     "project_id": "barbers-bar-ae31f",
     "storage_bucket": "barbers-bar-ae31f.firebasestorage.app"

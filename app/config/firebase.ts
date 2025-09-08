@@ -5,13 +5,13 @@ import { getStorage } from 'firebase/storage';
 
 // Firebase configuration with robust fallbacks for preview mode
 const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || "AIzaSyAKEPu7-naLTdeBGAu5dVyvDuGKsFz2E4c",
-  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || "barbers-bar-ae31f.firebaseapp.com",
-  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || "barbers-bar-ae31f",
-  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || "barbers-bar-ae31f.firebasestorage.app",
-  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "53851377123",
-  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || "1:53851377123:ios:b4d77fde0e97fdab6a24d6",
-  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID || ''
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || "AIzaSyDeIZ838xiMiS1gxCxnzThAAt533KKRTEs",
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || "naama-bloom-88733.firebaseapp.com",
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || "naama-bloom-88733",
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || "naama-bloom-88733.firebasestorage.app",
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "448973562994",
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || "1:448973562994:web:2fec9361ce18a7eab1ceeb",
+  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID || 'G-GHWC5553C4'
 };
 
 // Validate Firebase config
@@ -189,6 +189,9 @@ export const collections = {
   users: 'users',
   appointments: 'appointments',
   barbers: 'barbers',
+  artists: 'artists',
+  artistTreatments: 'artistTreatments',
+  artistAvailability: 'artistAvailability',
   treatments: 'treatments',
   gallery: 'gallery',
   waitlist: 'waitlist',

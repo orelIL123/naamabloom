@@ -155,13 +155,46 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ onNavigate, onBack, onClo
         console.log('User is not a barber or not logged in');
       }
       
-      // If barber is pre-selected, set it and skip to next step
+      // Auto select barber logic
+      // 1) If barberId provided via route → select it
+      // 2) Else select Naama (by id 'naama' or name contains 'naama') if exists
+      // 3) Else if only one barber → select it
+      // 4) Else if none → create fallback Naama and select
       if (preSelectedBarberId) {
         const preSelectedBarber = barbersData.find(b => b.id === preSelectedBarberId);
         if (preSelectedBarber) {
           setSelectedBarber(preSelectedBarber);
           setCurrentStep(2);
+          return;
         }
+      }
+
+      const desiredNaama = barbersData.find(b =>
+        b.id?.toLowerCase?.() === 'naama' || (b.name || '').toLowerCase().includes('naama')
+      );
+      if (desiredNaama) {
+        setSelectedBarber(desiredNaama);
+        setCurrentStep(2);
+        return;
+      }
+
+      if (barbersData.length === 1) {
+        setSelectedBarber(barbersData[0]);
+        setCurrentStep(2);
+        return;
+      }
+
+      if (barbersData.length === 0) {
+        const fallback = {
+          id: 'naama',
+          name: 'Naama Bloom',
+          isMainBarber: true,
+          available: true
+        } as unknown as Barber;
+        setBarbers([fallback]);
+        setSelectedBarber(fallback);
+        setCurrentStep(2);
+        return;
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -1140,7 +1173,7 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ onNavigate, onBack, onClo
             <Text style={{ fontSize: 22, fontWeight: 'bold', marginBottom: 6 }}>{detailsBarber?.name}</Text>
             <Text style={{ fontSize: 16, color: '#666', marginBottom: 8 }}>{detailsBarber?.experience}</Text>
             {detailsBarber?.phone && (
-              <Text style={{ fontSize: 16, color: '#3b82f6', marginBottom: 8 }}>{t('profile.phone')} {detailsBarber.phone}</Text>
+              <Text style={{ fontSize: 16, color: '#FF00AA', marginBottom: 8 }}>{t('profile.phone')} {detailsBarber.phone}</Text>
             )}
             <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
               {/* אייקון וואטסאפ */}
@@ -1149,7 +1182,7 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ onNavigate, onBack, onClo
               </View>
             </View>
             <TouchableOpacity onPress={() => setDetailsBarber(null)} style={{ marginTop: 18 }}>
-              <Text style={{ color: '#3b82f6', fontWeight: 'bold' }}>{t('common.close')}</Text>
+              <Text style={{ color: '#FF00AA', fontWeight: 'bold' }}>{t('common.close')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1552,7 +1585,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   detailsButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: '#FF00AA',
     borderRadius: 8,
     paddingVertical: 6,
     paddingHorizontal: 16,

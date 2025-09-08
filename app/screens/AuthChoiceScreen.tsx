@@ -177,13 +177,13 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   loginButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: '#FF00AA',
     height: 56,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
-    shadowColor: '#3b82f6',
+    shadowColor: '#FF00AA',
     shadowOffset: {
       width: 0,
       height: 4,
@@ -204,11 +204,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#3b82f6',
+    borderColor: '#FF00AA',
     marginBottom: 32,
   },
   registerButtonText: {
-    color: '#3b82f6',
+    color: '#FF00AA',
     fontSize: 18,
     fontWeight: '600',
   },
@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   termsLink: {
-    color: '#3b82f6',
+    color: '#FF00AA',
     textDecorationLine: 'underline',
   },
   modalOverlay: {
@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
   subsectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#3b82f6',
+    color: '#FF00AA',
     marginBottom: 5,
   },
   contactInfo: {
@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   modalCloseButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: '#FF00AA',
     height: 50,
     borderRadius: 10,
     justifyContent: 'center',

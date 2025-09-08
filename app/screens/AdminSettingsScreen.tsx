@@ -25,7 +25,7 @@ const AdminSettingsScreen: React.FC<AdminSettingsScreenProps> = ({ onNavigate, o
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
   
   // Settings states
-  const [welcomeMessage, setWelcomeMessage] = useState('שלום, ברוכים הבאים ל-Test Salon');
+  const [welcomeMessage, setWelcomeMessage] = useState('שלום, ברוכים הבאים ל-naama bloom ל-Test Salon');
   const [subtitleMessage, setSubtitleMessage] = useState('ל-Test Salon');
   const [aboutUsText, setAboutUsText] = useState('ברוכים הבאים למספרה של Test Salon! כאן תיהנו מחוויה אישית, מקצועית ומפנקת, עם יחס חם לכל לקוח. רן, בעל ניסיון של שנים בתחום, מזמין אתכם להתרווח, להתחדש ולהרגיש בבית.');
   const [popupMessage, setPopupMessage] = useState('');
@@ -50,12 +50,12 @@ const AdminSettingsScreen: React.FC<AdminSettingsScreenProps> = ({ onNavigate, o
       const welcomeDoc = await getDoc(doc(db, 'settings', 'homeMessages'));
       if (welcomeDoc.exists()) {
         const data = welcomeDoc.data();
-        setWelcomeMessage(data.welcome || 'שלום, ברוכים הבאים ל-Test Salon');
+        setWelcomeMessage(data.welcome || 'שלום, ברוכים הבאים ל-naama bloom ל-Test Salon');
         setSubtitleMessage(data.subtitle || 'ל-Test Salon');
       } else {
         // Create default if doesn't exist
         await setDoc(doc(db, 'settings', 'homeMessages'), {
-          welcome: 'שלום, ברוכים הבאים ל-Test Salon',
+          welcome: 'שלום, ברוכים הבאים ל-naama bloom ל-Test Salon',
           subtitle: 'ל-Test Salon',
           createdAt: new Date()
         });
@@ -179,7 +179,7 @@ const AdminSettingsScreen: React.FC<AdminSettingsScreenProps> = ({ onNavigate, o
               style={styles.textInput}
               value={welcomeMessage}
               onChangeText={setWelcomeMessage}
-              placeholder="שלום, ברוכים הבאים ל-Test Salon"
+              placeholder="שלום, ברוכים הבאים ל-naama bloom ל-Test Salon"
               textAlign="right"
               multiline
             />

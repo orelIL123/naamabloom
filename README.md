@@ -1,55 +1,58 @@
-# Barbershop Template - מערכת שכפול אפליקציות ספרים
+# naama bloom - Barber Shop App
 
-## איך לשכפל אפליקציה חדשה
+## App Configuration
 
-### צעד 1: הרץ את הסקריפט
-```bash
-cd /Users/x/Desktop/barbershop-template/scripts
-python3 app_duplication_wizard.py
-```
+### Business Details
+- **Business**: naama bloom
+- **Owner**: naama bloom
+- **Email**: naama@bloom.com
+- **Phone**: 0536202292
+- **Address**: holon 1
 
-### צעד 2: ענה על השאלות (5 דקות)
-הסקריפט ישאל:
-- פרטי העסק (שם, בעלים, כתובת)
-- הגדרות אפליקציה (שם, Bundle ID, צבעים)
-- כמה ספרים עובדים
-- הגדרות SMS ו-WhatsApp (אופציונלי)
+### App Info
+- **App Name**: Naama Bloom
+- **Bundle ID**: com.naama.bloom
+- **Firebase Project**: 47c3dde7
+- **Language**: he
+- **Workers**: 1
 
-### צעד 3: הסקריפט יצור אפליקציה ישירות ב-Desktop
-התוצאה:
-- תיקייה חדשה ב-Desktop עם שם העסק
-- כל הקבצים מוגדרים אוטומטי  
-- README עם הוראות המשך
+### Services
+- עיצוב גבות
 
-## מה נמצא בתמפלט:
+### Messaging Setup
+- **SMS4Free**: ✅ Enabled
+- **WhatsApp**: ❌ Disabled
 
-### 📱 **App Structure**
-- `/app` - כל המסכים והקומפוננטים
-- `/services` - Firebase, הודעות, הרשאות
-- `/config` - קונפיגורציות SMS, WhatsApp, Firebase
+## Quick Setup
 
-### 🔧 **Configuration Files**
-- `app.json` - הגדרות Expo
-- `eas.json` - הגדרות Build
-- `package.json` - Dependencies
-- `firebase.json` - הגדרות Firebase
+1. **Firebase Setup**
+   ```bash
+   # Create Firebase project: 47c3dde7
+   # Add your google-services.json and GoogleService-Info.plist
+   ```
 
-### 📲 **Messaging System**
-- SMS4Free integration
-- WhatsApp Business API
-- Fallback system
+2. **Install Dependencies**
+   ```bash
+   npm install
+   ```
 
-### 🎨 **Customization**
-- Tailwind CSS theming
-- Color configuration
-- RTL support for Hebrew
+3. **Configure Environment**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your credentials
+   ```
 
-## אחרי השכפול - מה עושים?
+4. **Build & Deploy**
+   ```bash
+   eas build --platform android
+   eas build --platform ios
+   ```
 
-1. **נכנס לתיקייה החדשה ב-Desktop**
-2. **מריץ `npm install`**  
-3. **מגדיר Firebase project**
-4. **מריץ `eas build`**
+## Environment Variables
+Check `.env.example` for all required environment variables including:
+- Firebase configuration
+- SMS4Free credentials (if enabled)  
+- WhatsApp API credentials (if enabled)
 
-## Support
-עיין ב-`scripts/WIZARD_USAGE.md` למידע מפורט.
+## Contact
+naama bloom - naama@bloom.com

@@ -317,7 +317,7 @@ const styles = StyleSheet.create({
   },
   button: {
     height: 56,
-    backgroundColor: '#3b82f6',
+    backgroundColor: '#FF00AA',
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
     color: '#666666',
   },
   linkText: {
-    color: '#3b82f6',
+    color: '#FF00AA',
     fontSize: 16,
     fontWeight: '500',
     textDecorationLine: 'underline',

@@ -563,7 +563,7 @@ const styles = StyleSheet.create({
   },
   button: {
     height: 56,
-    backgroundColor: '#3b82f6',
+    backgroundColor: '#FF00AA',
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
@@ -598,12 +598,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   secondaryButtonText: {
-    color: '#3b82f6',
+    color: '#FF00AA',
     fontSize: 16,
     fontWeight: '500',
   },
   switchText: {
-    color: '#3b82f6',
+    color: '#FF00AA',
     fontSize: 16,
     fontWeight: '500',
     textDecorationLine: 'underline',
@@ -618,7 +618,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   termsLink: {
-    color: '#3b82f6',
+    color: '#FF00AA',
     textDecorationLine: 'underline',
   },
   modalOverlay: {
@@ -668,7 +668,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   modalCloseButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: '#FF00AA',
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 8,

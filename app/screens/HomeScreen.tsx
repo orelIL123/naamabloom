@@ -81,9 +81,9 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isBarber, setIsBarber] = useState(false);
-  const [welcomeMessage, setWelcomeMessage] = useState('ברוכים הבאים ל-Test Salon!');
+  const [welcomeMessage, setWelcomeMessage] = useState('ברוכים הבאים ל-naama bloom!');
   const [subtitleMessage, setSubtitleMessage] = useState('המספרה המקצועית שלך');
-  const [aboutUsMessage, setAboutUsMessage] = useState('ברוכים הבאים ל-Test Salon! כאן תיהנו מחוויה אישית, מקצועית ומפנקת, עם יחס חם לכל לקוח. רן אגלריסי, בעל ניסיון של שנים בתחום, מזמין אתכם להתרווח, להתחדש ולהרגיש בבית.');
+  const [aboutUsMessage, setAboutUsMessage] = useState('ברוכים הבאים ל-naama bloom! כאן תיהנו מחוויה אישית, מקצועית ומפנקת, עם יחס חם לכל לקוח. רן אגלריסי, בעל ניסיון של שנים בתחום, מזמין אתכם להתרווח, להתחדש ולהרגיש בבית.');
   const [showPopup, setShowPopup] = useState(false);
   const [popupMessage, setPopupMessage] = useState('');
 
@@ -285,9 +285,9 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
       console.log('🌐 Preview mode detected, using fallback data');
       setImagesLoading(false);
       setLoading(false);
-      setWelcomeMessage('ברוכים הבאים ל-Test Salon!');
+      setWelcomeMessage('ברוכים הבאים ל-naama bloom!');
       setSubtitleMessage('המספרה המקצועית שלך');
-      setAboutUsMessage('ברוכים הבאים ל-Test Salon! כאן תיהנו מחוויה אישית, מקצועית ומפנקת, עם יחס חם לכל לקוח. רן אגלריסי, בעל ניסיון של שנים בתחום, מזמין אתכם להתרווח, להתחדש ולהרגיש בבית.');
+      setAboutUsMessage('ברוכים הבאים ל-naama bloom! כאן תיהנו מחוויה אישית, מקצועית ומפנקת, עם יחס חם לכל לקוח. רן אגלריסי, בעל ניסיון של שנים בתחום, מזמין אתכם להתרווח, להתחדש ולהרגיש בבית.');
       return;
     }
 
@@ -528,7 +528,7 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
       }, 2, 'Fetch welcome messages');
 
       if (welcomeData) {
-        setWelcomeMessage(welcomeData.welcome || 'ברוכים הבאים ל-Test Salon!');
+        setWelcomeMessage(welcomeData.welcome || 'ברוכים הבאים ל-naama bloom!');
         setSubtitleMessage(welcomeData.subtitle || 'המספרה המקצועית שלך');
       }
 
@@ -539,7 +539,7 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
       }, 2, 'Fetch about us text');
 
       if (aboutData) {
-        setAboutUsMessage(aboutData.text || 'ברוכים הבאים ל-Test Salon! כאן תיהנו מחוויה אישית, מקצועית ומפנקת, עם יחס חם לכל לקוח. רן אגלריסי, בעל ניסיון של שנים בתחום, מזמין אתכם להתרווח, להתחדש ולהרגיש בבית.');
+        setAboutUsMessage(aboutData.text || 'ברוכים הבאים ל-naama bloom! כאן תיהנו מחוויה אישית, מקצועית ומפנקת, עם יחס חם לכל לקוח. רן אגלריסי, בעל ניסיון של שנים בתחום, מזמין אתכם להתרווח, להתחדש ולהרגיש בבית.');
       }
 
       console.log('✅ Messages loaded successfully');
@@ -960,7 +960,7 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
   return (
     <SafeAreaView style={styles.container}>
       <TopNav 
-        title="Test Salon" 
+        title="naama bloom" 
         onMenuPress={() => setSideMenuVisible(true)}
         onBellPress={handleNotificationPress}
       />
@@ -969,7 +969,7 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
         {/* Hero Section */}
         <View style={styles.backgroundWrapper}>
           <ImageBackground
-            source={settingsImages.atmosphere ? { uri: settingsImages.atmosphere } : require('../../assets/images/ATMOSPHERE.jpg')}
+            source={settingsImages.atmosphere ? { uri: settingsImages.atmosphere } : require('../../assets/images/ATMOSPHERE.png')}
             style={styles.atmosphereImage}
             resizeMode="cover"
           >
@@ -993,7 +993,7 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
           ]}
         >
           <LinearGradient
-            colors={['rgba(59, 130, 246, 0.1)', 'rgba(59, 130, 246, 0.05)', 'rgba(3, 3, 3, 0.95)']}
+            colors={['rgba(255, 0, 170, 0.1)', 'rgba(255, 0, 170, 0.05)', 'rgba(3, 3, 3, 0.95)']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.cardGradient}
@@ -1018,34 +1018,34 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
             <View style={styles.quickActionsContainer}>
               <TouchableOpacity style={styles.quickActionButton} onPress={handleTeamPress}>
                 <LinearGradient
-                  colors={['rgba(59, 130, 246, 0.1)', 'rgba(255, 255, 255, 0.95)']}
+                  colors={['rgba(255, 0, 170, 0.1)', 'rgba(255, 255, 255, 0.95)']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.quickActionGradient}
                 />
-                <Ionicons name="people" size={28} color="#3b82f6" />
+                <Ionicons name="people" size={28} color="#FF00AA" />
                 <Text style={styles.quickActionText}>הצוות שלנו</Text>
               </TouchableOpacity>
               
               <TouchableOpacity style={styles.quickActionButton} onPress={handleMyAppointmentsPress}>
                 <LinearGradient
-                  colors={['rgba(59, 130, 246, 0.1)', 'rgba(255, 255, 255, 0.95)']}
+                  colors={['rgba(255, 0, 170, 0.1)', 'rgba(255, 255, 255, 0.95)']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.quickActionGradient}
                 />
-                <Ionicons name="calendar" size={28} color="#3b82f6" />
+                <Ionicons name="calendar" size={28} color="#FF00AA" />
                 <Text style={styles.quickActionText}>התורים שלי</Text>
               </TouchableOpacity>
               
               <TouchableOpacity style={styles.quickActionButton} onPress={handleCallPress}>
                 <LinearGradient
-                  colors={['rgba(59, 130, 246, 0.1)', 'rgba(255, 255, 255, 0.95)']}
+                  colors={['rgba(255, 0, 170, 0.1)', 'rgba(255, 255, 255, 0.95)']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.quickActionGradient}
                 />
-                <Ionicons name="call" size={28} color="#3b82f6" />
+                <Ionicons name="call" size={28} color="#FF00AA" />
                 <Text style={styles.quickActionText}>התקשר</Text>
               </TouchableOpacity>
               
@@ -1059,7 +1059,7 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
               <View style={styles.carousel3DContainer}>
                 {imagesLoading || galleryImages.length === 0 ? (
                   <View style={styles.galleryLoadingContainer}>
-                    <ActivityIndicator size="large" color="#3b82f6" />
+                    <ActivityIndicator size="large" color="#FF00AA" />
                     <Text style={styles.galleryLoadingText}>טוען גלריה...</Text>
                   </View>
                 ) : (
@@ -1113,13 +1113,13 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
             <Text style={styles.sectionTitle}>הכירו אותנו</Text>
             <View style={styles.aboutUsCard}>
               <LinearGradient
-                colors={['rgba(59, 130, 246, 0.1)', 'rgba(139, 69, 19, 0.1)', 'rgba(0, 0, 0, 0.05)']}
+                colors={['rgba(255, 0, 170, 0.1)', 'rgba(139, 69, 19, 0.1)', 'rgba(0, 0, 0, 0.05)']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.aboutUsGradient}
               />
               <Image
-                source={settingsImages.aboutUs ? { uri: settingsImages.aboutUs } : require('../../assets/images/ATMOSPHERE.jpg')}
+                source={settingsImages.aboutUs ? { uri: settingsImages.aboutUs } : require('../../assets/images/aboutus.png')}
                 style={styles.aboutUsTopImage}
                 resizeMode="cover"
               />
@@ -1177,21 +1177,21 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
             <Text style={styles.sectionTitle}>צור קשר</Text>
             <View style={styles.contactInfo}>
               <LinearGradient
-                colors={['rgba(59, 130, 246, 0.05)', 'rgba(255, 255, 255, 0.95)']}
+                colors={['rgba(255, 0, 170, 0.05)', 'rgba(255, 255, 255, 0.95)']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.contactGradient}
               />
               <View style={styles.contactItem}>
-                <Ionicons name="call" size={20} color="#3b82f6" />
+                <Ionicons name="call" size={20} color="#FF00AA" />
                 <Text style={styles.contactText}>+972523456789</Text>
               </View>
               <View style={styles.contactItem}>
-                <Ionicons name="location" size={20} color="#3b82f6" />
+                <Ionicons name="location" size={20} color="#FF00AA" />
                 <Text style={styles.contactText}>{require('../../constants/contactInfo').CONTACT_INFO.displayAddress}</Text>
               </View>
               <View style={styles.contactItem}>
-                <Ionicons name="time" size={20} color="#3b82f6" />
+                <Ionicons name="time" size={20} color="#FF00AA" />
                 <Text style={styles.contactText}>א&apos;-ה&apos; 9:00-20:00, ו&apos; 9:00-15:00</Text>
               </View>
             </View>
@@ -1255,7 +1255,7 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
                   <View key={notification.id} style={styles.notificationItem}>
                     <View style={styles.notificationIcon}>
                       {notification.type === 'appointment' || notification.type === 'confirmation' && (
-                        <Ionicons name="calendar" size={20} color="#3b82f6" />
+                        <Ionicons name="calendar" size={20} color="#FF00AA" />
                       )}
                       {notification.type === 'reminder' && (
                         <Ionicons name="alarm" size={20} color="#FF9800" />
@@ -1469,7 +1469,7 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#3b82f6',
+    shadowColor: '#FF00AA',
     shadowOffset: {
       width: 0,
       height: 4,
@@ -1480,14 +1480,14 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   neonButtonPrimary: {
-    backgroundColor: '#3b82f6',
-    borderColor: '#60a5fa',
-    shadowColor: '#3b82f6',
+    backgroundColor: '#FF00AA',
+    borderColor: '#FF00AA',
+    shadowColor: '#FF00AA',
   },
   neonButtonSecondary: {
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    borderColor: '#3b82f6',
-    shadowColor: '#3b82f6',
+    backgroundColor: 'rgba(255, 0, 170, 0.1)',
+    borderColor: '#FF00AA',
+    shadowColor: '#FF00AA',
   },
   neonButtonText: {
     fontSize: 14,
@@ -1500,7 +1500,7 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
   neonButtonTextSecondary: {
-    color: '#3b82f6',
+    color: '#FF00AA',
   },
   sectionTitle: {
     fontSize: 24,
@@ -1765,7 +1765,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   modalCloseButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: '#FF00AA',
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
