@@ -36,27 +36,25 @@ const { width } = Dimensions.get('window');
 interface AdminGalleryScreenProps {
   onNavigate?: (screen: string) => void;
   onBack?: () => void;
-  initialTab?: 'gallery' | 'background' | 'splash' | 'aboutus' | 'shop';
+  initialTab?: 'gallery' | 'atmosphere' | 'splash' | 'aboutus' | 'shop';
 }
 
 const AdminGalleryScreen: React.FC<AdminGalleryScreenProps> = ({ onNavigate, onBack, initialTab }) => {
   const [images, setImages] = useState<GalleryImage[]>([]);
   const [storageImages, setStorageImages] = useState<{
     gallery: string[];
-    backgrounds: string[];
+    atmosphere: string[];
     splash: string[];
-    workers: string[];
     aboutus: string[];
   }>({
     gallery: [],
-    backgrounds: [],
+    atmosphere: [],
     splash: [],
-    workers: [],
     aboutus: []
   });
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
-  const [selectedTab, setSelectedTab] = useState<'gallery' | 'background' | 'splash' | 'aboutus' | 'shop'>(initialTab || 'gallery');
+  const [selectedTab, setSelectedTab] = useState<'gallery' | 'atmosphere' | 'splash' | 'aboutus' | 'shop'>(initialTab || 'gallery');
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
   const [editingImage, setEditingImage] = useState<GalleryImage | null>(null);
 
@@ -150,7 +148,7 @@ const AdminGalleryScreen: React.FC<AdminGalleryScreenProps> = ({ onNavigate, onB
     setToast({ ...toast, visible: false });
   };
 
-  const openAddModal = (type: 'gallery' | 'background' | 'splash' | 'aboutus') => {
+  const openAddModal = (type: 'gallery' | 'atmosphere' | 'splash' | 'aboutus') => {
     setEditingImage(null);
     setFormData({
       imageUrl: '',
@@ -208,8 +206,14 @@ const AdminGalleryScreen: React.FC<AdminGalleryScreenProps> = ({ onNavigate, onB
       console.log('📤 Uploading image:', imageUri);
       showToast('מעלה תמונה...', 'success');
       
-      const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.jpg`;
-      const folderPath = formData.type === 'background' ? 'backgrounds' : formData.type;
+      // Determine folder and filename per tab
+      const isGallery = formData.type === 'gallery';
+      const folderPath = isGallery
+        ? 'gallery'
+        : (selectedTab === 'atmosphere' ? 'atmosphere' : selectedTab === 'splash' ? 'splash' : 'aboutus');
+      const fileName = isGallery
+        ? `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.jpg`
+        : (selectedTab === 'atmosphere' ? 'atmosphere.png' : selectedTab === 'splash' ? 'splash.png' : `${Date.now()}.jpg`);
       
       console.log('📁 Upload path:', `${folderPath}/${fileName}`);
       const downloadURL = await uploadImageToStorage(imageUri, folderPath, fileName);
@@ -221,6 +225,9 @@ const AdminGalleryScreen: React.FC<AdminGalleryScreenProps> = ({ onNavigate, onB
       });
       
       showToast('התמונה הועלתה בהצלחה', 'success');
+      
+      // Refresh images after successful upload
+      await loadStorageImages();
     } catch (error) {
       console.error('❌ Error uploading image:', error);
       showToast('שגיאה בהעלאת התמונה', 'error');
@@ -342,6 +349,47 @@ const AdminGalleryScreen: React.FC<AdminGalleryScreenProps> = ({ onNavigate, onB
     );
   };
 
+  const handleDeleteStorageImage = async (imageUrl: string, tab: string) => {
+    Alert.alert(
+      'מחיקת תמונה מ-Firebase Storage',
+      'האם אתה בטוח שברצונך למחוק תמונה זו?',
+      [
+        { text: 'ביטול', style: 'cancel' },
+        {
+          text: 'מחק',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Extract file path from URL
+              const urlParts = imageUrl.split('/');
+              const fileName = urlParts[urlParts.length - 1].split('?')[0];
+              const folderPath = tab === 'atmosphere' ? 'atmosphere' : 
+                                tab === 'splash' ? 'splash' : 
+                                tab === 'aboutus' ? 'aboutus' : 'gallery';
+              
+              console.log('🗑️ Deleting from Storage:', `${folderPath}/${fileName}`);
+              
+              // Import Firebase Storage functions
+              const { getStorage, ref, deleteObject } = await import('firebase/storage');
+              const storage = getStorage();
+              const imageRef = ref(storage, `${folderPath}/${fileName}`);
+              
+              await deleteObject(imageRef);
+              showToast('התמונה נמחקה מ-Firebase Storage', 'success');
+              
+              // Refresh storage images
+              const storageImagesData = await getAllStorageImages();
+              setStorageImages(storageImagesData);
+            } catch (error) {
+              console.error('Error deleting storage image:', error);
+              showToast('שגיאה במחיקת התמונה מ-Firebase Storage', 'error');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleMoveUp = async (image: GalleryImage) => {
     try {
       const currentImages = filteredImages.sort((a, b) => a.order - b.order);
@@ -423,7 +471,7 @@ const AdminGalleryScreen: React.FC<AdminGalleryScreenProps> = ({ onNavigate, onB
   const getTabTitle = (tab: string) => {
     switch (tab) {
       case 'gallery': return 'גלריה';
-      case 'background': return 'רקע';
+      case 'atmosphere': return 'רקע (atmosphere)';
       case 'splash': return 'מסך טעינה';
       case 'aboutus': return 'אודותינו';
       case 'shop': return 'חנות';
@@ -434,7 +482,7 @@ const AdminGalleryScreen: React.FC<AdminGalleryScreenProps> = ({ onNavigate, onB
   const getTabIcon = (tab: string) => {
     switch (tab) {
       case 'gallery': return 'images';
-      case 'background': return 'image';
+      case 'atmosphere': return 'image';
       case 'splash': return 'phone-portrait';
       case 'aboutus': return 'information-circle';
       case 'shop': return 'cart';
@@ -449,8 +497,8 @@ const AdminGalleryScreen: React.FC<AdminGalleryScreenProps> = ({ onNavigate, onB
     switch (selectedTab) {
       case 'gallery':
         return storageImages.gallery;
-      case 'background':
-        return storageImages.backgrounds;
+      case 'atmosphere':
+        return storageImages.atmosphere;
       case 'splash':
         return storageImages.splash;
       case 'aboutus':
@@ -467,7 +515,7 @@ const AdminGalleryScreen: React.FC<AdminGalleryScreenProps> = ({ onNavigate, onB
 
   const tabs = [
     { key: 'gallery', label: 'גלריה', icon: 'images' },
-    { key: 'background', label: 'רקע', icon: 'image' },
+    { key: 'atmosphere', label: 'רקע (atmosphere)', icon: 'image' },
     { key: 'splash', label: 'מסך טעינה', icon: 'phone-portrait' },
     { key: 'aboutus', label: 'אודותינו', icon: 'information-circle' },
     { key: 'shop', label: 'חנות', icon: 'cart' },
@@ -684,6 +732,13 @@ const AdminGalleryScreen: React.FC<AdminGalleryScreenProps> = ({ onNavigate, onB
                         >
                           <Ionicons name="add-circle" size={20} color="#007bff" />
                           <Text style={styles.actionButtonText}>הוסף לגלריה</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={[styles.actionButton, { backgroundColor: '#dc3545' }]}
+                          onPress={() => handleDeleteStorageImage(imageUrl, selectedTab)}
+                        >
+                          <Ionicons name="trash" size={20} color="#fff" />
+                          <Text style={[styles.actionButtonText, { color: '#fff' }]}>מחק</Text>
                         </TouchableOpacity>
                       </View>
                     </View>

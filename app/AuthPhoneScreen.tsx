@@ -84,16 +84,11 @@ export default function AuthPhoneScreen() {
       // Try Firebase authentication
       try {
         let userCredential;
-        
         if (isRegisterMode) {
-          const userCredential = await createUserWithEmailAndPassword(auth, authCredential, password);
-          const user = userCredential.user;
-          // Now, you can create the user profile in your database
-          // Example: await createUserProfile(user.uid, { ... });
+          userCredential = await createUserWithEmailAndPassword(auth, authCredential, password);
         } else {
-          await signInWithEmailAndPassword(auth, authCredential, password);
+          userCredential = await signInWithEmailAndPassword(auth, authCredential, password);
         }
-        
         const user = userCredential.user;
         
         setLoading(false);

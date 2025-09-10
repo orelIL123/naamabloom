@@ -195,7 +195,7 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.contentContainer}>
-          <Text style={styles.sectionTitle}>{t('team.our_barbers')}</Text>
+          <Text style={styles.sectionTitle}>{t('team.our_team') || 'הצוות שלנו'}</Text>
           
           {barbers.length === 0 ? (
             <View style={styles.emptyState}>

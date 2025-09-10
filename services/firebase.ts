@@ -29,7 +29,8 @@ import {
     where,
     writeBatch
 } from 'firebase/firestore';
-import { deleteObject, getDownloadURL, listAll, ref, uploadBytes } from 'firebase/storage';
+import { deleteObject, getDownloadURL, listAll, ref, uploadBytes, uploadString } from 'firebase/storage';
+import base64 from 'react-native-base64';
 import { auth, db, storage } from '../app/config/firebase';
 import { CacheUtils } from './cache';
 import { ImageOptimizer } from './imageOptimization';
@@ -418,7 +419,7 @@ export const registerUserWithPhone = async (phoneNumber: string, displayName:str
     }
     
     // Create a unique temporary email for this phone user
-    const tempEmail = `${formattedPhone.replace(/[^0-9]/g, '')}@phone.Test Salon.com`;
+    const tempEmail = `${formattedPhone.replace(/[^0-9]/g, '')}@phonesign.local`;
     
     // Create user with email/password (since phone auth requires special setup)
     const userCredential = await createUserWithEmailAndPassword(auth, tempEmail, password);
@@ -468,31 +469,8 @@ export const registerUserWithPhone = async (phoneNumber: string, displayName:str
 };
 
 // New function to check if phone user exists and has password
-export const checkPhoneUserExists = async (phoneNumber: string): Promise<{ exists: boolean; hasPassword: boolean; uid?: string }> => {
+export const checkPhoneUserExists = async (phoneNumber: string): Promise<{ exists: boolean; hasPassword: boolean; uid?: string; email?: string }> => {
   try {
-    // Check if user is authenticated
-    if (!auth.currentUser) {
-      console.log('❌ User not authenticated for phone lookup');
-      return { exists: false, hasPassword: false };
-    }
-    
-    // Check if user is admin or looking up their own phone
-    const currentUserDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
-    if (!currentUserDoc.exists()) {
-      console.log('❌ Current user document not found');
-      return { exists: false, hasPassword: false };
-    }
-    
-    const userData = currentUserDoc.data();
-    const isAdmin = userData.isAdmin === true;
-    const currentUserPhone = userData.phone;
-    
-    // Only allow access if user is admin or looking up their own phone
-    if (!isAdmin && currentUserPhone !== phoneNumber) {
-      console.log('❌ Insufficient permissions to lookup other user phone');
-      return { exists: false, hasPassword: false };
-    }
-    
     const usersRef = collection(db, 'users');
     const q = query(usersRef, where('phone', '==', phoneNumber));
     const querySnapshot = await getDocs(q);
@@ -507,7 +485,8 @@ export const checkPhoneUserExists = async (phoneNumber: string): Promise<{ exist
     return {
       exists: true,
       hasPassword: userData2.hasPassword || false,
-      uid: userDoc.id
+      uid: userDoc.id,
+      email: userData2.email
     };
   } catch (error) {
     console.error('Error checking phone user:', error);
@@ -530,13 +509,10 @@ export const loginWithPhoneAndPassword = async (phoneNumber: string, password: s
       throw new Error('פרופיל משתמש לא נמצא');
     }
 
-    // If user has email, use email+password login
-    if (userProfile.email) {
-      const userCredential = await signInWithEmailAndPassword(auth, userProfile.email, password);
-      return userCredential.user;
-    } else {
-      throw new Error('משתמש לא נמצא עם אימייל');
-    }
+    // Use the synthetic email we store for phone users
+    const email = userCheck.email || `${phoneNumber.replace(/[^0-9]/g, '')}@phonesign.local`;
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    return userCredential.user;
   } catch (error) {
     console.error('Error login with phone and password:', error);
     throw error;
@@ -686,8 +662,31 @@ export const getBarbers = async (useCache: boolean = false): Promise<Barber[]> =
       return nameA.localeCompare(nameB, 'he');
     });
     
+    // Fallback: if no barbers in legacy collection, read from artists and map
+    if (barbers.length === 0) {
+      const artistsSnapshot = await getDocs(collection(db, 'artists'));
+      artistsSnapshot.forEach((docItem) => {
+        const a = docItem.data() as any;
+        barbers.push({
+          id: docItem.id,
+          name: a.name,
+          userId: a.userId,
+          phone: a.phone,
+          whatsapp: a.whatsapp,
+          isMainBarber: a.isMainArtist ?? false,
+          experience: a.experience,
+          specialties: a.specialties,
+          available: a.available,
+        } as Barber);
+      });
+    }
+
+    // If still empty, synthesize Naama to avoid empty flow
+    if (barbers.length === 0) {
+      barbers.push({ id: 'naama', name: 'Naama Bloom', isMainBarber: true, available: true } as unknown as Barber);
+    }
+
     console.log('✅ Returning', barbers.length, 'barber(s)');
-    
     return barbers;
   } catch (error) {
     console.error('Error getting barbers:', error);
@@ -698,12 +697,29 @@ export const getBarbers = async (useCache: boolean = false): Promise<Barber[]> =
 export const getBarber = async (barberId: string): Promise<Barber | null> => {
   try {
     const docRef = doc(db, 'barbers', barberId);
-    const docSnap = await getDoc(docRef);
+    let docSnap = await getDoc(docRef);
     
     if (docSnap.exists()) {
       return {
         id: docSnap.id,
         ...docSnap.data()
+      } as Barber;
+    }
+    // Fallback to artists
+    const artistRef = doc(db, 'artists', barberId);
+    docSnap = await getDoc(artistRef);
+    if (docSnap.exists()) {
+      const a = docSnap.data() as any;
+      return {
+        id: docSnap.id,
+        name: a.name,
+        userId: a.userId,
+        phone: a.phone,
+        whatsapp: a.whatsapp,
+        isMainBarber: a.isMainArtist ?? false,
+        experience: a.experience,
+        specialties: a.specialties,
+        available: a.available,
       } as Barber;
     }
     return null;
@@ -716,13 +732,31 @@ export const getBarber = async (barberId: string): Promise<Barber | null> => {
 export const getBarberByUserId = async (userId: string): Promise<Barber | null> => {
   try {
     const q = query(collection(db, 'barbers'), where('userId', '==', userId));
-    const querySnapshot = await getDocs(q);
+    let querySnapshot = await getDocs(q);
     
     if (!querySnapshot.empty) {
       const doc = querySnapshot.docs[0];
       return {
         id: doc.id,
         ...doc.data()
+      } as Barber;
+    }
+    // Fallback to artists
+    const qa = query(collection(db, 'artists'), where('userId', '==', userId));
+    querySnapshot = await getDocs(qa);
+    if (!querySnapshot.empty) {
+      const d = querySnapshot.docs[0];
+      const a = d.data() as any;
+      return {
+        id: d.id,
+        name: a.name,
+        userId: a.userId,
+        phone: a.phone,
+        whatsapp: a.whatsapp,
+        isMainBarber: a.isMainArtist ?? false,
+        experience: a.experience,
+        specialties: a.specialties,
+        available: a.available,
       } as Barber;
     }
     return null;
@@ -1644,32 +1678,26 @@ export const getImageUrl = async (imagePath: string): Promise<string | null> => 
 
 export const getAllStorageImages = async () => {
   try {
-    const [galleryImages, backgroundImages, splashImages, workersImages, aboutusImages, shopImages] = await Promise.all([
+    const [galleryImages, atmosphereImages, splashImages, aboutusImages] = await Promise.all([
       getStorageImages('gallery'),
-      getStorageImages('backgrounds'), 
+      getStorageImages('atmosphere'), 
       getStorageImages('splash'),
-      getStorageImages('workers'),
-      getStorageImages('aboutus'),
-      getStorageImages('shop')
+      getStorageImages('aboutus')
     ]);
     
     return {
       gallery: galleryImages,
-      backgrounds: backgroundImages,
+      atmosphere: atmosphereImages,
       splash: splashImages,
-      workers: workersImages,
-      aboutus: aboutusImages,
-      shop: shopImages
+      aboutus: aboutusImages
     };
   } catch (error) {
     console.error('Error getting all storage images:', error);
     return {
       gallery: [],
-      backgrounds: [],
+      atmosphere: [],
       splash: [],
-      workers: [],
-      aboutus: [],
-      shop: []
+      aboutus: []
     };
   }
 };
@@ -1682,23 +1710,80 @@ export const uploadImageToStorage = async (
   compress: boolean = true
 ): Promise<string> => {
   try {
+    console.log('📱 Starting image upload:', { imageUri, folderPath, fileName });
     let finalImageUri = imageUri;
     
     // Compress image before upload if requested
     if (compress) {
       console.log('🗜️ Compressing image before upload...');
-      const preset = folderPath === 'profiles' ? 'PROFILE' : 
-                    folderPath === 'gallery' ? 'GALLERY' : 
-                    folderPath === 'atmosphere' ? 'ATMOSPHERE' : 'GALLERY';
-      finalImageUri = await ImageOptimizer.compressImage(imageUri, ImageOptimizer.PRESETS[preset]);
+      try {
+        const preset = folderPath === 'profiles' ? 'PROFILE' : 
+                      folderPath === 'gallery' ? 'GALLERY' : 
+                      folderPath === 'atmosphere' ? 'ATMOSPHERE' : 'GALLERY';
+        finalImageUri = await ImageOptimizer.compressImage(imageUri, ImageOptimizer.PRESETS[preset]);
+        console.log('✅ Image compressed successfully:', finalImageUri);
+      } catch (compressionError) {
+        console.warn('⚠️ Compression failed, using original:', compressionError);
+        finalImageUri = imageUri;
+      }
     }
     
-    const response = await fetch(finalImageUri);
-    const blob = await response.blob();
+    console.log('🔄 Fetching image as blob...');
+    
+    // Determine content type first
+    let contentType = 'image/jpeg'; // Default content type
+    const lowerFileName = fileName.toLowerCase();
+    if (lowerFileName.endsWith('.png')) contentType = 'image/png';
+    if (lowerFileName.endsWith('.webp')) contentType = 'image/webp';
+    if (lowerFileName.endsWith('.jpg') || lowerFileName.endsWith('.jpeg')) contentType = 'image/jpeg';
+    
+    console.log('📋 Content type determined:', contentType);
+    
+    // Try different approaches for React Native
+    let blob;
+    try {
+      // First try: direct fetch
+      const response = await fetch(finalImageUri);
+      if (response.ok) {
+        blob = await response.blob();
+        console.log('📦 Direct fetch blob:', { size: blob.size, type: blob.type });
+      }
+    } catch (e) {
+      console.warn('Direct fetch failed:', e);
+    }
+    
+    // If direct fetch failed or blob is empty, try alternative
+    if (!blob || blob.size === 0) {
+      console.log('🔄 Trying FileSystem approach...');
+      try {
+        const FileSystem = await import('expo-file-system');
+        const base64Data = await FileSystem.readAsStringAsync(finalImageUri, { 
+          encoding: FileSystem.EncodingType.Base64 
+        });
+        
+        // Convert base64 to blob manually using react-native-base64
+        const byteCharacters = base64.decode(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        blob = new Blob([byteArray], { type: contentType });
+        console.log('📦 FileSystem blob:', { size: blob.size, type: blob.type });
+      } catch (fsError) {
+        console.error('FileSystem approach failed:', fsError);
+        throw new Error('Failed to create blob from image');
+      }
+    }
+    
+    if (!blob || blob.size === 0) {
+      throw new Error('Image blob is empty (0 bytes)');
+    }
     
     console.log(`📤 Uploading ${compress ? 'compressed' : 'original'} image to ${folderPath}/${fileName}`);
     const imageRef = ref(storage, `${folderPath}/${fileName}`);
-    await uploadBytes(imageRef, blob);
+    
+    await uploadBytes(imageRef, blob, { contentType });
     
     const downloadURL = await getDownloadURL(imageRef);
     console.log('✅ Image uploaded successfully:', downloadURL);

@@ -5,9 +5,15 @@ service cloud.firestore {
     function isAdmin() { return request.auth != null && request.auth.token.admin == true; }
 
     match /users/{userId} {
-      allow read: if isSignedIn();
+      // Allow read so phone-based login can check existence before auth
+      allow read: if true;
       allow create: if isSignedIn() && request.auth.uid == userId;
       allow update, delete: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+    }
+
+    // User notifications: only the owner can read/write their notifications
+    match /notifications/{docId} {
+      allow read, write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
     }
 
     match /appointments/{appointmentId} {
@@ -41,12 +47,29 @@ service cloud.firestore {
     }
 
     match /artistTreatments/{docId} {
-      allow read: if true;
+      allow read: if true;        // public can view treatments
+      allow write: if isAdmin();
+    }
+
+    // Legacy barberTreatments collection for backward compatibility
+    match /barberTreatments/{docId} {
+      allow read: if true;        // public can view treatments
       allow write: if isAdmin();
     }
 
     match /artistAvailability/{docId} {
       allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Legacy availability collections used by app code
+    match /availability/{docId} {
+      allow read: if true;        // public can view availability
+      allow write: if isAdmin();
+    }
+
+    match /barberAvailability/{docId} {
+      allow read: if true;        // public can view availability
       allow write: if isAdmin();
     }
 
@@ -58,6 +81,11 @@ service cloud.firestore {
     match /shopItems/{docId} {
       allow read: if true;
       allow write: if isAdmin();
+    }
+
+    // Admin notification settings
+    match /adminNotifications/{userId} {
+      allow read, write: if isAdmin() && request.auth.uid == userId;
     }
 
     match /{document=**} {

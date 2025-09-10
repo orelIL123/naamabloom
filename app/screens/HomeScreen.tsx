@@ -960,7 +960,7 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
   return (
     <SafeAreaView style={styles.container}>
       <TopNav 
-        title="naama bloom" 
+        title="NB EYEBROWS" 
         onMenuPress={() => setSideMenuVisible(true)}
         onBellPress={handleNotificationPress}
       />

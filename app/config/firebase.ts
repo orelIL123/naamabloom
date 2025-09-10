@@ -1,3 +1,7 @@
+// Import polyfills for Firebase Storage base64 support in React Native
+import 'base-64';
+import 'text-encoding';
+
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import { getAuth, initializeAuth, onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, getFirestore, initializeFirestore, setDoc, collection, query, where, getDocs } from 'firebase/firestore';

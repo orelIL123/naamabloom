@@ -374,7 +374,7 @@ const AdminAvailabilityScreen: React.FC<AdminAvailabilityScreenProps> = ({ onNav
       
       <View style={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>בחר ספר לניהול זמינות</Text>
+          <Text style={styles.headerTitle}>בחר איש צוות לניהול זמינות</Text>
           <Text style={styles.headerSubtitle}>
             כאן תוכל לקבוע את שעות העבודה הזמינות לכל ספר
           </Text>

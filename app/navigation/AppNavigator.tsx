@@ -7,6 +7,7 @@ import AdminAvailabilityScreen from '../screens/AdminAvailabilityScreen';
 import AdminGalleryScreen from '../screens/AdminGalleryScreen';
 import AdminHomeScreen from '../screens/AdminHomeScreen';
 import AdminNotificationsScreen from '../screens/AdminNotificationsScreen';
+import AdminNotificationSettingsScreen from '../screens/AdminNotificationSettingsScreen';
 import AdminSettingsScreen from '../screens/AdminSettingsScreen';
 import AdminStatisticsScreen from '../screens/AdminStatisticsScreen';
 import AdminTeamScreen from '../screens/AdminTeamScreen';
@@ -44,6 +45,7 @@ type Screen =
   | 'admin-settings'
   | 'admin-statistics'
   | 'admin-notifications'
+  | 'admin-notification-settings'
   | 'admin-waitlist';
 
 export default function AppNavigator() {
@@ -72,8 +74,11 @@ export default function AppNavigator() {
     return unsubscribe;
   }, []);
 
-  const navigate = (screen: Screen) => {
-    setCurrentScreen(screen);
+  const navigate = (screen: string) => {
+    console.log('🧭 Navigate called with screen:', screen);
+    console.log('🧭 Current screen before change:', currentScreen);
+    setCurrentScreen(screen as Screen);
+    console.log('🧭 Screen set to:', screen);
   };
 
   if (loading) {
@@ -150,13 +155,20 @@ export default function AppNavigator() {
     case 'admin-notifications':
       return <AdminNotificationsScreen onNavigate={navigate} />;
     
+    case 'admin-notification-settings':
+      console.log('🎯 Rendering AdminNotificationSettingsScreen - SUCCESS!');
+      return <AdminNotificationSettingsScreen onNavigate={navigate} onBack={() => navigate('admin-home')} />;
+    
     case 'admin-waitlist':
       return <AdminWaitlistScreen onNavigate={navigate} />;
     
     default:
+      console.log('❌ Unknown screen requested:', currentScreen);
+      console.log('❌ Available screens:', ['admin-home', 'admin-notification-settings', 'admin-appointments', 'admin-team', 'admin-treatments', 'admin-gallery', 'admin-availability', 'admin-settings', 'admin-statistics', 'admin-notifications', 'admin-waitlist']);
       return (
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>מסך לא נמצא</Text>
+          <Text style={styles.errorText}>מסך לא נמצא: {currentScreen}</Text>
+          <Text style={styles.errorText}>Available: admin-notification-settings</Text>
         </View>
       );
   }

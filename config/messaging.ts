@@ -3,10 +3,10 @@ import { MessagingConfig } from '../services/messaging/types';
 export const messagingConfig: MessagingConfig = {
   providers: {
     sms4free: {
-      apiKey: process.env.SMS4FREE_API_KEY || '',
-      user: process.env.SMS4FREE_USER || '',
-      pass: process.env.SMS4FREE_PASS || '',
-      sender: process.env.SMS4FREE_SENDER || '', // Will be loaded from Firebase Functions config
+      apiKey: process.env.SMS4FREE_API_KEY || 'mgfwkoRBI',
+      user: process.env.SMS4FREE_USER || '0523985505',
+      pass: process.env.SMS4FREE_PASS || '73960779',
+      sender: process.env.SMS4FREE_SENDER || 'ToriX', // Brand name
       enabled: true,
     },
     whatsapp: {

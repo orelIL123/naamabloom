@@ -46,7 +46,7 @@ const AdminAppointmentsScreen: React.FC<AdminAppointmentsScreenProps> = ({ onNav
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [addModalVisible, setAddModalVisible] = useState(false);
-  const [filter, setFilter] = useState<'all' | 'pending' | 'confirmed' | 'completed'>('all');
+  const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
 
   // Add appointment form state
@@ -83,7 +83,35 @@ const AdminAppointmentsScreen: React.FC<AdminAppointmentsScreenProps> = ({ onNav
         treatments: treatmentsData.length
       });
       
-      setAppointments(appointmentsData);
+      // Auto-complete past appointments
+      const now = new Date();
+      console.log('🔍 Checking appointments for auto-completion...', {
+        totalAppointments: appointmentsData.length,
+        currentTime: now.toISOString()
+      });
+      
+      const updatedAppointments = await Promise.all(
+        appointmentsData.map(async (appointment) => {
+          const aptTime = appointment.date.toMillis ? appointment.date.toMillis() : new Date(appointment.date).getTime();
+          const isPast = aptTime < now.getTime();
+          
+          console.log(`🔍 Appointment ${appointment.id}:`, {
+            status: appointment.status,
+            date: new Date(aptTime).toISOString(),
+            isPast,
+            willAutoComplete: isPast && appointment.status === 'pending'
+          });
+          
+          if (isPast && appointment.status === 'pending') {
+            console.log(`🔄 Auto-completing past appointment: ${appointment.id}`);
+            await updateAppointment(appointment.id, { status: 'completed' });
+            return { ...appointment, status: 'completed' as const };
+          }
+          return appointment;
+        })
+      );
+      
+      setAppointments(updatedAppointments);
       setBarbers(barbersData);
       setUsers(usersData);
       setTreatments(treatmentsData);
@@ -302,7 +330,7 @@ const AdminAppointmentsScreen: React.FC<AdminAppointmentsScreenProps> = ({ onNav
         barberId: selectedBarber,
         treatmentId: selectedTreatment,
         date: Timestamp.fromDate(appointmentDateTime),
-        status: 'confirmed' as const, // Changed from 'pending' to 'confirmed'
+        status: 'pending' as const, // Default to pending
         notes: appointmentNotes,
         duration: duration,
         // Add manual client info if using manual input
@@ -381,7 +409,7 @@ const AdminAppointmentsScreen: React.FC<AdminAppointmentsScreenProps> = ({ onNav
   const getNextClient = () => {
     const now = new Date();
     const upcomingAppointments = appointments
-      .filter(apt => apt.status === 'confirmed')
+      .filter(apt => apt.status === 'pending')
       .filter(apt => {
         const aptTime = apt.date.toMillis ? apt.date.toMillis() : new Date(apt.date).getTime();
         return aptTime > now.getTime();
@@ -395,12 +423,47 @@ const AdminAppointmentsScreen: React.FC<AdminAppointmentsScreenProps> = ({ onNav
     return upcomingAppointments[0] || null;
   };
 
+  // Find the next/closest appointment to highlight
+  const getClosestAppointment = () => {
+    const now = new Date();
+    return appointments
+      .filter(apt => apt.status === 'pending' || apt.status === 'confirmed')
+      .sort((a, b) => {
+        const aTime = a.date.toMillis ? a.date.toMillis() : new Date(a.date).getTime();
+        const bTime = b.date.toMillis ? b.date.toMillis() : new Date(b.date).getTime();
+        const aDiff = Math.abs(aTime - now.getTime());
+        const bDiff = Math.abs(bTime - now.getTime());
+        return aDiff - bDiff;
+      })[0];
+  };
+
+  // Check if appointment is the closest one
+  const isCurrentAppointment = (appointment: Appointment) => {
+    const closestAppointment = getClosestAppointment();
+    const isCurrent = closestAppointment && closestAppointment.id === appointment.id;
+    
+    console.log(`🔍 Checking appointment ${appointment.id}:`, {
+      appointmentTime: new Date(appointment.date.toMillis ? appointment.date.toMillis() : new Date(appointment.date).getTime()).toISOString(),
+      status: appointment.status,
+      isClosest: isCurrent,
+      closestAppointmentId: closestAppointment?.id
+    });
+    
+    if (isCurrent) {
+      console.log(`✨ Closest appointment highlighted: ${appointment.id}`, {
+        appointmentTime: new Date(appointment.date.toMillis ? appointment.date.toMillis() : new Date(appointment.date).getTime()).toISOString(),
+        status: appointment.status
+      });
+    }
+    
+    return isCurrent;
+  };
+
   const nextClient = getNextClient();
 
   const filterButtons = [
     { key: 'all', label: 'הכל', count: appointments.length },
     { key: 'pending', label: 'ממתין', count: appointments.filter(a => a.status === 'pending').length },
-    { key: 'confirmed', label: 'מאושר', count: appointments.filter(a => a.status === 'confirmed').length },
     { key: 'completed', label: 'הושלם', count: appointments.filter(a => a.status === 'completed').length },
   ];
 
@@ -469,10 +532,13 @@ const AdminAppointmentsScreen: React.FC<AdminAppointmentsScreenProps> = ({ onNav
                 <Text style={styles.emptyStateText}>אין תורים למצב זה</Text>
               </View>
             ) : (
-              filteredAppointments.map((appointment) => (
+              filteredAppointments.map((appointment, index) => (
                 <TouchableOpacity
                   key={appointment.id}
-                  style={styles.appointmentCard}
+                  style={[
+                    styles.appointmentCard,
+                    isCurrentAppointment(appointment) && styles.currentAppointmentCard
+                  ]}
                   onPress={() => {
                     setSelectedAppointment(appointment);
                     setModalVisible(true);
@@ -951,6 +1017,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
+  },
+  currentAppointmentCard: {
+    borderWidth: 3,
+    borderColor: '#4CAF50',
+    backgroundColor: '#f8fff8',
+    shadowColor: '#4CAF50',
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
   },
   appointmentHeader: {
     flexDirection: 'row',

@@ -322,11 +322,18 @@ const AdminHomeScreen: React.FC<AdminHomeScreenProps> = ({ onNavigate, onBack })
       color: '#17a2b8'
     },
     {
-      title: t('admin.manage_notifications_title'),
-      subtitle: t('admin.manage_notifications_subtitle'),
+      title: 'ניהול התראות',
+      subtitle: 'הצג והפעל התראות מערכת',
       icon: 'notifications',
       screen: 'admin-notifications',
       color: '#6c757d'
+    },
+    {
+      title: 'הגדרות התראות',
+      subtitle: 'קבע אילו התראות תרצה לקבל',
+      icon: 'notifications-outline',
+      screen: 'admin-notification-settings',
+      color: '#ff69b4'
     },
     {
       title: t('admin.admin_settings_title'),
@@ -484,6 +491,8 @@ const AdminHomeScreen: React.FC<AdminHomeScreenProps> = ({ onNavigate, onBack })
                   
                   if (item.screen === 'home') {
                     showToast(t('admin.switching_to_client_view'));
+                  } else if (item.screen === 'admin-notification-settings') {
+                    showToast('פותח הגדרות התראות...');
                   } else {
                     showToast(t('admin.opening_screen', { title: item.title }));
                   }

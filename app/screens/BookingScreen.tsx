@@ -723,7 +723,7 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ onNavigate, onBack, onClo
 
   const getStepTitle = () => {
     switch (currentStep) {
-      case 1: return 'בחר ספר';
+      case 1: return 'בחר צוות';
       case 2: return 'בחר טיפול';
       case 3: return 'בחר תאריך';
       case 4: return 'בחר שעה';

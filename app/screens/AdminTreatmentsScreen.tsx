@@ -80,6 +80,7 @@ const AdminTreatmentsScreen: React.FC<AdminTreatmentsScreenProps> = ({ onNavigat
         getBarbers()
       ]);
       
+      console.log('📋 Setting treatments data:', treatmentsData.map(t => ({ id: t.id, name: t.name })));
       setTreatments(treatmentsData);
       setBarberTreatments(barberTreatmentsData);
       setBarbers(barbersData);
@@ -213,17 +214,21 @@ const AdminTreatmentsScreen: React.FC<AdminTreatmentsScreenProps> = ({ onNavigat
   };
 
   const openEditModal = (treatment: Treatment) => {
+    console.log('🔧 Opening edit treatment modal for:', treatment);
     setEditingTreatment(treatment);
     setEditingBarberTreatment(null);
-    setFormData({
-      name: treatment.name,
-      duration: treatment.duration.toString(),
-      price: treatment.price.toString(),
-      description: treatment.description,
-      image: treatment.image,
+    const editFormData = {
+      name: treatment.name || '',
+      duration: treatment.duration?.toString() || '',
+      price: treatment.price?.toString() || '',
+      description: treatment.description || '',
+      image: treatment.image || '',
       barberId: ''
-    });
+    };
+    console.log('📝 Setting form data for edit:', editFormData);
+    setFormData(editFormData);
     setModalVisible(true);
+    console.log('✅ Edit modal should be visible now');
   };
 
   const openEditBarberTreatmentModal = (barberTreatment: BarberTreatment) => {
@@ -241,19 +246,19 @@ const AdminTreatmentsScreen: React.FC<AdminTreatmentsScreenProps> = ({ onNavigat
   };
 
   const validateForm = () => {
-    if (!formData.name.trim()) {
+    if (!(formData.name || '').trim()) {
       showToast('נא למלא שם טיפול', 'error');
       return false;
     }
-    if (!formData.duration.trim() || isNaN(Number(formData.duration))) {
+    if (!(formData.duration || '').trim() || isNaN(Number(formData.duration))) {
       showToast('נא למלא זמן טיפול תקין', 'error');
       return false;
     }
-    if (!formData.price.trim() || isNaN(Number(formData.price))) {
+    if (!(formData.price || '').trim() || isNaN(Number(formData.price))) {
       showToast('נא למלא מחיר תקין', 'error');
       return false;
     }
-    if (!formData.description.trim()) {
+    if (!(formData.description || '').trim()) {
       showToast('נא למלא תיאור טיפול', 'error');
       return false;
     }
@@ -264,15 +269,20 @@ const AdminTreatmentsScreen: React.FC<AdminTreatmentsScreenProps> = ({ onNavigat
     if (!validateForm()) return;
 
     try {
+      console.log('💾 Saving treatment with formData:', formData);
+      
       const treatmentData = {
-        name: formData.name.trim(),
-        duration: parseInt(formData.duration),
-        price: parseFloat(formData.price),
-        description: formData.description.trim(),
-        image: formData.image.trim() || 'https://via.placeholder.com/200x150'
+        name: (formData.name || '').trim(),
+        duration: parseInt((formData.duration || '0')),
+        price: parseFloat((formData.price || '0')),
+        description: (formData.description || '').trim(),
+        image: ((formData.image || '').trim()) || 'https://via.placeholder.com/200x150'
       };
+      
+      console.log('📦 Processed treatment data:', treatmentData);
 
       if (editingTreatment) {
+        console.log('✏️ Updating existing treatment:', editingTreatment.id);
         await updateTreatment(editingTreatment.id, treatmentData);
         setTreatments(prev => 
           prev.map(t => 
@@ -280,13 +290,20 @@ const AdminTreatmentsScreen: React.FC<AdminTreatmentsScreenProps> = ({ onNavigat
           )
         );
         showToast('הטיפול עודכן בהצלחה');
+        console.log('✅ Treatment updated successfully');
       } else {
+        console.log('➕ Adding new treatment');
         const newTreatmentId = await addTreatment(treatmentData);
         setTreatments(prev => [...prev, { id: newTreatmentId, ...treatmentData }]);
         showToast('הטיפול נוסף בהצלחה');
+        console.log('✅ Treatment added successfully:', newTreatmentId);
       }
 
       setModalVisible(false);
+      
+      // Reload data to ensure sync with Firestore
+      console.log('🔄 Reloading treatments from Firestore...');
+      await loadData();
     } catch (error) {
       console.error('Error saving treatment:', error);
       showToast('שגיאה בשמירת הטיפול', 'error');
@@ -359,7 +376,10 @@ const AdminTreatmentsScreen: React.FC<AdminTreatmentsScreenProps> = ({ onNavigat
                     <View style={styles.treatmentActions}>
                       <TouchableOpacity
                         style={styles.editButton}
-                        onPress={() => openEditModal(treatment)}
+                        onPress={() => {
+                          console.log('🔍 Edit button pressed for treatment:', treatment.id, treatment.name);
+                          openEditModal(treatment);
+                        }}
                       >
                         <Ionicons name="create" size={20} color="#007bff" />
                       </TouchableOpacity>
@@ -414,6 +434,13 @@ const AdminTreatmentsScreen: React.FC<AdminTreatmentsScreenProps> = ({ onNavigat
         visible={modalVisible}
         onRequestClose={() => setModalVisible(false)}
       >
+        {(() => {
+          if (modalVisible) {
+            console.log('🎯 Modal is visible. Current form data:', formData);
+            console.log('🔍 Editing treatment:', editingTreatment?.id, editingTreatment?.name);
+          }
+          return null;
+        })()}
         <KeyboardAvoidingView 
           style={styles.modalOverlay}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

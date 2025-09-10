@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
 import { useRef } from "react";
 import { Animated, Dimensions, Image, Linking, StyleSheet, TouchableOpacity, View } from "react-native";
 
@@ -77,13 +78,17 @@ export default function BottomNav({ onOrderPress, onTabPress, activeTab }: {
 
         {/* Center FAB (Order) - properly centered */}
         <View style={styles.centerFab}>
+          {/* Outer neon-glow ring */}
+          <View style={styles.glow} pointerEvents="none" />
           <LinearGradient
-            colors={['#FF00AA', '#FF00AA', '#FF00AA']}
+            colors={["#FF00AA", "#FF1493", "#FF00AA"]}
             style={styles.fabGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
-            <TouchableOpacity style={styles.fab} onPress={handleOrderPress} activeOpacity={0.85}>
+            {/* Subtle glass blur overlay */}
+            <BlurView intensity={20} tint="dark" style={styles.fabBlur} pointerEvents="none" />
+            <TouchableOpacity style={styles.fab} onPress={handleOrderPress} activeOpacity={0.9}>
               <AnimatedImage
                 source={require("../../assets/images/icon.booking.png")}
                 style={[styles.fabIcon, { transform: [{ rotate: spin }] }]}
@@ -181,9 +186,22 @@ const styles = StyleSheet.create({
     transform: [{ translateY: -12 }],
     shadowColor: "#FF00AA",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.6,
-    shadowRadius: 12,
+    shadowOpacity: 0.45,
+    shadowRadius: 20,
     elevation: 8,
+  },
+  glow: {
+    position: 'absolute',
+    width: screenWidth < 380 ? 68 : 76,
+    height: screenWidth < 380 ? 68 : 76,
+    borderRadius: screenWidth < 380 ? 34 : 38,
+    backgroundColor: 'rgba(255, 0, 170, 0.18)',
+    shadowColor: '#FF00AA',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 28,
+    transform: [{ translateY: -12 }, { scale: 1.15 }],
+    zIndex: 0,
   },
   fab: {
     width: '100%',
@@ -194,12 +212,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 2,
     borderColor: "#181828",
+    overflow: 'hidden',
   },
   fabIcon: {
-    width: '100%',
-    height: '100%',
+    width: '130%',
+    height: '130%',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  fabBlur: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: screenWidth < 380 ? 34 : 38,
   },
   homeIndicatorWrapper: {
     alignItems: "center",

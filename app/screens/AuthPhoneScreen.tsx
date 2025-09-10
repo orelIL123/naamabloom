@@ -472,7 +472,7 @@ export default function AuthPhoneScreen() {
                 
                 <Text style={styles.subsectionTitle}>7. יצירת קשר{'\n'}</Text>
                 • לשאלות על מדיניות הפרטיות: info@Test Salon.co.il{'\n'}
-                • כתובת: רחוב בדיקה 123, עיר בדיקה'\n'}
+                • כתובת: רחוב בדיקה 123, עיר בדיקה{'\n'}
                 • טלפון: +972523456789{'\n'}
                 • שעות פעילות: א'-ה' 9:00-20:00, ו' 9:00-15:00{'\n\n'}
                 
