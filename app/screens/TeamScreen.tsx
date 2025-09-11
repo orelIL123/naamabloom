@@ -174,17 +174,33 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
             end={{ x: 0, y: 1 }}
             style={styles.heroOverlay}
           />
-          {/* Glossy effect at bottom */}
+          {/* Seamless blending effect */}
           <LinearGradient
-            colors={['transparent', 'rgba(255,255,255,0.05)', 'rgba(255,255,255,0.15)', 'rgba(255,255,255,0.4)', 'rgba(255,255,255,0.8)']}
-            start={{ x: 0, y: 0.5 }}
+            colors={[
+              'transparent', 
+              'rgba(255,255,255,0.02)', 
+              'rgba(255,255,255,0.05)', 
+              'rgba(255,255,255,0.1)', 
+              'rgba(255,255,255,0.2)', 
+              'rgba(255,255,255,0.35)', 
+              'rgba(255,255,255,0.5)', 
+              'rgba(255,255,255,0.7)', 
+              'rgba(255,255,255,0.9)'
+            ]}
+            start={{ x: 0, y: 0.3 }}
             end={{ x: 0, y: 1 }}
             style={styles.glossyEffect}
           />
-          {/* Additional blur layer for better blending */}
+          {/* Additional subtle layer for perfect blending */}
           <LinearGradient
-            colors={['transparent', 'rgba(255,255,255,0.1)', 'rgba(255,255,255,0.3)']}
-            start={{ x: 0, y: 0.8 }}
+            colors={[
+              'transparent', 
+              'rgba(255,255,255,0.01)', 
+              'rgba(255,255,255,0.03)', 
+              'rgba(255,255,255,0.08)', 
+              'rgba(255,255,255,0.15)'
+            ]}
+            start={{ x: 0, y: 0.6 }}
             end={{ x: 0, y: 1 }}
             style={styles.blurLayer}
           />
@@ -453,14 +469,14 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: '50%',
+    height: '70%',
   },
   blurLayer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: '20%',
+    height: '40%',
   },
   heroContent: {
     position: 'absolute',
