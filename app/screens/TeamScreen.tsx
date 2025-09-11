@@ -58,19 +58,37 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
       });
       
       // Auto-assign images from storage to barbers
+      console.log('🔍 Available images from storage:', imagesData);
+      console.log('🔍 Barbers before image assignment:', sortedBarbers);
+      
       const updatedBarbers = sortedBarbers.map(barber => {
+        console.log(`🔍 Processing barber: ${barber.name}, current image:`, (barber as any).image);
+        
         if (!(barber as any).image && imagesData.length > 0) {
           // Try to find image by name match
-          const nameMatch = imagesData.find(img => 
-            img.toLowerCase().includes(barber.name.toLowerCase().replace(/\s+/g, '')) ||
-            img.toLowerCase().includes('naama') && barber.name.toLowerCase().includes('נעמה')
-          );
+          const nameMatch = imagesData.find(img => {
+            const imgLower = img.toLowerCase();
+            const nameLower = barber.name.toLowerCase().replace(/\s+/g, '');
+            const hasNameMatch = imgLower.includes(nameLower);
+            const hasNaamaMatch = imgLower.includes('naama') && barber.name.toLowerCase().includes('נעמה');
+            
+            console.log(`🔍 Checking image: ${img}`);
+            console.log(`🔍 Name match: ${hasNameMatch}, Naama match: ${hasNaamaMatch}`);
+            
+            return hasNameMatch || hasNaamaMatch;
+          });
+          
           if (nameMatch) {
+            console.log(`✅ Found image for ${barber.name}:`, nameMatch);
             return { ...barber, image: nameMatch };
+          } else {
+            console.log(`❌ No image found for ${barber.name}`);
           }
         }
         return barber;
       });
+      
+      console.log('🔍 Final barbers with images:', updatedBarbers);
       
       setBarbers(updatedBarbers);
       setTeamImages(imagesData);
@@ -271,15 +289,18 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
                         { transform: [{ rotateY: frontRotation || '0deg' }] }
                       ]}>
                         <View style={styles.barberImageContainer}>
-                          {barber.image ? (
+                          {(barber as any).image ? (
                             <Image
-                              source={{ uri: barber.image }}
+                              source={{ uri: (barber as any).image }}
                               style={styles.barberPhoto}
                               resizeMode="cover"
+                              onLoad={() => console.log(`✅ Image loaded for ${barber.name}:`, (barber as any).image)}
+                              onError={(error) => console.log(`❌ Image load error for ${barber.name}:`, error, 'URL:', (barber as any).image)}
                             />
                           ) : (
                             <View style={styles.barberPhotoPlaceholder}>
                               <Ionicons name="person-outline" size={40} color="#666" />
+                              <Text style={{fontSize: 10, color: '#999', marginTop: 4}}>No image</Text>
                             </View>
                           )}
                         </View>
