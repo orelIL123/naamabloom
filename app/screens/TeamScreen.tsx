@@ -305,6 +305,7 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
                               source={{ uri: (barber as any).image }}
                               style={styles.barberPhoto}
                               resizeMode="cover"
+                              defaultSource={require('../../assets/images/icon.png')}
                               onLoad={() => console.log(`✅ Image loaded successfully for ${barber.name}`)}
                               onError={(error) => console.log(`❌ Image load error for ${barber.name}:`, error)}
                               onLoadStart={() => console.log(`🔄 Starting to load image for ${barber.name}`)}
@@ -319,7 +320,7 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
                         </View>
                         <View style={styles.barberBasicInfo}>
                           <Text style={styles.barberName}>{barber.name}</Text>
-                          <Text style={styles.barberTitle}>{t('team.professional_barber')}</Text>
+                          <Text style={styles.barberTitle}>{t('team.professional_artist')}</Text>
                           <View style={styles.ratingContainer}>
                             <View style={styles.stars}>
                               {renderStars(barber.rating)}
@@ -634,8 +635,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   barberPhoto: {
-    width: '100%',
-    height: '100%',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    overflow: 'hidden',
+    backgroundColor: '#f0f0f0',
   },
   barberPhotoPlaceholder: {
     width: '100%',
