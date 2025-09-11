@@ -54,6 +54,12 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
       const allImages = await getStorageImages('workers');
       console.log('🔍 Images from workers folder:', allImages);
       
+      // Check if there are any images with 'naama' in the name
+      const allTeamImages = [...imagesData, ...allImages];
+      const naamaImagesFound = allTeamImages.filter(img => img.toLowerCase().includes('naama'));
+      console.log('🔍 All team images:', allTeamImages);
+      console.log('🔍 Naama images found:', naamaImagesFound);
+      
       const barbersData = await getBarbers();
       console.log('🔍 Barbers data:', barbersData);
       
