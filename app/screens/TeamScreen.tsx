@@ -298,20 +298,24 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
                         { transform: [{ rotateY: frontRotation || '0deg' }] }
                       ]}>
                         <View style={styles.barberImageContainer}>
-                          {(barber as any).image ? (
+                          {(() => {
+                            console.log(`🖼️ Rendering image for ${barber.name}:`, (barber as any).image);
+                            return (barber as any).image ? (
                             <Image
                               source={{ uri: (barber as any).image }}
                               style={styles.barberPhoto}
                               resizeMode="cover"
-                              onLoad={() => console.log(`✅ Image loaded for ${barber.name}:`, (barber as any).image)}
-                              onError={(error) => console.log(`❌ Image load error for ${barber.name}:`, error, 'URL:', (barber as any).image)}
+                              onLoad={() => console.log(`✅ Image loaded successfully for ${barber.name}`)}
+                              onError={(error) => console.log(`❌ Image load error for ${barber.name}:`, error)}
+                              onLoadStart={() => console.log(`🔄 Starting to load image for ${barber.name}`)}
                             />
                           ) : (
                             <View style={styles.barberPhotoPlaceholder}>
                               <Ionicons name="person-outline" size={40} color="#666" />
                               <Text style={{fontSize: 10, color: '#999', marginTop: 4}}>No image</Text>
                             </View>
-                          )}
+                          );
+                          })()}
                         </View>
                         <View style={styles.barberBasicInfo}>
                           <Text style={styles.barberName}>{barber.name}</Text>
