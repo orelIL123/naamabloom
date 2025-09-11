@@ -85,7 +85,7 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
         // Always try to find a better image from storage
         if (allTeamImages.length > 0) {
           // Try to find image by name match
-          const nameMatch = imagesData.find(img => {
+          const nameMatch = allTeamImages.find(img => {
             const imgLower = img.toLowerCase();
             const nameLower = barber.name.toLowerCase().replace(/\s+/g, '');
             const nameWithUnderscore = barber.name.toLowerCase().replace(/\s+/g, '_');
