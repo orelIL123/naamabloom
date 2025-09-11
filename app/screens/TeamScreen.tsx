@@ -216,11 +216,12 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
       
       {/* Hero Section with Ran's Background */}
       <View style={styles.heroSection}>
-        <ImageBackground
+        <Image
           source={require('../../assets/images/ourteam.png')}
           style={styles.heroImage}
           resizeMode="cover"
-        >
+        />
+        <View style={styles.heroOverlayContainer}>
           <LinearGradient
             colors={['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.7)', 'rgba(0,0,0,0.85)']}
             start={{ x: 0, y: 0 }}
@@ -262,7 +263,7 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
               <Text style={styles.heroTitle}>כאן כדי לתת לך את השירות הטוב ביותר!</Text>
             </View>
           </View>
-        </ImageBackground>
+        </View>
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -529,6 +530,17 @@ const styles = StyleSheet.create({
   heroImage: {
     width: '100%',
     height: '100%',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+  },
+  heroOverlayContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   heroOverlay: {
     ...StyleSheet.absoluteFillObject,
