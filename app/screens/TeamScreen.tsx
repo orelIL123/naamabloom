@@ -57,14 +57,15 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
         return a.name.localeCompare(b.name);
       });
       
-      // Auto-assign images from storage to barbers
+      // Force assign images from storage to barbers
       console.log('🔍 Available images from storage:', imagesData);
       console.log('🔍 Barbers before image assignment:', sortedBarbers);
       
       const updatedBarbers = sortedBarbers.map(barber => {
         console.log(`🔍 Processing barber: ${barber.name}, current image:`, (barber as any).image);
         
-        if (!(barber as any).image && imagesData.length > 0) {
+        // Always try to find a better image from storage
+        if (imagesData.length > 0) {
           // Try to find image by name match
           const nameMatch = imagesData.find(img => {
             const imgLower = img.toLowerCase();
@@ -91,7 +92,9 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
             console.log(`✅ Found image for ${barber.name}:`, nameMatch);
             return { ...barber, image: nameMatch };
           } else {
-            console.log(`❌ No image found for ${barber.name}`);
+            console.log(`❌ No image found for ${barber.name}, using first available image`);
+            // If no specific match, use the first available image
+            return { ...barber, image: imagesData[0] };
           }
         }
         return barber;
@@ -301,15 +304,23 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
                           {(() => {
                             console.log(`🖼️ Rendering image for ${barber.name}:`, (barber as any).image);
                             return (barber as any).image ? (
-                            <Image
-                              source={{ uri: (barber as any).image }}
-                              style={styles.barberPhoto}
-                              resizeMode="cover"
-                              defaultSource={require('../../assets/images/icon.png')}
-                              onLoad={() => console.log(`✅ Image loaded successfully for ${barber.name}`)}
-                              onError={(error) => console.log(`❌ Image load error for ${barber.name}:`, error)}
-                              onLoadStart={() => console.log(`🔄 Starting to load image for ${barber.name}`)}
-                            />
+                            <View style={styles.barberPhotoContainer}>
+                              <Image
+                                source={{ uri: (barber as any).image }}
+                                style={styles.barberPhoto}
+                                resizeMode="cover"
+                                onLoad={() => console.log(`✅ Image loaded successfully for ${barber.name}`)}
+                                onError={(error) => {
+                                  console.log(`❌ Image load error for ${barber.name}:`, error);
+                                  console.log(`❌ Failed URL:`, (barber as any).image);
+                                }}
+                                onLoadStart={() => console.log(`🔄 Starting to load image for ${barber.name}`)}
+                                onLoadEnd={() => console.log(`🏁 Image load ended for ${barber.name}`)}
+                              />
+                              <View style={styles.barberPhotoFallback}>
+                                <Ionicons name="person" size={30} color="#999" />
+                              </View>
+                            </View>
                           ) : (
                             <View style={styles.barberPhotoPlaceholder}>
                               <Ionicons name="person-outline" size={40} color="#666" />
@@ -634,12 +645,26 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginBottom: 8,
   },
-  barberPhoto: {
+  barberPhotoContainer: {
     width: 60,
     height: 60,
     borderRadius: 30,
     overflow: 'hidden',
+    position: 'relative',
+  },
+  barberPhoto: {
+    width: '100%',
+    height: '100%',
+  },
+  barberPhotoFallback: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   barberPhotoPlaceholder: {
     width: '100%',
