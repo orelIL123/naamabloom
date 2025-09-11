@@ -55,8 +55,8 @@ const AdminSettingsScreen: React.FC<AdminSettingsScreenProps> = ({ onNavigate, o
       } else {
         // Create default if doesn't exist
         await setDoc(doc(db, 'settings', 'homeMessages'), {
-          welcome: 'שלום, ברוכים הבאים ל-naama bloom ל-Test Salon',
-          subtitle: 'ל-Test Salon',
+          welcome: 'שלום, ברוכים הבאים ל-naama bloom ל-NY EYEBROWS',
+          subtitle: 'ל-NY EYEBROWS',
           createdAt: new Date()
         });
       }
@@ -68,7 +68,7 @@ const AdminSettingsScreen: React.FC<AdminSettingsScreenProps> = ({ onNavigate, o
         setAboutUsText(data.text || '');
       } else {
         // Create default if doesn't exist
-        const defaultAboutText = 'ברוכים הבאים למספרה של Test Salon! כאן תיהנו מחוויה אישית, מקצועית ומפנקת, עם יחס חם לכל לקוח. רן, בעל ניסיון של שנים בתחום, מזמין אתכם להתרווח, להתחדש ולהרגיש בבית.';
+        const defaultAboutText = 'ברוכים הבאים ל NY EYEBROWS! ';
         await setDoc(doc(db, 'settings', 'aboutUsText'), {
           text: defaultAboutText,
           createdAt: new Date()
