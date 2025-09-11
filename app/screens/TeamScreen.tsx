@@ -164,7 +164,7 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
       {/* Hero Section with Ran's Background */}
       <View style={styles.heroSection}>
         <ImageBackground
-          source={require('../../assets/images/ATMOSPHERE2.jpg')}
+          source={require('../../assets/images/ourteam.png')}
           style={styles.heroImage}
           resizeMode="cover"
         >
