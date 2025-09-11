@@ -43,10 +43,13 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
 
   const loadBarbers = async () => {
     try {
+      console.log('🔍 Loading barbers and images...');
       const [barbersData, imagesData] = await Promise.all([
         getBarbers(),
         getStorageImages('ourteam')
       ]);
+      
+      console.log('🔍 Raw images data from storage:', imagesData);
       
       // Sort barbers: main barber (רן) first, then others
       const sortedBarbers = barbersData.sort((a, b) => {
@@ -60,6 +63,9 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
       // Force assign images from storage to barbers
       console.log('🔍 Available images from storage:', imagesData);
       console.log('🔍 Barbers before image assignment:', sortedBarbers);
+      console.log('🔍 Looking for Naama specifically...');
+      const naamaImages = imagesData.filter(img => img.toLowerCase().includes('naama'));
+      console.log('🔍 Naama images found:', naamaImages);
       
       const updatedBarbers = sortedBarbers.map(barber => {
         console.log(`🔍 Processing barber: ${barber.name}, current image:`, (barber as any).image);
