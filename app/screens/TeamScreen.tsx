@@ -17,7 +17,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { Barber, getBarbers } from '../../services/firebase';
+import { Barber, getBarbers, getStorageImages } from '../../services/firebase';
 import TopNav from '../components/TopNav';
 
 const { width, height } = Dimensions.get('window');
@@ -35,6 +35,7 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [detailsBarber, setDetailsBarber] = useState<Barber | null>(null);
   const [flippedCards, setFlippedCards] = useState<{[key: string]: Animated.Value}>({});
+  const [teamImages, setTeamImages] = useState<string[]>([]);
 
   useEffect(() => {
     loadBarbers();
@@ -42,19 +43,41 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
 
   const loadBarbers = async () => {
     try {
-      const barbersData = await getBarbers();
+      const [barbersData, imagesData] = await Promise.all([
+        getBarbers(),
+        getStorageImages('ourteam')
+      ]);
+      
       // Sort barbers: main barber (רן) first, then others
       const sortedBarbers = barbersData.sort((a, b) => {
-        if (a.isMainBarber) return -1;
-        if (b.isMainBarber) return 1;
+        if ((a as any).isMainBarber) return -1;
+        if ((b as any).isMainBarber) return 1;
         if (a.name === 'רן אגלריסי') return -1;
         if (b.name === 'רן אגלריסי') return 1;
         return a.name.localeCompare(b.name);
       });
-      setBarbers(sortedBarbers);
+      
+      // Auto-assign images from storage to barbers
+      const updatedBarbers = sortedBarbers.map(barber => {
+        if (!(barber as any).image && imagesData.length > 0) {
+          // Try to find image by name match
+          const nameMatch = imagesData.find(img => 
+            img.toLowerCase().includes(barber.name.toLowerCase().replace(/\s+/g, '')) ||
+            img.toLowerCase().includes('naama') && barber.name.toLowerCase().includes('נעמה')
+          );
+          if (nameMatch) {
+            return { ...barber, image: nameMatch };
+          }
+        }
+        return barber;
+      });
+      
+      setBarbers(updatedBarbers);
+      setTeamImages(imagesData);
+      
       // Initialize animation values for each barber
       const animatedValues: {[key: string]: Animated.Value} = {};
-      sortedBarbers.forEach(barber => {
+      updatedBarbers.forEach(barber => {
         animatedValues[barber.id] = new Animated.Value(0);
       });
       setFlippedCards(animatedValues);
@@ -70,7 +93,7 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
     const animatedValue = flippedCards[barber.id];
     if (animatedValue) {
       Animated.timing(animatedValue, {
-        toValue: animatedValue._value === 0 ? 1 : 0,
+        toValue: (animatedValue as any)._value === 0 ? 1 : 0,
         duration: 600,
         useNativeDriver: true,
       }).start();
@@ -86,7 +109,7 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
 
   const handleWhatsAppPress = (barber: Barber) => {
     // Use whatsapp field first, fallback to phone
-    const whatsappNumber = barber.whatsapp || barber.phone;
+    const whatsappNumber = (barber as any).whatsapp || barber.phone;
     
     if (whatsappNumber) {
       const message = t('team.whatsapp_message', { name: barber.name });
@@ -484,7 +507,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     paddingHorizontal: 24,
-    paddingBottom: 40,
+    paddingBottom: 16,
   },
   heroTextContainer: {
     alignItems: 'center',
