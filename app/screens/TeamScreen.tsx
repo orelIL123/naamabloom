@@ -44,12 +44,18 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
   const loadBarbers = async () => {
     try {
       console.log('🔍 Loading barbers and images...');
-      const [barbersData, imagesData] = await Promise.all([
-        getBarbers(),
-        getStorageImages('ourteam')
-      ]);
       
-      console.log('🔍 Raw images data from storage:', imagesData);
+      // First, let's check what's actually in the ourteam folder
+      console.log('🔍 Checking ourteam folder in Firebase Storage...');
+      const imagesData = await getStorageImages('ourteam');
+      console.log('🔍 Images from ourteam folder:', imagesData);
+      
+      // Also check other folders that might have team images
+      const allImages = await getStorageImages('workers');
+      console.log('🔍 Images from workers folder:', allImages);
+      
+      const barbersData = await getBarbers();
+      console.log('🔍 Barbers data:', barbersData);
       
       // Sort barbers: main barber (רן) first, then others
       const sortedBarbers = barbersData.sort((a, b) => {
