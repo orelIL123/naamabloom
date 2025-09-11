@@ -69,7 +69,7 @@ export default function BottomNav({ onOrderPress, onTabPress, activeTab }: {
         {/* Left side - Home and Call */}
         <View style={styles.leftSide}>
           <TouchableOpacity style={styles.iconBtn} onPress={() => onTabPress && onTabPress('home')}>
-            <Ionicons name="home" size={26} color={activeTab === 'home' ? "#ffd700" : "#9ca3af"} />
+            <Ionicons name="home" size={26} color={activeTab === 'home' ? "#FF00AA" : "#9ca3af"} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconBtn} onPress={handleCallPress}>
             <Ionicons name="call" size={26} color="#9ca3af" />
@@ -101,10 +101,10 @@ export default function BottomNav({ onOrderPress, onTabPress, activeTab }: {
         {/* Right side - Settings and Profile */}
         <View style={styles.rightSide}>
           <TouchableOpacity style={styles.iconBtn} onPress={() => onTabPress && onTabPress('team')}>
-            <Ionicons name="people" size={26} color={activeTab === 'team' ? "#ffd700" : "#9ca3af"} />
+            <Ionicons name="people" size={26} color={activeTab === 'team' ? "#FF00AA" : "#9ca3af"} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconBtn} onPress={() => onTabPress && onTabPress('profile')}>
-            <Ionicons name="person" size={26} color={activeTab === 'profile' ? "#ffd700" : "#9ca3af"} />
+            <Ionicons name="person" size={26} color={activeTab === 'profile' ? "#FF00AA" : "#9ca3af"} />
           </TouchableOpacity>
         </View>
       </View>
