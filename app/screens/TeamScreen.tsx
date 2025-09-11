@@ -76,7 +76,7 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
       console.log('🔍 Available images from storage:', imagesData);
       console.log('🔍 Barbers before image assignment:', sortedBarbers);
       console.log('🔍 Looking for Naama specifically...');
-      const naamaImages = imagesData.filter(img => img.toLowerCase().includes('naama'));
+      const naamaImages = allTeamImages.filter(img => img.toLowerCase().includes('naama'));
       console.log('🔍 Naama images found:', naamaImages);
       
       const updatedBarbers = sortedBarbers.map(barber => {
