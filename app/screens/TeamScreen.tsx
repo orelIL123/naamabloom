@@ -83,7 +83,7 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
         console.log(`🔍 Processing barber: ${barber.name}, current image:`, (barber as any).image);
         
         // Always try to find a better image from storage
-        if (imagesData.length > 0) {
+        if (allTeamImages.length > 0) {
           // Try to find image by name match
           const nameMatch = imagesData.find(img => {
             const imgLower = img.toLowerCase();
