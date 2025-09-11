@@ -64,8 +64,12 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
       if (naamaImagesFound.length === 0) {
         console.log('🔍 No Naama images found in storage, uploading local image...');
         try {
+          // Convert require to string URI for upload
+          const naamaImageUri = Image.resolveAssetSource(require('../../assets/images/naama_bloom.png')).uri;
+          console.log('🔍 Naama image URI:', naamaImageUri);
+          
           const naamaImageUrl = await uploadImageToStorage(
-            require('../../assets/images/naama_bloom.png'),
+            naamaImageUri,
             'ourteam',
             'naama_bloom.png'
           );
