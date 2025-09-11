@@ -2805,7 +2805,13 @@ export const deleteImageFromStorage = async (imageUrl: string): Promise<void> =>
     await deleteObject(imageRef);
     
     console.log('Image deleted successfully:', path);
-  } catch (error) {
+  } catch (error: any) {
+    // Handle specific Firebase Storage errors
+    if (error.code === 'storage/object-not-found') {
+      console.log('Image already deleted or does not exist:', imageUrl);
+      return; // This is not an error - image was already deleted
+    }
+    
     console.error('Error deleting image:', error);
     // Don't throw error - deletion failure shouldn't prevent upload
   }
