@@ -9,6 +9,11 @@ export const messagingConfig: MessagingConfig = {
       sender: process.env.SMS4FREE_SENDER || 'ToriX', // Brand name
       enabled: true,
     },
+    vonage: {
+      apiKey: process.env.VONAGE_API_KEY || '',
+      apiSecret: process.env.VONAGE_API_SECRET || '',
+      enabled: !!process.env.VONAGE_API_KEY
+    },
     whatsapp: {
       phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || '',
       accessToken: process.env.WHATSAPP_ACCESS_TOKEN || '',
@@ -16,7 +21,7 @@ export const messagingConfig: MessagingConfig = {
     }
   },
   defaultProvider: 'sms4free',
-  fallbackEnabled: false,
+  fallbackEnabled: true,
 };
 
 export const updateMessagingProvider = (provider: 'sms4free' | 'whatsapp') => {

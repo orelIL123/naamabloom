@@ -140,6 +140,16 @@ const AdminGalleryScreen: React.FC<AdminGalleryScreenProps> = ({ onNavigate, onB
     }
   };
 
+  const loadStorageImages = async () => {
+    try {
+      const storageImagesData = await getAllStorageImages();
+      setStorageImages(storageImagesData);
+    } catch (error) {
+      console.error('Error loading storage images:', error);
+      showToast('שגיאה בטעינת התמונות מהסטורג׳', 'error');
+    }
+  };
+
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ visible: true, message, type });
   };

@@ -110,6 +110,11 @@ const styles = StyleSheet.create({
     width: '90%',
     maxHeight: '80%',
     alignItems: 'center',
+    minHeight: 400,
+  },
+  modalScrollView: {
+    width: '100%',
+    flex: 1,
   },
   modalTitle: {
     fontSize: 24,
@@ -117,10 +122,6 @@ const styles = StyleSheet.create({
     color: '#1a1a1a',
     marginBottom: 20,
     textAlign: 'center',
-  },
-  modalScrollView: {
-    width: '100%',
-    flex: 1,
   },
   modalText: {
     fontSize: 16,
@@ -164,10 +165,10 @@ const styles = StyleSheet.create({
 
 const TermsContent = () => (
   <Text style={styles.modalText}>
-    <Text style={styles.sectionTitle}>תנאי שימוש - Test Salon{'\n'}</Text>
+    <Text style={styles.sectionTitle}>תנאי שימוש - NB EYEBROWS{'\n'}</Text>
     
     <Text style={styles.subsectionTitle}>1. קבלת השירות{'\n'}</Text>
-    • השירות מיועד לקביעת תורים במספרה Test Salon{'\n'}
+    • השירות מיועד לקביעת תורים בה NB EYEBROWS{'\n'}
     • יש לספק מידע מדויק ומלא בעת קביעת התור{'\n'}
     • המספרה שומרת לעצמה את הזכות לסרב לתת שירות במקרים חריגים{'\n'}
     
@@ -252,8 +253,8 @@ export default function AuthChoiceScreen() {
         style={styles.logo}
         resizeMode="contain"
       />
-          <Text style={styles.appName}>Test Salon</Text>
-          <Text style={styles.tagline}>המספרה המקצועית שלך</Text>
+          <Text style={styles.appName}></Text>
+          <Text style={styles.tagline}>הקליניקה המקצועית שלך</Text>
         </View>
 
         {/* Auth Buttons Section */}

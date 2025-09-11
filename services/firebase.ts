@@ -135,7 +135,7 @@ export interface Appointment {
 export interface GalleryImage {
   id: string;
   imageUrl: string;
-  type: 'gallery' | 'background' | 'splash' | 'aboutus';
+  type: 'gallery' | 'background' | 'splash' | 'aboutus' | 'atmosphere' | 'shop';
   order: number;
   isActive: boolean;
   createdAt: Timestamp;

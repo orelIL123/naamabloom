@@ -83,7 +83,7 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isBarber, setIsBarber] = useState(false);
   const [welcomeMessage, setWelcomeMessage] = useState('ברוכים הבאים ל-naama bloom!');
-  const [subtitleMessage, setSubtitleMessage] = useState('המספרה המקצועית שלך');
+  const [subtitleMessage, setSubtitleMessage] = useState('הקליניקה המקצועית שלך');
   const [aboutUsMessage, setAboutUsMessage] = useState('ברוכים הבאים ל-naama bloom! כאן תיהנו מחוויה אישית, מקצועית ומפנקת, עם יחס חם לכל לקוח. רן אגלריסי, בעל ניסיון של שנים בתחום, מזמין אתכם להתרווח, להתחדש ולהרגיש בבית.');
   const [showPopup, setShowPopup] = useState(false);
   const [popupMessage, setPopupMessage] = useState('');
@@ -529,8 +529,8 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
       }, 2, 'Fetch welcome messages');
 
       if (welcomeData) {
-        setWelcomeMessage(welcomeData.welcome || 'ברוכים הבאים ל-naama bloom!');
-        setSubtitleMessage(welcomeData.subtitle || 'המספרה המקצועית שלך');
+        setWelcomeMessage(welcomeData.welcome || 'ברוכים הבאים ל-NB EYEBROWS!');
+        setSubtitleMessage(welcomeData.subtitle || 'הקליניקה המקצועית שלך');
       }
 
       // Load about us text with safe operation

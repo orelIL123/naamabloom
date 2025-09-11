@@ -80,8 +80,28 @@ const AdminTreatmentsScreen: React.FC<AdminTreatmentsScreenProps> = ({ onNavigat
         getBarbers()
       ]);
       
-      console.log('📋 Setting treatments data:', treatmentsData.map(t => ({ id: t.id, name: t.name })));
-      setTreatments(treatmentsData);
+      // Load treatment images from Storage
+      const { getStorageImages } = await import('../../services/firebase');
+      const treatmentImages = await getStorageImages('treatments');
+      console.log('🖼️ Treatment images from Storage:', treatmentImages);
+      
+      // Update treatments with images from Storage if they don't have images
+      const updatedTreatments = treatmentsData.map(treatment => {
+        if (!treatment.image && treatmentImages.length > 0) {
+          // Try to find matching image by treatment name
+          const matchingImage = treatmentImages.find(img => 
+            img.toLowerCase().includes(treatment.name.toLowerCase().replace(/\s+/g, '_'))
+          );
+          if (matchingImage) {
+            console.log(`🖼️ Found matching image for ${treatment.name}:`, matchingImage);
+            return { ...treatment, image: matchingImage };
+          }
+        }
+        return treatment;
+      });
+      
+      console.log('📋 Setting treatments data:', updatedTreatments.map(t => ({ id: t.id, name: t.name, hasImage: !!t.image })));
+      setTreatments(updatedTreatments);
       setBarberTreatments(barberTreatmentsData);
       setBarbers(barbersData);
     } catch (error) {
@@ -321,11 +341,24 @@ const AdminTreatmentsScreen: React.FC<AdminTreatmentsScreenProps> = ({ onNavigat
           style: 'destructive',
           onPress: async () => {
             try {
+              console.log('🗑️ Attempting to delete treatment:', treatmentId);
               await deleteTreatment(treatmentId);
+              console.log('✅ Treatment deleted successfully from Firestore');
               setTreatments(prev => prev.filter(t => t.id !== treatmentId));
               showToast('הטיפול נמחק בהצלחה');
+              
+              // Refresh the treatments list to make sure it's updated
+              setTimeout(async () => {
+                try {
+                  const updatedTreatments = await getTreatments();
+                  setTreatments(updatedTreatments);
+                  console.log('🔄 Treatments list refreshed');
+                } catch (refreshError) {
+                  console.error('Error refreshing treatments:', refreshError);
+                }
+              }, 1000);
             } catch (error) {
-              console.error('Error deleting treatment:', error);
+              console.error('❌ Error deleting treatment:', error);
               showToast('שגיאה במחיקת הטיפול', 'error');
             }
           }

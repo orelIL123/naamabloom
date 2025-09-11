@@ -1,4 +1,5 @@
 import { SMS4FreeProvider } from './providers/sms4freeProvider';
+import { VonageProvider } from './providers/vonageProvider';
 import { WhatsAppProvider } from './providers/whatsappProvider';
 import { MessageProvider, MessagingConfig, SendMessageParams, SendMessageResult } from './types';
 
@@ -18,6 +19,12 @@ export class MessagingService {
       this.providers.set('sms4free', new SMS4FreeProvider(cfg));
     }
 
+    // Vonage provider as fallback
+    if ((this.config as any).providers.vonage) {
+      const cfg = (this.config as any).providers.vonage as any;
+      this.providers.set('vonage', new VonageProvider(cfg));
+    }
+
     // Initialize WhatsApp provider if configured
     if (this.config.providers.whatsapp) {
       const whatsappProvider = new WhatsAppProvider(this.config.providers.whatsapp);
@@ -34,6 +41,27 @@ export class MessagingService {
 
     try {
       const result = await primaryProvider.send(params);
+      
+      // If primary provider fails, try fallback providers
+      if (!result.success && this.config.fallbackEnabled) {
+        console.log(`⚠️ Primary provider ${this.config.defaultProvider} failed, trying fallback providers...`);
+        
+        for (const [name, provider] of this.providers.entries()) {
+          if (name !== this.config.defaultProvider && provider.isAvailable()) {
+            console.log(`🔄 Trying fallback provider: ${name}`);
+            try {
+              const fallbackResult = await provider.send(params);
+              if (fallbackResult.success) {
+                console.log(`✅ Fallback provider ${name} succeeded`);
+                return fallbackResult;
+              }
+            } catch (fallbackError) {
+              console.log(`❌ Fallback provider ${name} failed:`, fallbackError);
+            }
+          }
+        }
+      }
+      
       return result;
     } catch (error: any) {
       return {
