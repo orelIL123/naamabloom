@@ -214,7 +214,7 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.contentContainer}>
-          <Text style={styles.sectionTitle}>הספרים שלנו</Text>
+          <Text style={styles.sectionTitle}>הצוות שלנו</Text>
           
           {barbers.length === 0 ? (
             <View style={styles.emptyState}>
@@ -484,7 +484,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     paddingHorizontal: 24,
-    paddingBottom: 60,
+    paddingBottom: 40,
   },
   heroTextContainer: {
     alignItems: 'center',
