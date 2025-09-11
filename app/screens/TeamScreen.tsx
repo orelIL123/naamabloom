@@ -69,13 +69,22 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
           const nameMatch = imagesData.find(img => {
             const imgLower = img.toLowerCase();
             const nameLower = barber.name.toLowerCase().replace(/\s+/g, '');
-            const hasNameMatch = imgLower.includes(nameLower);
+            const nameWithUnderscore = barber.name.toLowerCase().replace(/\s+/g, '_');
+            
+            // Check for exact name match (with or without underscore)
+            const hasNameMatch = imgLower.includes(nameLower) || imgLower.includes(nameWithUnderscore);
+            
+            // Special case for Naama Bloom
             const hasNaamaMatch = imgLower.includes('naama') && barber.name.toLowerCase().includes('נעמה');
             
-            console.log(`🔍 Checking image: ${img}`);
-            console.log(`🔍 Name match: ${hasNameMatch}, Naama match: ${hasNaamaMatch}`);
+            // Check if image starts with the name (since format is "Name_timestamp.jpg")
+            const hasPrefixMatch = imgLower.startsWith(nameLower) || imgLower.startsWith(nameWithUnderscore);
             
-            return hasNameMatch || hasNaamaMatch;
+            console.log(`🔍 Checking image: ${img}`);
+            console.log(`🔍 Name: ${nameLower}, Underscore: ${nameWithUnderscore}`);
+            console.log(`🔍 Name match: ${hasNameMatch}, Naama match: ${hasNaamaMatch}, Prefix match: ${hasPrefixMatch}`);
+            
+            return hasNameMatch || hasNaamaMatch || hasPrefixMatch;
           });
           
           if (nameMatch) {
