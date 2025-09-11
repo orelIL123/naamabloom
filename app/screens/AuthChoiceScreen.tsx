@@ -123,6 +123,10 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     textAlign: 'center',
   },
+  modalScrollView: {
+    width: '100%',
+    flex: 1,
+  },
   modalText: {
     fontSize: 16,
     color: '#333333',
@@ -168,7 +172,7 @@ const TermsContent = () => (
     <Text style={styles.sectionTitle}>תנאי שימוש - NB EYEBROWS{'\n'}</Text>
     
     <Text style={styles.subsectionTitle}>1. קבלת השירות{'\n'}</Text>
-    • השירות מיועד לקביעת תורים בה NB EYEBROWS{'\n'}
+    • השירות מיועד לקביעת תורים במספרה NB EYEBROWS{'\n'}
     • יש לספק מידע מדויק ומלא בעת קביעת התור{'\n'}
     • המספרה שומרת לעצמה את הזכות לסרב לתת שירות במקרים חריגים{'\n'}
     
