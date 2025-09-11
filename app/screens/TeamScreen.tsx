@@ -257,15 +257,6 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
             end={{ x: 0, y: 1 }}
             style={styles.blurLayer}
           />
-          {/* Logo at the top */}
-          <View style={styles.heroLogoContainer}>
-            <Image
-              source={require('../../assets/images/icon.booking.png')}
-              style={styles.heroLogo}
-              resizeMode="contain"
-            />
-          </View>
-          
           <View style={styles.heroContent}>
             <View style={styles.heroTextContainer}>
               <Text style={styles.heroTitle}>כאן כדי לתת לך את השירות הטוב ביותר!</Text>
@@ -555,23 +546,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: '40%',
-  },
-  heroLogoContainer: {
-    position: 'absolute',
-    top: 20,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    zIndex: 2,
-  },
-  heroLogo: {
-    width: 80,
-    height: 80,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
   },
   heroContent: {
     position: 'absolute',
