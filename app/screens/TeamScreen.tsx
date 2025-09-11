@@ -176,10 +176,17 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
           />
           {/* Glossy effect at bottom */}
           <LinearGradient
-            colors={['transparent', 'rgba(255,255,255,0.1)', 'rgba(255,255,255,0.3)']}
-            start={{ x: 0, y: 0.7 }}
+            colors={['transparent', 'rgba(255,255,255,0.05)', 'rgba(255,255,255,0.15)', 'rgba(255,255,255,0.4)', 'rgba(255,255,255,0.8)']}
+            start={{ x: 0, y: 0.5 }}
             end={{ x: 0, y: 1 }}
             style={styles.glossyEffect}
+          />
+          {/* Additional blur layer for better blending */}
+          <LinearGradient
+            colors={['transparent', 'rgba(255,255,255,0.1)', 'rgba(255,255,255,0.3)']}
+            start={{ x: 0, y: 0.8 }}
+            end={{ x: 0, y: 1 }}
+            style={styles.blurLayer}
           />
           <View style={styles.heroContent}>
             <View style={styles.heroTextContainer}>
@@ -191,7 +198,7 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.contentContainer}>
-          <Text style={styles.sectionTitle}>{t('team.our_team') || 'הצוות שלנו'}</Text>
+          <Text style={styles.sectionTitle}>הספרים שלנו</Text>
           
           {barbers.length === 0 ? (
             <View style={styles.emptyState}>
@@ -446,7 +453,14 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: '30%',
+    height: '50%',
+  },
+  blurLayer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '20%',
   },
   heroContent: {
     position: 'absolute',
