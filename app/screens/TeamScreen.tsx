@@ -17,7 +17,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { Barber, getBarbers, getStorageImages } from '../../services/firebase';
+import { Barber, getBarbers, getStorageImages, uploadImageToStorage } from '../../services/firebase';
 import TopNav from '../components/TopNav';
 
 const { width, height } = Dimensions.get('window');
@@ -59,6 +59,22 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
       const naamaImagesFound = allTeamImages.filter(img => img.toLowerCase().includes('naama'));
       console.log('🔍 All team images:', allTeamImages);
       console.log('🔍 Naama images found:', naamaImagesFound);
+      
+      // If no Naama images found, upload the local one
+      if (naamaImagesFound.length === 0) {
+        console.log('🔍 No Naama images found in storage, uploading local image...');
+        try {
+          const naamaImageUrl = await uploadImageToStorage(
+            require('../../assets/images/naama_bloom.png'),
+            'ourteam',
+            'naama_bloom.png'
+          );
+          console.log('✅ Naama image uploaded successfully:', naamaImageUrl);
+          allTeamImages.push(naamaImageUrl);
+        } catch (uploadError) {
+          console.error('❌ Failed to upload Naama image:', uploadError);
+        }
+      }
       
       const barbersData = await getBarbers();
       console.log('🔍 Barbers data:', barbersData);
