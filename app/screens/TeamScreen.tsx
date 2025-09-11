@@ -174,20 +174,16 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
             end={{ x: 0, y: 1 }}
             style={styles.heroOverlay}
           />
+          {/* Glossy effect at bottom */}
+          <LinearGradient
+            colors={['transparent', 'rgba(255,255,255,0.1)', 'rgba(255,255,255,0.3)']}
+            start={{ x: 0, y: 0.7 }}
+            end={{ x: 0, y: 1 }}
+            style={styles.glossyEffect}
+          />
           <View style={styles.heroContent}>
             <View style={styles.heroTextContainer}>
-              <Text style={styles.heroTitle}>{t('team.hero_title')}</Text>
-              <Text style={styles.heroSubtitle}>{t('team.hero_subtitle')}</Text>
-              <View style={styles.heroStats}>
-                <View style={styles.heroStat}>
-                  <Text style={styles.heroStatNumber}>5+</Text>
-                  <Text style={styles.heroStatLabel}>{t('team.years_experience')}</Text>
-                </View>
-                <View style={styles.heroStat}>
-                  <Text style={styles.heroStatNumber}>100%</Text>
-                  <Text style={styles.heroStatLabel}>{t('team.satisfaction')}</Text>
-                </View>
-              </View>
+              <Text style={styles.heroTitle}>כאן כדי לתת לך את השירות הטוב ביותר!</Text>
             </View>
           </View>
         </ImageBackground>
@@ -445,13 +441,20 @@ const styles = StyleSheet.create({
   heroOverlay: {
     ...StyleSheet.absoluteFillObject,
   },
+  glossyEffect: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '30%',
+  },
   heroContent: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
     paddingHorizontal: 24,
-    paddingBottom: 32,
+    paddingBottom: 60,
   },
   heroTextContainer: {
     alignItems: 'center',
@@ -476,31 +479,6 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.6)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 3,
-  },
-  heroStats: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 40,
-  },
-  heroStat: {
-    alignItems: 'center',
-  },
-  heroStatNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    textShadowColor: 'rgba(0, 0, 0, 0.8)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 3,
-  },
-  heroStatLabel: {
-    fontSize: 12,
-    color: '#fff',
-    opacity: 0.8,
-    marginTop: 4,
-    textShadowColor: 'rgba(0, 0, 0, 0.6)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
   },
   scrollView: {
     flex: 1,

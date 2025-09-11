@@ -11,7 +11,7 @@ const LOCAL_ASSETS = {
   aboutus: require('../../assets/images/aboutus.png'),
   gallery: [
     require('../../assets/images/ATMOSPHERE.png'),
-    require('../../assets/images/ATMOSPHERE1.jpg'),
+    require('../../assets/images/aboutus.png'),
   ],
 } as const;
 
