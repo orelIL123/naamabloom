@@ -2,19 +2,19 @@
 export const CONTACT_INFO = {
   // Business Information
   businessName: 'Test Salon',
-  address: 'רחוב בדיקה 123, עיר בדיקה',
-  phone: '+972523456789',
-  phoneFormatted: '+972+972523456789',
-  email: 'info@Test Salon.com',
+  address: 'חופים 1 נווה אילן',
+  phone: '0536202292',
+  phoneFormatted: '+972536202292',
+  email: 'Naamabloom222@gmail.com',
   
   // Support/Admin Contact
-  supportEmail: 'support@Test Salon.com',
-  adminPhone: '+972+972523456789',
+  supportEmail: 'Naamabloom222@gmail.com',
+  adminPhone: '+972536202292',
   
   // Display formats for UI
-  displayAddress: 'רחוב בדיקה 123, עיר בדיקה',
-  displayPhone: '+972523456789',
-  contactText: 'לשאלות או בקשות: רחוב בדיקה 123, עיר בדיקה',
+  displayAddress: 'חופים 1 נווה אילן',
+  displayPhone: '0536202292',
+  contactText: 'לשאלות או בקשות: חופים 1 נווה אילן',
   
   // Business hours
   businessHours: {

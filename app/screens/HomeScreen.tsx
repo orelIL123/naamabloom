@@ -20,6 +20,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { CONTACT_INFO } from '../../constants/contactInfo';
 import { getCurrentUser, getUserNotifications, NotificationData } from '../../services/firebase';
 import AboutModal from '../components/AboutModal';
 import SideMenu from '../components/SideMenu';
@@ -868,7 +869,7 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
   };
 
   const handleCallPress = () => {
-    const phoneNumber = '+972523456789';
+    const phoneNumber = CONTACT_INFO.displayPhone;
     Linking.openURL(`tel:${phoneNumber}`);
   };
 
@@ -877,7 +878,7 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
   };
 
   const handleWazePress = () => {
-    // Waze navigation to Test Salon - רחוב בדיקה 123, עיר בדיקהnst address = 'רחוב בדיקה 123, עיר בדיקה';
+    const address = CONTACT_INFO.displayAddress;
     
     // Use HTTPS URL with address - works without LSApplicationQueriesSchemes
     const wazeUrl = `https://waze.com/ul?q=${encodeURIComponent(address)}&navigate=yes&z=17`;
@@ -909,7 +910,7 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
   };
 
   const handleBarberWhatsAppPress = () => {
-    const phoneNumber = '+972523456789'; // מספר הטלפון של הספר (רן)
+    const phoneNumber = CONTACT_INFO.phone; // מספר הטלפון של הספר (רן)
     const message = 'שלום! אני מעוניין לקבוע תור';
     
     // Use HTTPS URL - works without LSApplicationQueriesSchemes
@@ -1184,11 +1185,11 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
               />
               <View style={styles.contactItem}>
                 <Ionicons name="call" size={20} color="#FF00AA" />
-                <Text style={styles.contactText}>+972523456789</Text>
+                <Text style={styles.contactText}>{CONTACT_INFO.displayPhone}</Text>
               </View>
               <View style={styles.contactItem}>
                 <Ionicons name="location" size={20} color="#FF00AA" />
-                <Text style={styles.contactText}>{require('../../constants/contactInfo').CONTACT_INFO.displayAddress}</Text>
+                <Text style={styles.contactText}>{CONTACT_INFO.displayAddress}</Text>
               </View>
               <View style={styles.contactItem}>
                 <Ionicons name="time" size={20} color="#FF00AA" />

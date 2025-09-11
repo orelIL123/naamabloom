@@ -8,7 +8,6 @@ import { getStorageImages } from '../../services/firebase';
 // Local asset fallbacks
 const LOCAL_ASSETS = {
   atmosphere: require('../../assets/images/ATMOSPHERE.png'),
-  atmosphere2: require('../../assets/images/ATMOSPHERE2.jpg'),
   aboutus: require('../../assets/images/aboutus.png'),
   gallery: [
     require('../../assets/images/ATMOSPHERE.png'),
