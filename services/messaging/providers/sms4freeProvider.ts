@@ -7,7 +7,7 @@ export class SMS4FreeProvider implements MessageProvider {
   private pass: string;
   private sender: string;
   private enabled: boolean;
-  private endpoint = 'https://www.sms4free.co.il/send';
+  private endpoint = 'https://api.sms4free.co.il/send.php';
 
   constructor(cfg: { apiKey: string; user: string; pass: string; sender: string; enabled: boolean }) {
     this.apiKey = cfg.apiKey;
@@ -40,12 +40,12 @@ export class SMS4FreeProvider implements MessageProvider {
 
       // Use POST method with form data (SMS4Free standard)
       const formData = new URLSearchParams();
-      formData.append('key', this.apiKey);
-      formData.append('user', this.user);
-      formData.append('pass', this.pass);
-      formData.append('sender', this.sender);
-      formData.append('recipient', recipient);
-      formData.append('msg', message);
+      formData.append('api_key', this.apiKey);
+      formData.append('username', this.user);
+      formData.append('password', this.pass);
+      formData.append('from', this.sender);
+      formData.append('to', recipient);
+      formData.append('message', message);
       
       console.log(`📱 SMS4FREE: Sending POST to: ${this.endpoint}`);
       console.log(`📱 SMS4FREE: Form data:`, formData.toString());
