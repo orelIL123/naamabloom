@@ -598,16 +598,13 @@ export const loginWithPhone = async (phoneNumber: string, verificationId: string
 // User profile functions
 export const getUserProfile = async (uid: string): Promise<UserProfile | null> => {
   try {
-    // Check if user is authenticated
-    if (!auth.currentUser) {
-      console.log('❌ User not authenticated');
-      return null;
-    }
+    console.log(`🔍 Getting user profile for UID: ${uid}`);
     
-    // Check if user is requesting their own profile or is admin
-    if (auth.currentUser.uid !== uid) {
-      // Check if current user is admin
-      const currentUserDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+    // Check if user is authenticated (but allow during login process)
+    const currentUser = auth.currentUser;
+    if (currentUser && currentUser.uid !== uid) {
+      // Check if current user is admin (only if requesting other user's profile)
+      const currentUserDoc = await getDoc(doc(db, 'users', currentUser.uid));
       if (!currentUserDoc.exists() || !currentUserDoc.data().isAdmin) {
         console.log('❌ Insufficient permissions to access other user profile');
         return null;
@@ -617,9 +614,15 @@ export const getUserProfile = async (uid: string): Promise<UserProfile | null> =
     const docRef = doc(db, 'users', uid);
     const docSnap = await getDoc(docRef);
     
+    console.log(`🔍 Profile document exists: ${docSnap.exists()}`);
+    
     if (docSnap.exists()) {
-      return docSnap.data() as UserProfile;
+      const profileData = docSnap.data() as UserProfile;
+      console.log(`✅ Profile found: ${profileData.displayName}`);
+      return profileData;
     }
+    
+    console.log('❌ Profile document not found');
     return null;
   } catch (error) {
     console.error('Error getting user profile:', error);
