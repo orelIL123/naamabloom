@@ -57,8 +57,13 @@ export default function AuthPhoneScreen() {
       const result = await checkPhoneUserExists(phone);
       setPhoneUserExists(result.exists);
       setPhoneUserHasPassword(result.hasPassword);
+      console.log(`🔍 checkPhoneUser result: exists=${result.exists}, hasPassword=${result.hasPassword}`);
+      return result; // Return the result so we can use it immediately
     } catch (error) {
       console.error('Error checking phone user:', error);
+      setPhoneUserExists(false);
+      setPhoneUserHasPassword(false);
+      return { exists: false, hasPassword: false };
     }
   };
 
@@ -184,12 +189,14 @@ export default function AuthPhoneScreen() {
         handleSendSMSVerification();
       } else {
         // התחברות - בדיקה אם יש סיסמא
-        await checkPhoneUser(emailOrPhone);
-        if (!phoneUserExists) {
+        const userCheck = await checkPhoneUser(emailOrPhone);
+        console.log(`🔍 Login attempt - User exists: ${userCheck.exists}, Has password: ${userCheck.hasPassword}`);
+        
+        if (!userCheck.exists) {
           Alert.alert('שגיאה', 'משתמש לא נמצא. אנא הירשם תחילה');
           return;
         }
-        if (!phoneUserHasPassword) {
+        if (!userCheck.hasPassword) {
           Alert.alert('שגיאה', 'למשתמש זה אין סיסמא מוגדרת. אנא פנה למנהל המערכת');
           return;
         }

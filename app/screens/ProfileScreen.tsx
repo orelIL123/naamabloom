@@ -175,17 +175,20 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onNavigate, onBack }) => 
     if (!isValidPhone(phoneNumber)) {
       setPhoneUserExists(false);
       setPhoneUserHasPassword(false);
-      return;
+      return { exists: false, hasPassword: false };
     }
     
     try {
       const userCheck = await checkPhoneUserExists(phoneNumber);
       setPhoneUserExists(userCheck.exists);
       setPhoneUserHasPassword(userCheck.hasPassword);
+      console.log(`🔍 ProfileScreen checkPhoneUser result: exists=${userCheck.exists}, hasPassword=${userCheck.hasPassword}`);
+      return userCheck;
     } catch (error) {
       console.error('Error checking phone user:', error);
       setPhoneUserExists(false);
       setPhoneUserHasPassword(false);
+      return { exists: false, hasPassword: false };
     }
   };
 
@@ -269,12 +272,12 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onNavigate, onBack }) => 
       }
 
       // Always check if user exists before login attempt
-      await checkPhoneUser(phone);
+      const userCheck = await checkPhoneUser(phone);
 
-      console.log('🔍 Login check - User exists:', phoneUserExists, 'Has password:', phoneUserHasPassword);
+      console.log('🔍 Login check - User exists:', userCheck.exists, 'Has password:', userCheck.hasPassword);
 
       // If user exists (with or without password), REQUIRE password for login (NO SMS)
-      if (phoneUserExists) {
+      if (userCheck.exists) {
         console.log('✅ User exists - requiring password login (no SMS)');
         if (!password.trim()) {
           Alert.alert('שגיאה', 'משתמש רשום - נא להזין סיסמה');
@@ -295,7 +298,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onNavigate, onBack }) => 
       }
       
       // If user doesn't exist, this is not login - redirect to registration
-      if (!phoneUserExists) {
+      if (!userCheck.exists) {
         console.log('❌ User does not exist - cannot login. Please register first.');
         Alert.alert('שגיאה', 'משתמש לא נמצא. אנא הירשם תחילה');
         setTab('register'); // Switch to registration tab
