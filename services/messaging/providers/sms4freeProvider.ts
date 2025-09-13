@@ -7,13 +7,14 @@ export class SMS4FreeProvider implements MessageProvider {
   private pass: string;
   private sender: string;
   private enabled: boolean;
-  private endpoint = 'https://api.sms4free.co.il/send.php';
+  private endpoint = 'https://api.sms4free.co.il/ApiSMS/v2/SendSMS';
 
   constructor(cfg: { apiKey: string; user: string; pass: string; sender: string; enabled: boolean }) {
-    this.apiKey = cfg.apiKey;
-    this.user = cfg.user;
-    this.pass = cfg.pass;
-    this.sender = cfg.sender;
+    // Use exact ToriX credentials or fallback to config
+    this.apiKey = cfg.apiKey || 'mgfwkoRBI';
+    this.user = cfg.user || '0523985505';  // Connection number
+    this.pass = cfg.pass || '73960779';
+    this.sender = cfg.sender || 'ToriX';  // Brand name
     this.enabled = cfg.enabled;
   }
 
@@ -27,96 +28,47 @@ export class SMS4FreeProvider implements MessageProvider {
     }
 
     try {
+      // Convert international format (+972xxxxxxxxx) back to Israeli local format (05xxxxxxxx)
+      // SMS4Free API expects Israeli local format
+      let recipient = params.to;
+      if (recipient.startsWith('+972')) {
+        recipient = '0' + recipient.substring(4);
+      }
+      
       // Ensure message is short (<70 characters in Hebrew) to avoid splitting
       const message = params.message.length > 70 ? params.message.substring(0, 67) + '...' : params.message;
-      // Normalize recipient to digits-only (remove + and ensure it starts with 0)
-      let recipient = (params.to || '').replace(/[^0-9]/g, '');
-      if (recipient.startsWith('972')) {
-        recipient = '0' + recipient.substring(3);
-      }
       
-      console.log(`📱 SMS4FREE: Sending SMS to ${recipient} via ${this.sender}`);
-      console.log(`📱 SMS4FREE: Message: "${message}"`);
-
-      // Use POST method with form data (SMS4Free standard)
-      const formData = new URLSearchParams();
-      formData.append('api_key', this.apiKey);
-      formData.append('username', this.user);
-      formData.append('password', this.pass);
-      formData.append('from', this.sender);
-      formData.append('to', recipient);
-      formData.append('message', message);
-      
-      console.log(`📱 SMS4FREE: Sending POST to: ${this.endpoint}`);
-      console.log(`📱 SMS4FREE: Form data:`, formData.toString());
-      
-      const response = await fetch(this.endpoint, { 
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'User-Agent': 'Mozilla/5.0 (compatible; SMS4Free-Client/1.0)',
-        },
-        body: formData.toString()
-      });
-
-      const responseText = await response.text();
-      console.log(`📱 SMS4FREE: Response status: ${response.status}`);
-      console.log(`📱 SMS4FREE: Response text: ${responseText}`);
-
-      // Parse response - SMS4Free typically returns simple text responses
-      if (response.ok) {
-        // Look for success indicators
-        const successIndicators = [
-          /status\s*[:=]\s*1/i,
-          /success/i,
-          /sent/i,
-          /ok/i,
-          /^\d+$/,  // Just a number (message ID)
-          /^1$/     // Sometimes just returns "1" for success
-        ];
-        
-        const isSuccess = successIndicators.some(pattern => pattern.test(responseText.trim()));
-        
-        if (isSuccess) {
-          // Extract message ID if available
-          const idMatch = responseText.match(/(\d+)/);
-          const messageId = idMatch ? idMatch[1] : 'success';
-          
-          console.log(`✅ SMS4FREE: Message sent successfully! ID: ${messageId}`);
-          
-          return { 
-            success: true, 
-            messageId, 
-            provider: this.name 
-          };
-        }
-      }
-
-      // Check for specific error messages
-      const errorPatterns = [
-        { pattern: /invalid/i, message: 'Invalid credentials or parameters' },
-        { pattern: /unauthorized/i, message: 'Unauthorized access' },
-        { pattern: /insufficient/i, message: 'Insufficient credits' },
-        { pattern: /blocked/i, message: 'Number or sender blocked' }
-      ];
-
-      let errorMessage = responseText || 'Unknown error';
-      for (const { pattern, message } of errorPatterns) {
-        if (pattern.test(responseText)) {
-          errorMessage = message;
-          break;
-        }
-      }
-
-      return { 
-        success: false, 
-        error: `SMS4Free API error: ${response.status} - ${errorMessage}`, 
-        provider: this.name 
+      const body = {
+        key: this.apiKey,
+        user: this.user,
+        pass: this.pass,
+        sender: this.sender,
+        recipient: recipient,
+        msg: message,
       };
 
+      console.log(`📱 ToriX SMS: Sending SMS to ${params.to} via ${this.sender}`);
+
+      const resp = await fetch(this.endpoint, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json; charset=utf-8'
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const out = await resp.json(); // {status:number, message:string}
+
+      console.log('📱 ToriX SMS Response:', out);
+
+      if (typeof out?.status === 'number' && out.status > 0) {
+        return { success: true, messageId: String(out.status), provider: this.name };
+      }
+      return { success: false, error: `${out?.status} - ${out?.message || 'unknown'}`, provider: this.name };
     } catch (e: any) {
-      console.error('📱 SMS4FREE Error:', e);
-      return { success: false, error: `SMS4Free request failed: ${e.message}`, provider: this.name };
+      console.error('📱 ToriX SMS Error:', e);
+      return { success: false, error: e.message, provider: this.name };
     }
   }
 }

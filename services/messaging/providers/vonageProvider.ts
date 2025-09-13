@@ -26,17 +26,29 @@ export class VonageProvider implements MessageProvider {
     }
 
     try {
-      // Demo mode - simulate successful SMS sending
-      console.log(`📱 VONAGE DEMO: Sending SMS to ${params.to}`);
-      console.log(`📱 VONAGE DEMO: Message: "${params.message}"`);
+      const projectId = process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID;
+      const response = await fetch(`https://us-central1-${projectId}.cloudfunctions.net/sendSMS`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          phoneNumber: params.to,
+          message: params.message,
+          ...params.metadata
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
       
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Return success for demo
       return {
-        success: true,
-        messageId: `demo_${Date.now()}`,
+        success: result.success,
+        messageId: result.messageId,
+        error: result.error,
         provider: this.name
       };
     } catch (error: any) {
