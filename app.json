@@ -81,7 +81,11 @@
             "ccacheEnabled": true,
             "deploymentTarget": "13.4",
             "newArchEnabled": false,
-            "swiftVersion": "5.0"
+            "swiftVersion": "5.0",
+            "buildConfiguration": "Release",
+            "preprocessorFlags": {
+              "TARGET_OS_SIMULATOR": "1"
+            }
           },
           "android": {
             "targetSdkVersion": 34,

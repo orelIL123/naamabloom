@@ -51,7 +51,8 @@
           "key": "ios-production-{{ platform }}"
         },
         "image": "latest",
-        "buildConfiguration": "Release"
+        "buildConfiguration": "Release",
+        "buildNumber": 2
       }
     }
   },
