@@ -526,7 +526,7 @@ export const loginWithPhoneAndPassword = async (phoneNumber: string, password: s
     }
 
     // Use the synthetic email we store for phone users
-    // Format phone number consistently for email lookup
+    // Format phone number consistently for email lookup (same as registration)
     let formattedPhone = phoneNumber;
     if (!phoneNumber.startsWith('+')) {
       if (phoneNumber.startsWith('0')) {
@@ -536,7 +536,12 @@ export const loginWithPhoneAndPassword = async (phoneNumber: string, password: s
       }
     }
     
-    const email = userCheck.email || `${formattedPhone.replace(/[^0-9]/g, '')}@phonesign.local`;
+    // Always use the stored email from the profile, not generate a new one
+    const email = userCheck.email;
+    if (!email) {
+      throw new Error('אימייל משתמש לא נמצא בפרופיל');
+    }
+    
     console.log(`🔐 Login attempt with email: ${email}`);
     
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -560,8 +565,17 @@ export const setPasswordForPhoneUser = async (phoneNumber: string, password: str
       throw new Error('משתמש לא מחובר');
     }
 
-    // Create email from phone number for Firebase Auth
-    const email = `${phoneNumber.replace(/[^0-9]/g, '')}@phonesign.local`;
+    // Create email from phone number for Firebase Auth (same format as registration)
+    let formattedPhone = phoneNumber;
+    if (!phoneNumber.startsWith('+')) {
+      if (phoneNumber.startsWith('0')) {
+        formattedPhone = '+972' + phoneNumber.substring(1);
+      } else {
+        formattedPhone = '+972' + phoneNumber;
+      }
+    }
+    
+    const email = `${formattedPhone.replace(/[^0-9]/g, '')}@phonesign.local`;
     
     // Link email/password credential to existing phone user
     const emailCredential = EmailAuthProvider.credential(email, password);
