@@ -1,7 +1,7 @@
 {
   "name": "bloom",
   "main": "expo-router/entry",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "scripts": {
     "upload-to-playstore": "node mcp/google-play-automation-server.js upload",
     "upload-to-playstore-internal": "node mcp/google-play-automation-server.js upload internal",

@@ -2,9 +2,12 @@
   "expo": {
     "name": "Naama Bloom",
     "slug": "naama-bloom-barbershop",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "runtimeVersion": {
       "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/a25844b7-40a6-4320-98e3-878ea7f072e4"
     },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -13,6 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.naama.bloom",
+      "buildNumber": "2",
       "googleServicesFile": "./app/GoogleService-Info.plist",
       "config": {
         "usesNonExemptEncryption": false
@@ -35,7 +39,7 @@
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#ffffff"
       },
-      "versionCode": 1,
+      "versionCode": 2,
       "package": "com.naama.bloom",
       "googleServicesFile": "./app/google-services.json",
       "permissions": [
@@ -74,7 +78,8 @@
             "useFrameworks": "static",
             "modularHeaders": true,
             "ccacheEnabled": true,
-            "deploymentTarget": "13.4"
+            "deploymentTarget": "13.4",
+            "newArchEnabled": false
           },
           "android": {
             "targetSdkVersion": 34,
