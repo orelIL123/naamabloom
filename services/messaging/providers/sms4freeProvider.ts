@@ -7,7 +7,7 @@ export class SMS4FreeProvider implements MessageProvider {
   private pass: string;
   private sender: string;
   private enabled: boolean;
-  private endpoint = 'https://api.sms4free.co.il/ApiSMS/v2/SendSMS';
+  private endpoint = 'https://www.sms4free.co.il/ApiSMS/SendSMS';
 
   constructor(cfg: { apiKey: string; user: string; pass: string; sender: string; enabled: boolean }) {
     this.apiKey = cfg.apiKey;
@@ -38,17 +38,25 @@ export class SMS4FreeProvider implements MessageProvider {
       console.log(`📱 SMS4FREE: Sending SMS to ${recipient} via ${this.sender}`);
       console.log(`📱 SMS4FREE: Message: "${message}"`);
 
-      // Try GET method first (more reliable for SMS4Free)
-      const url = `${this.endpoint}?key=${encodeURIComponent(this.apiKey)}&user=${encodeURIComponent(this.user)}&pass=${encodeURIComponent(this.pass)}&sender=${encodeURIComponent(this.sender)}&recipient=${encodeURIComponent(recipient)}&msg=${encodeURIComponent(message)}`;
+      // Use POST method with form data (SMS4Free standard)
+      const formData = new URLSearchParams();
+      formData.append('key', this.apiKey);
+      formData.append('user', this.user);
+      formData.append('pass', this.pass);
+      formData.append('sender', this.sender);
+      formData.append('recipient', recipient);
+      formData.append('msg', message);
       
-      console.log(`📱 SMS4FREE: Request URL: ${url}`);
+      console.log(`📱 SMS4FREE: Sending POST to: ${this.endpoint}`);
+      console.log(`📱 SMS4FREE: Form data:`, formData.toString());
       
-      const response = await fetch(url, { 
-        method: 'GET',
+      const response = await fetch(this.endpoint, { 
+        method: 'POST',
         headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
           'User-Agent': 'Mozilla/5.0 (compatible; SMS4Free-Client/1.0)',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        }
+        },
+        body: formData.toString()
       });
 
       const responseText = await response.text();
@@ -63,62 +71,18 @@ export class SMS4FreeProvider implements MessageProvider {
           /success/i,
           /sent/i,
           /ok/i,
-          /^\d+$/  // Just a number (message ID)
+          /^\d+$/,  // Just a number (message ID)
+          /^1$/     // Sometimes just returns "1" for success
         ];
         
-        const isSuccess = successIndicators.some(pattern => pattern.test(responseText));
+        const isSuccess = successIndicators.some(pattern => pattern.test(responseText.trim()));
         
         if (isSuccess) {
           // Extract message ID if available
           const idMatch = responseText.match(/(\d+)/);
           const messageId = idMatch ? idMatch[1] : 'success';
           
-          return { 
-            success: true, 
-            messageId, 
-            provider: this.name 
-          };
-        }
-      }
-
-      // If GET fails, try POST method as fallback
-      console.log('📱 SMS4FREE: GET failed, trying POST method...');
-      
-      const formData = new URLSearchParams();
-      formData.append('key', this.apiKey);
-      formData.append('user', this.user);
-      formData.append('pass', this.pass);
-      formData.append('sender', this.sender);
-      formData.append('recipient', recipient);
-      formData.append('msg', message);
-
-      const postResponse = await fetch(this.endpoint, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-          'User-Agent': 'Mozilla/5.0 (compatible; SMS4Free-Client/1.0)',
-        },
-        body: formData.toString(),
-      });
-
-      const postText = await postResponse.text();
-      console.log(`📱 SMS4FREE: POST Response status: ${postResponse.status}`);
-      console.log(`📱 SMS4FREE: POST Response text: ${postText}`);
-
-      if (postResponse.ok) {
-        const successIndicators = [
-          /status\s*[:=]\s*1/i,
-          /success/i,
-          /sent/i,
-          /ok/i,
-          /^\d+$/
-        ];
-        
-        const isSuccess = successIndicators.some(pattern => pattern.test(postText));
-        
-        if (isSuccess) {
-          const idMatch = postText.match(/(\d+)/);
-          const messageId = idMatch ? idMatch[1] : 'success';
+          console.log(`✅ SMS4FREE: Message sent successfully! ID: ${messageId}`);
           
           return { 
             success: true, 
@@ -128,9 +92,25 @@ export class SMS4FreeProvider implements MessageProvider {
         }
       }
 
+      // Check for specific error messages
+      const errorPatterns = [
+        { pattern: /invalid/i, message: 'Invalid credentials or parameters' },
+        { pattern: /unauthorized/i, message: 'Unauthorized access' },
+        { pattern: /insufficient/i, message: 'Insufficient credits' },
+        { pattern: /blocked/i, message: 'Number or sender blocked' }
+      ];
+
+      let errorMessage = responseText || 'Unknown error';
+      for (const { pattern, message } of errorPatterns) {
+        if (pattern.test(responseText)) {
+          errorMessage = message;
+          break;
+        }
+      }
+
       return { 
         success: false, 
-        error: `SMS4Free API error: ${response.status} - ${responseText || postText || 'Unknown error'}`, 
+        error: `SMS4Free API error: ${response.status} - ${errorMessage}`, 
         provider: this.name 
       };
 
