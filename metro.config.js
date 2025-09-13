@@ -22,7 +22,7 @@ config.resolver.assetExts = [
 config.resolver.symlinks = true;
 
 // Optimize for production builds
-config.resolver.platforms = ['ios', 'android', 'native'];
+config.resolver.platforms = ['ios', 'android', 'web'];
 
 // Simplified Node.js polyfills for Android compatibility
 config.resolver.alias = {

@@ -17,6 +17,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.naama.bloom",
       "buildNumber": "2",
+      "deploymentTarget": "13.0",
       "googleServicesFile": "./app/GoogleService-Info.plist",
       "config": {
         "usesNonExemptEncryption": false
@@ -78,8 +79,9 @@
             "useFrameworks": "static",
             "modularHeaders": true,
             "ccacheEnabled": true,
-            "deploymentTarget": "13.4",
-            "newArchEnabled": false
+            "deploymentTarget": "13.0",
+            "newArchEnabled": false,
+            "swiftVersion": "5.0"
           },
           "android": {
             "targetSdkVersion": 34,
