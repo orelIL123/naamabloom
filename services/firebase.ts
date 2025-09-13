@@ -471,9 +471,23 @@ export const registerUserWithPhone = async (phoneNumber: string, displayName:str
 // New function to check if phone user exists and has password
 export const checkPhoneUserExists = async (phoneNumber: string): Promise<{ exists: boolean; hasPassword: boolean; uid?: string; email?: string }> => {
   try {
+    // Format phone number consistently - convert to international format
+    let formattedPhone = phoneNumber;
+    if (!phoneNumber.startsWith('+')) {
+      if (phoneNumber.startsWith('0')) {
+        formattedPhone = '+972' + phoneNumber.substring(1);
+      } else {
+        formattedPhone = '+972' + phoneNumber;
+      }
+    }
+    
+    console.log(`🔍 Checking phone user: ${phoneNumber} -> ${formattedPhone}`);
+    
     const usersRef = collection(db, 'users');
-    const q = query(usersRef, where('phone', '==', phoneNumber));
+    const q = query(usersRef, where('phone', '==', formattedPhone));
     const querySnapshot = await getDocs(q);
+    
+    console.log(`🔍 Query result: ${querySnapshot.size} users found`);
     
     if (querySnapshot.empty) {
       return { exists: false, hasPassword: false };
@@ -481,6 +495,8 @@ export const checkPhoneUserExists = async (phoneNumber: string): Promise<{ exist
     
     const userDoc = querySnapshot.docs[0];
     const userData2 = userDoc.data();
+    
+    console.log(`✅ User found: ${userData2.displayName}, hasPassword: ${userData2.hasPassword}`);
     
     return {
       exists: true,
@@ -510,7 +526,19 @@ export const loginWithPhoneAndPassword = async (phoneNumber: string, password: s
     }
 
     // Use the synthetic email we store for phone users
-    const email = userCheck.email || `${phoneNumber.replace(/[^0-9]/g, '')}@phonesign.local`;
+    // Format phone number consistently for email lookup
+    let formattedPhone = phoneNumber;
+    if (!phoneNumber.startsWith('+')) {
+      if (phoneNumber.startsWith('0')) {
+        formattedPhone = '+972' + phoneNumber.substring(1);
+      } else {
+        formattedPhone = '+972' + phoneNumber;
+      }
+    }
+    
+    const email = userCheck.email || `${formattedPhone.replace(/[^0-9]/g, '')}@phonesign.local`;
+    console.log(`🔐 Login attempt with email: ${email}`);
+    
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     return userCredential.user;
   } catch (error) {
