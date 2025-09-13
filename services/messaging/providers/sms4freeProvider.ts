@@ -7,7 +7,7 @@ export class SMS4FreeProvider implements MessageProvider {
   private pass: string;
   private sender: string;
   private enabled: boolean;
-  private endpoint = 'https://www.sms4free.co.il/ApiSMS/SendSMS';
+  private endpoint = 'https://www.sms4free.co.il/send';
 
   constructor(cfg: { apiKey: string; user: string; pass: string; sender: string; enabled: boolean }) {
     this.apiKey = cfg.apiKey;
