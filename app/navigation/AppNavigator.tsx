@@ -1,6 +1,6 @@
 import { onAuthStateChanged } from 'firebase/auth';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { auth } from '../config/firebase';
 import AdminAppointmentsScreen from '../screens/AdminAppointmentsScreen';
 import AdminAvailabilityScreen from '../screens/AdminAvailabilityScreen';
@@ -156,7 +156,6 @@ export default function AppNavigator() {
       return <AdminNotificationsScreen onNavigate={navigate} />;
     
     case 'admin-notification-settings':
-      console.log('🎯 Rendering AdminNotificationSettingsScreen - SUCCESS!');
       return <AdminNotificationSettingsScreen onNavigate={navigate} onBack={() => navigate('admin-home')} />;
     
     case 'admin-waitlist':

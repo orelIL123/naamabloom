@@ -121,7 +121,7 @@ const ShopScreen: React.FC<ShopScreenProps> = ({
   return (
     <SafeAreaView style={styles.container}>
       <TopNav 
-        title="חנות המספרה"
+        title="חנות הקליניקה"
         onBellPress={() => {}}
         onMenuPress={() => {}}
         showBackButton={true}

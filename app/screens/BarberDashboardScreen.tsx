@@ -1403,7 +1403,7 @@ const BarberDashboardScreen: React.FC<BarberDashboardScreenProps> = ({ onNavigat
                   ) : (
                     <View style={styles.emptyTreatmentsContainer}>
                       <Text style={styles.emptyTreatmentsText}>
-                        אין טיפולים מוגדרים עבור הספר הזה
+                        אין טיפולים מוגדרים עבור העובד הזה
                       </Text>
                       <Text style={styles.emptyTreatmentsSubtext}>
                         פנה לאדמין להוספת טיפולים

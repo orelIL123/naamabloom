@@ -90,7 +90,7 @@ export default function BottomNav({ onOrderPress, onTabPress, activeTab }: {
             <BlurView intensity={20} tint="dark" style={styles.fabBlur} pointerEvents="none" />
             <TouchableOpacity style={styles.fab} onPress={handleOrderPress} activeOpacity={0.9}>
               <AnimatedImage
-                source={require("../../assets/images/icon.booking.png")}
+                source={require("../../assets/images/icon_booking.png")}
                 style={[styles.fabIcon, { transform: [{ rotate: spin }] }]}
                 resizeMode="cover"
               />

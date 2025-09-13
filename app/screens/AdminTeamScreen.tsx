@@ -90,6 +90,29 @@ const AdminTeamScreen: React.FC<AdminTeamScreenProps> = ({ onNavigate, onBack })
       console.log('Loaded barbers:', barbersData);
       console.log('Loaded worker images:', imagesData);
       
+      // Check if Naama's image exists, if not upload it
+      const naamaImages = imagesData.filter(img => img.toLowerCase().includes('naama') || img.toLowerCase().includes('ourteam-naama'));
+      console.log('🔍 Naama images found in admin:', naamaImages);
+      
+      if (naamaImages.length === 0) {
+        console.log('🔍 No Naama images found in admin, uploading local image...');
+        try {
+          const { Image } = require('react-native');
+          const naamaImageUri = Image.resolveAssetSource(require('../../assets/images/naama_bloom.png')).uri;
+          console.log('🔍 Naama image URI for admin:', naamaImageUri);
+          
+          const naamaImageUrl = await uploadImageToStorage(
+            naamaImageUri,
+            'ourteam',
+            'ourteam-naama_bloom.png'
+          );
+          console.log('✅ Naama image uploaded successfully in admin:', naamaImageUrl);
+          imagesData.push(naamaImageUrl);
+        } catch (uploadError) {
+          console.error('❌ Failed to upload Naama image in admin:', uploadError);
+        }
+      }
+      
       // Sort barbers: main barber (רן) first, then others
       const sortedBarbers = barbersData.sort((a, b) => {
         if ((a as any).isMainBarber) return -1;
@@ -386,7 +409,25 @@ const AdminTeamScreen: React.FC<AdminTeamScreenProps> = ({ onNavigate, onBack })
       
       const fileName = `${formData.name.trim()}_${Date.now()}.jpg`;
       
+      // Upload to ourteam folder
       const downloadURL = await uploadImageToStorage(imageUri, 'ourteam', fileName);
+      
+      // Also upload to aboutus folder with English name for future projects
+      try {
+        const englishName = formData.name.trim().toLowerCase()
+          .replace(/[\u0590-\u05FF]/g, '') // Remove Hebrew characters
+          .replace(/[^a-z0-9]/g, '_') // Replace non-alphanumeric with underscore
+          .replace(/_+/g, '_') // Replace multiple underscores with single
+          .replace(/^_|_$/g, ''); // Remove leading/trailing underscores
+        
+        if (englishName) {
+          const aboutusFileName = `${englishName}_${Date.now()}.jpg`;
+          await uploadImageToStorage(imageUri, 'aboutus', aboutusFileName);
+          console.log(`✅ Image also uploaded to aboutus folder as: ${aboutusFileName}`);
+        }
+      } catch (aboutusError) {
+        console.log('⚠️ Failed to upload to aboutus folder (non-critical):', aboutusError);
+      }
       
       // Update form data with the new image URL
       setFormData(prev => ({

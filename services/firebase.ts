@@ -847,7 +847,8 @@ export const createAppointment = async (appointmentData: Omit<Appointment, 'id' 
       await sendNotificationToAdmin(
         'תור חדש! 📅',
         `תור חדש נוצר עבור ${appointmentData.date.toDate().toLocaleDateString('he-IL')}`,
-        { appointmentId: docRef.id }
+        { appointmentId: docRef.id },
+        'new_appointment'
       );
     } catch (adminNotificationError) {
       console.log('Failed to send admin notification:', adminNotificationError);
@@ -1148,7 +1149,8 @@ export const deleteAppointment = async (appointmentId: string) => {
       await sendNotificationToAdmin(
         'תור בוטל! ❌',
         `תור בוטל עבור ${appointmentData.date.toDate().toLocaleDateString('he-IL')}`,
-        { appointmentId: appointmentId }
+        { appointmentId: appointmentId },
+        'canceled_appointment'
       );
     } catch (adminNotificationError) {
       console.log('Failed to send admin cancellation notification:', adminNotificationError);
@@ -1491,6 +1493,10 @@ export const addTreatment = async (treatmentData: Omit<Treatment, 'id'>) => {
   try {
     const docRef = await addDoc(collection(db, 'treatments'), treatmentData);
     
+    // Clear treatments cache to ensure fresh data
+    await CacheUtils.invalidateDataCaches();
+    console.log('🔄 Treatments cache cleared after adding new treatment');
+    
     // Send notification about new treatment
     try {
       await sendNewTreatmentNotification(treatmentData.name);
@@ -1508,6 +1514,10 @@ export const updateTreatment = async (treatmentId: string, updates: Partial<Trea
   try {
     const docRef = doc(db, 'treatments', treatmentId);
     await updateDoc(docRef, updates);
+    
+    // Clear treatments cache to ensure fresh data
+    await CacheUtils.invalidateDataCaches();
+    console.log('🔄 Treatments cache cleared after updating treatment');
   } catch (error) {
     throw error;
   }
@@ -1516,6 +1526,10 @@ export const updateTreatment = async (treatmentId: string, updates: Partial<Trea
 export const deleteTreatment = async (treatmentId: string) => {
   try {
     await deleteDoc(doc(db, 'treatments', treatmentId));
+    
+    // Clear treatments cache to ensure fresh data
+    await CacheUtils.invalidateDataCaches();
+    console.log('🔄 Treatments cache cleared after deleting treatment');
   } catch (error) {
     throw error;
   }
@@ -1533,6 +1547,10 @@ export const addBarberTreatment = async (treatmentData: Omit<BarberTreatment, 'i
     };
     
     const docRef = await addDoc(collection(db, 'barberTreatments'), data);
+    
+    // Clear cache to ensure fresh data
+    await CacheUtils.invalidateDataCaches();
+    console.log('🔄 Cache cleared after adding barber treatment');
     
     // Send notification about new barber treatment
     try {
@@ -1554,6 +1572,10 @@ export const updateBarberTreatment = async (treatmentId: string, updates: Partia
       updatedAt: Timestamp.now()
     };
     await updateDoc(doc(db, 'barberTreatments', treatmentId), updatedData);
+    
+    // Clear cache to ensure fresh data
+    await CacheUtils.invalidateDataCaches();
+    console.log('🔄 Cache cleared after updating barber treatment');
   } catch (error) {
     throw error;
   }
@@ -1562,6 +1584,10 @@ export const updateBarberTreatment = async (treatmentId: string, updates: Partia
 export const deleteBarberTreatment = async (treatmentId: string) => {
   try {
     await deleteDoc(doc(db, 'barberTreatments', treatmentId));
+    
+    // Clear cache to ensure fresh data
+    await CacheUtils.invalidateDataCaches();
+    console.log('🔄 Cache cleared after deleting barber treatment');
   } catch (error) {
     throw error;
   }
@@ -3124,21 +3150,66 @@ export const sendRemindersToAllUsers = async () => {
 };
 
 // Send notification to admin about new appointment
-export const sendNotificationToAdmin = async (title: string, body: string, data?: any) => {
+export const sendNotificationToAdmin = async (title: string, body: string, data?: any, notificationType?: string) => {
   try {
     const users = await getAllUsers();
     const adminUsers = users.filter(user => user.isAdmin && user.pushToken);
     
-    console.log(`📱 Sending notification to ${adminUsers.length} admin users`);
+    console.log(`📱 Checking notification settings for ${adminUsers.length} admin users`);
     
+    // Check each admin's notification settings
     const results = await Promise.allSettled(
-      adminUsers.map(user => 
-        sendPushNotification(user.pushToken!, title, body, data)
-      )
+      adminUsers.map(async (user) => {
+        try {
+          // Get admin's notification settings
+          const settingsDoc = await getDoc(doc(db, 'adminNotifications', user.uid));
+          const settings = settingsDoc.exists() ? settingsDoc.data() : {
+            newAppointment: true,
+            canceledAppointment: true,
+            newUser: true,
+            appointmentReminders: true,
+            upcomingAppointments: true,
+          };
+          
+          // Check if this type of notification is enabled
+          let shouldSend = true;
+          if (notificationType) {
+            switch (notificationType) {
+              case 'new_appointment':
+                shouldSend = settings.newAppointment !== false;
+                break;
+              case 'canceled_appointment':
+                shouldSend = settings.canceledAppointment !== false;
+                break;
+              case 'new_user':
+                shouldSend = settings.newUser !== false;
+                break;
+              case 'appointment_reminder':
+                shouldSend = settings.appointmentReminders !== false;
+                break;
+              case 'upcoming_appointment':
+                shouldSend = settings.upcomingAppointments !== false;
+                break;
+            }
+          }
+          
+          if (shouldSend) {
+            console.log(`📱 Sending notification to admin ${user.email} (settings allow)`);
+            return await sendPushNotification(user.pushToken!, title, body, data);
+          } else {
+            console.log(`📱 Skipping notification to admin ${user.email} (disabled in settings)`);
+            return null;
+          }
+        } catch (userError) {
+          console.error(`Error checking settings for admin ${user.email}:`, userError);
+          // Fallback: send notification if we can't check settings
+          return await sendPushNotification(user.pushToken!, title, body, data);
+        }
+      })
     );
     
-    const successful = results.filter(result => result.status === 'fulfilled').length;
-    console.log(`✅ Successfully sent to ${successful}/${adminUsers.length} admin users`);
+    const successful = results.filter(result => result.status === 'fulfilled' && result.value !== null).length;
+    console.log(`✅ Successfully sent to ${successful}/${adminUsers.length} admin users (respecting settings)`);
     
     return successful;
   } catch (error) {
@@ -3265,7 +3336,8 @@ export const sendAppointmentReminderToAdmin = async (appointmentId: string) => {
     await sendNotificationToAdmin(
       'תזכורת לתור! ⏰',
       `תור מחר ב-${appointmentDate.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`,
-      { appointmentId: appointmentId }
+      { appointmentId: appointmentId },
+      'appointment_reminder'
     );
     
     return true;
@@ -3297,7 +3369,8 @@ export const sendDailySummaryToAdmin = async () => {
     await sendNotificationToAdmin(
       'סיכום יומי 📊',
       summary,
-      { type: 'daily_summary' }
+      { type: 'daily_summary' },
+      'upcoming_appointment'
     );
     
     return true;
@@ -3313,7 +3386,8 @@ export const sendNewUserNotificationToAdmin = async (userName: string, userEmail
     await sendNotificationToAdmin(
       'משתמש חדש! 👤',
       `משתמש חדש נרשם: ${userName} (${userEmail})`,
-      { type: 'new_user', userName: userName, userEmail: userEmail }
+      { type: 'new_user', userName: userName, userEmail: userEmail },
+      'new_user'
     );
   } catch (error) {
     console.error('Error sending new user notification to admin:', error);
@@ -3326,7 +3400,8 @@ export const sendLowSlotsNotificationToAdmin = async (barberName: string, availa
     await sendNotificationToAdmin(
       'פחות מקומות פנויים! ⚠️',
       `לספר ${barberName} נשארו רק ${availableSlots} מקומות פנויים`,
-      { type: 'low_slots', barberName: barberName, availableSlots: availableSlots }
+      { type: 'low_slots', barberName: barberName, availableSlots: availableSlots },
+      'upcoming_appointment'
     );
   } catch (error) {
     console.error('Error sending low slots notification to admin:', error);
@@ -3348,7 +3423,8 @@ export const sendAppointmentConfirmationToAdmin = async (appointmentId: string) 
     await sendNotificationToAdmin(
       'תור אושר! ✅',
       `תור אושר עבור ${appointmentDate.toLocaleDateString('he-IL')} ב-${appointmentDate.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`,
-      { appointmentId: appointmentId }
+      { appointmentId: appointmentId },
+      'new_appointment'
     );
     
     return true;
@@ -3373,7 +3449,8 @@ export const sendAppointmentCompletionToAdmin = async (appointmentId: string) =>
     await sendNotificationToAdmin(
       'תור הושלם! 🎉',
       `תור הושלם עבור ${appointmentDate.toLocaleDateString('he-IL')} ב-${appointmentDate.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`,
-      { appointmentId: appointmentId }
+      { appointmentId: appointmentId },
+      'upcoming_appointment'
     );
     
     return true;
@@ -3398,7 +3475,8 @@ export const sendAppointmentCancellationToAdmin = async (appointmentId: string) 
     await sendNotificationToAdmin(
       'תור בוטל! ❌',
       `תור בוטל עבור ${appointmentDate.toLocaleDateString('he-IL')} ב-${appointmentDate.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`,
-      { appointmentId: appointmentId }
+      { appointmentId: appointmentId },
+      'canceled_appointment'
     );
     
     return true;

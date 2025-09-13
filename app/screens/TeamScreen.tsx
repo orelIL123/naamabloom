@@ -56,11 +56,11 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
       
       // Check if there are any images with 'naama' in the name
       const allTeamImages = [...imagesData, ...allImages];
-      const naamaImagesFound = allTeamImages.filter(img => img.toLowerCase().includes('naama'));
+      const naamaImagesFound = allTeamImages.filter(img => img.toLowerCase().includes('naama') || img.toLowerCase().includes('ourteam-naama'));
       console.log('🔍 All team images:', allTeamImages);
       console.log('🔍 Naama images found:', naamaImagesFound);
       
-      // If no Naama images found, upload the local one
+      // If no Naama images found, upload the local one with correct filename
       if (naamaImagesFound.length === 0) {
         console.log('🔍 No Naama images found in storage, uploading local image...');
         try {
@@ -71,7 +71,7 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
           const naamaImageUrl = await uploadImageToStorage(
             naamaImageUri,
             'ourteam',
-            'naama_bloom.png'
+            'ourteam-naama_bloom.png'
           );
           console.log('✅ Naama image uploaded successfully:', naamaImageUrl);
           allTeamImages.push(naamaImageUrl);
@@ -113,8 +113,8 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
             // Check for exact name match (with or without underscore)
             const hasNameMatch = imgLower.includes(nameLower) || imgLower.includes(nameWithUnderscore);
             
-            // Special case for Naama Bloom
-            const hasNaamaMatch = imgLower.includes('naama') && barber.name.toLowerCase().includes('נעמה');
+            // Special case for Naama Bloom - check for both naama and ourteam-naama
+            const hasNaamaMatch = (imgLower.includes('naama') || imgLower.includes('ourteam-naama')) && barber.name.toLowerCase().includes('נעמה');
             
             // Check if image starts with the name (since format is "Name_timestamp.jpg")
             const hasPrefixMatch = imgLower.startsWith(nameLower) || imgLower.startsWith(nameWithUnderscore);
@@ -352,13 +352,12 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
                                 onError={(error) => {
                                   console.log(`❌ Image load error for ${barber.name}:`, error);
                                   console.log(`❌ Failed URL:`, (barber as any).image);
+                                  // Show fallback when image fails to load
+                                  setBarberImageError(barber.id, true);
                                 }}
                                 onLoadStart={() => console.log(`🔄 Starting to load image for ${barber.name}`)}
                                 onLoadEnd={() => console.log(`🏁 Image load ended for ${barber.name}`)}
                               />
-                              <View style={styles.barberPhotoFallback}>
-                                <Ionicons name="person" size={30} color="#999" />
-                              </View>
                             </View>
                           ) : (
                             <View style={styles.barberPhotoPlaceholder}>

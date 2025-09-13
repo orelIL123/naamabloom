@@ -1,14 +1,14 @@
 {
   "expo": {
     "name": "Naama Bloom",
-    "slug": "bloom",
-    "version": "1.0.7",
+    "slug": "naama-bloom-barbershop",
+    "version": "1.0.0",
     "runtimeVersion": {
       "policy": "appVersion"
     },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "NB EYEBROWS",
+    "scheme": "nbeyebrows",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
@@ -18,12 +18,12 @@
         "usesNonExemptEncryption": false
       },
       "infoPlist": {
-        "NSCameraUsageDescription": "\u05d4\u05d0\u05e4\u05dc\u05d9\u05e7\u05e6\u05d9\u05d4 \u05e6\u05e8\u05d9\u05db\u05d4 \u05d2\u05d9\u05e9\u05d4 \u05dc\u05de\u05e6\u05dc\u05de\u05d4 \u05db\u05d3\u05d9 \u05dc\u05e6\u05dc\u05dd \u05ea\u05de\u05d5\u05e0\u05d5\u05ea \u05e4\u05e8\u05d5\u05e4\u05d9\u05dc \u05d5\u05dc\u05d4\u05e2\u05dc\u05d5\u05ea \u05ea\u05de\u05d5\u05e0\u05d5\u05ea \u05dc\u05d2\u05dc\u05e8\u05d9\u05d9\u05ea \u05d4\u05de\u05e1\u05e4\u05e8\u05d4",
-        "NSPhotoLibraryUsageDescription": "\u05d4\u05d0\u05e4\u05dc\u05d9\u05e7\u05e6\u05d9\u05d4 \u05e6\u05e8\u05d9\u05db\u05d4 \u05d2\u05d9\u05e9\u05d4 \u05dc\u05d2\u05dc\u05e8\u05d9\u05d4 \u05db\u05d3\u05d9 \u05dc\u05d1\u05d7\u05d5\u05e8 \u05ea\u05de\u05d5\u05e0\u05d5\u05ea \u05e4\u05e8\u05d5\u05e4\u05d9\u05dc \u05d5\u05dc\u05d4\u05e2\u05dc\u05d5\u05ea \u05ea\u05de\u05d5\u05e0\u05d5\u05ea \u05dc\u05de\u05e1\u05e4\u05e8\u05d4",
-        "NSContactsUsageDescription": "\u05d4\u05d0\u05e4\u05dc\u05d9\u05e7\u05e6\u05d9\u05d4 \u05e6\u05e8\u05d9\u05db\u05d4 \u05d2\u05d9\u05e9\u05d4 \u05dc\u05d0\u05e0\u05e9\u05d9 \u05d4\u05e7\u05e9\u05e8 \u05db\u05d3\u05d9 \u05dc\u05d0\u05e4\u05e9\u05e8 \u05e9\u05d9\u05ea\u05d5\u05e3 \u05e4\u05e8\u05d8\u05d9 \u05d4\u05de\u05e1\u05e4\u05e8\u05d4 \u05d1\u05e7\u05dc\u05d5\u05ea",
-        "NSLocationWhenInUseUsageDescription": "\u05d4\u05d0\u05e4\u05dc\u05d9\u05e7\u05e6\u05d9\u05d4 \u05e6\u05e8\u05d9\u05db\u05d4 \u05d2\u05d9\u05e9\u05d4 \u05dc\u05de\u05d9\u05e7\u05d5\u05dd \u05db\u05d3\u05d9 \u05dc\u05d4\u05e8\u05d0\u05d5\u05ea \u05dc\u05da \u05db\u05d9\u05d5\u05d5\u05e0\u05d9\u05dd \u05dc\u05de\u05e1\u05e4\u05e8\u05d4 \u05d5\u05dc\u05e1\u05e4\u05e7 \u05e9\u05d9\u05e8\u05d5\u05ea \u05d8\u05d5\u05d1 \u05d9\u05d5\u05ea\u05e8",
-        "NSUserNotificationsUsageDescription": "\u05d4\u05d0\u05e4\u05dc\u05d9\u05e7\u05e6\u05d9\u05d4 \u05e6\u05e8\u05d9\u05db\u05d4 \u05d2\u05d9\u05e9\u05d4 \u05dc\u05d4\u05ea\u05e8\u05d0\u05d5\u05ea \u05db\u05d3\u05d9 \u05dc\u05e2\u05d3\u05db\u05df \u05d0\u05d5\u05ea\u05da \u05e2\u05dc \u05d4\u05ea\u05d5\u05e8\u05d9\u05dd \u05e9\u05dc\u05da \u05d5\u05dc\u05e9\u05dc\u05d5\u05d7 \u05d4\u05ea\u05e8\u05d0\u05d5\u05ea \u05d7\u05e9\u05d5\u05d1\u05d5\u05ea \u05de\u05d4\u05de\u05e1\u05e4\u05e8\u05d4",
-        "NSCalendarsUsageDescription": "\u05d4\u05d0\u05e4\u05dc\u05d9\u05e7\u05e6\u05d9\u05d4 \u05e6\u05e8\u05d9\u05db\u05d4 \u05d2\u05d9\u05e9\u05d4 \u05dc\u05d9\u05d5\u05de\u05df \u05db\u05d3\u05d9 \u05dc\u05d4\u05d5\u05e1\u05d9\u05e3 \u05d5\u05dc\u05e0\u05d4\u05dc \u05d0\u05ea \u05d4\u05ea\u05d5\u05e8\u05d9\u05dd \u05e9\u05dc\u05da.",
+        "NSCameraUsageDescription": "האפליקציה צריכה גישה למצלמה כדי לצלם תמונות פרופיל ולהעלות תמונות לגלריית המספרה",
+        "NSPhotoLibraryUsageDescription": "האפליקציה צריכה גישה לגלריה כדי לבחור תמונות פרופיל ולהעלות תמונות למספרה",
+        "NSContactsUsageDescription": "האפליקציה צריכה גישה לאנשי הקשר כדי לאפשר שיתוף פרטי המספרה בקלות",
+        "NSLocationWhenInUseUsageDescription": "האפליקציה צריכה גישה למיקום כדי להראות לך כיוונים למספרה ולספק שירות טוב יותר",
+        "NSUserNotificationsUsageDescription": "האפליקציה צריכה גישה להתראות כדי לעדכן אותך על התורים שלך ולשלוח התראות חשובות מהמספרה",
+        "NSCalendarsUsageDescription": "האפליקציה צריכה גישה ליומן כדי להוסיף ולנהל את התורים שלך.",
         "LSApplicationQueriesSchemes": [
           "waze",
           "whatsapp"
@@ -35,7 +35,7 @@
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#ffffff"
       },
-      "versionCode": 9,
+      "versionCode": 1,
       "package": "com.naama.bloom",
       "googleServicesFile": "./app/google-services.json",
       "permissions": [
@@ -88,14 +88,13 @@
       "typedRoutes": true
     },
     "extra": {
-      "router": {},
+      "router": {
+        "origin": false
+      },
       "eas": {
-        "projectId": "3db35a0e-d2db-4dbd-9138-7647c42f9fae"
+        "projectId": "a25844b7-40a6-4320-98e3-878ea7f072e4"
       }
     },
-    "owner": "orel895",
-    "updates": {
-      "url": "https://u.expo.dev/3db35a0e-d2db-4dbd-9138-7647c42f9fae"
-    },
+    "owner": "orel895"
   }
 }

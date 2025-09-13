@@ -1,7 +1,7 @@
 {
   "name": "bloom",
   "main": "expo-router/entry",
-  "version": "1.0.7",
+  "version": "1.0.0",
   "scripts": {
     "upload-to-playstore": "node mcp/google-play-automation-server.js upload",
     "upload-to-playstore-internal": "node mcp/google-play-automation-server.js upload internal",
@@ -127,6 +127,10 @@
         "listUnknownPackages": false
       }
     }
+  },
+  "overrides": {
+    "simple-swizzle": "0.2.2",
+    "expo-modules-autolinking": "~1.10.0"
   },
   "description": "naama bloom - naama bloom Booking App"
 }

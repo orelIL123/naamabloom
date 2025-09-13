@@ -31,6 +31,10 @@ const AdminNotificationSettingsScreen: React.FC<AdminNotificationSettingsScreenP
   onNavigate, 
   onBack 
 }) => {
+  console.log('🎯 AdminNotificationSettingsScreen component mounted!');
+  console.log('🎯 onNavigate prop:', typeof onNavigate);
+  console.log('🎯 onBack prop:', typeof onBack);
+  
   const [settings, setSettings] = useState<NotificationSettings>({
     newAppointment: true,
     canceledAppointment: true,
@@ -42,23 +46,39 @@ const AdminNotificationSettingsScreen: React.FC<AdminNotificationSettingsScreenP
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
 
   useEffect(() => {
+    console.log('🎯 AdminNotificationSettingsScreen useEffect triggered');
     loadSettings();
   }, []);
 
   const loadSettings = async () => {
     try {
+      console.log('🎯 loadSettings started');
       setLoading(true);
       const user = auth.currentUser;
-      if (!user) return;
+      console.log('🎯 Current user:', user?.uid || 'No user');
+      
+      if (!user) {
+        console.log('🎯 No user found, stopping load');
+        setLoading(false);
+        return;
+      }
 
+      console.log('🎯 Attempting to load settings from Firestore...');
       const settingsDoc = await getDoc(doc(db, 'adminNotifications', user.uid));
+      console.log('🎯 Settings doc exists:', settingsDoc.exists());
+      
       if (settingsDoc.exists()) {
-        setSettings({ ...settings, ...settingsDoc.data() });
+        const data = settingsDoc.data();
+        console.log('🎯 Settings data:', data);
+        setSettings({ ...settings, ...data });
+      } else {
+        console.log('🎯 No settings doc found, using defaults');
       }
     } catch (error) {
-      console.error('Error loading notification settings:', error);
+      console.error('❌ Error loading notification settings:', error);
       showToast('שגיאה בטעינת הגדרות התראות', 'error');
     } finally {
+      console.log('🎯 loadSettings finished');
       setLoading(false);
     }
   };
@@ -70,8 +90,7 @@ const AdminNotificationSettingsScreen: React.FC<AdminNotificationSettingsScreenP
 
       await setDoc(doc(db, 'adminNotifications', user.uid), {
         ...newSettings,
-        updatedAt: new Date(),
-        userId: user.uid,
+        updatedAt: new Date()
       });
 
       setSettings(newSettings);
@@ -150,38 +169,38 @@ const AdminNotificationSettingsScreen: React.FC<AdminNotificationSettingsScreenP
           </Text>
         </View>
 
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>טוען הגדרות...</Text>
-          </View>
-        ) : (
-          <View style={styles.settingsList}>
-            {settingsConfig.map((config) => (
-              <View key={config.key} style={styles.settingItem}>
-                <View style={styles.settingContent}>
-                  <View style={styles.settingIcon}>
-                    <Ionicons name={config.icon} size={24} color="#ff69b4" />
-                  </View>
-                  <View style={styles.settingText}>
-                    <Text style={styles.settingTitle}>{config.title}</Text>
-                    <Text style={styles.settingDescription}>{config.description}</Text>
-                  </View>
+        <View style={styles.settingsContainer}>
+          {settingsConfig.map((item) => (
+            <View key={item.key} style={styles.settingItem}>
+              <View style={styles.settingInfo}>
+                <View style={styles.settingHeader}>
+                  <Ionicons 
+                    name={item.icon} 
+                    size={24} 
+                    color="#ff69b4" 
+                    style={styles.settingIcon}
+                  />
+                  <Text style={styles.settingTitle}>{item.title}</Text>
                 </View>
-                <Switch
-                  value={settings[config.key]}
-                  onValueChange={() => toggleSetting(config.key)}
-                  thumbColor={settings[config.key] ? '#ff69b4' : '#f4f3f4'}
-                  trackColor={{ false: '#767577', true: '#ffb3d9' }}
-                />
+                <Text style={styles.settingDescription}>{item.description}</Text>
               </View>
-            ))}
-          </View>
-        )}
+              <Switch
+                value={settings[item.key]}
+                onValueChange={() => toggleSetting(item.key)}
+                trackColor={{ false: '#767577', true: '#ff69b4' }}
+                thumbColor={settings[item.key] ? '#ffffff' : '#f4f3f4'}
+                ios_backgroundColor="#3e3e3e"
+                disabled={loading}
+              />
+            </View>
+          ))}
+        </View>
 
-        <View style={styles.infoBox}>
-          <Ionicons name="information-circle" size={20} color="#007bff" />
+        <View style={styles.infoSection}>
+          <Ionicons name="information-circle" size={20} color="#6c757d" />
           <Text style={styles.infoText}>
-            התראות יישלחו כ-Push Notifications באפליקציה ועלולות להישלח גם כ-SMS/WhatsApp בהתאם להגדרות המערכת.
+            התראות יישלחו בזמן אמת כאשר מתרחשים אירועים במערכת. 
+            ניתן לשנות הגדרות אלו בכל עת.
           </Text>
         </View>
       </ScrollView>
@@ -207,15 +226,8 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 32,
-    paddingVertical: 24,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    marginBottom: 24,
+    paddingVertical: 20,
   },
   headerTitle: {
     fontSize: 24,
@@ -227,80 +239,64 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 16,
     color: '#666',
-    marginTop: 8,
     textAlign: 'center',
-    paddingHorizontal: 16,
+    marginTop: 8,
+    lineHeight: 24,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 48,
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#666',
-  },
-  settingsList: {
+  settingsContainer: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    paddingVertical: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowRadius: 4,
     elevation: 3,
+    marginBottom: 20,
   },
   settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
-  settingContent: {
+  settingInfo: {
+    flex: 1,
+    marginRight: 16,
+  },
+  settingHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
+    marginBottom: 4,
   },
   settingIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#fff0f8',
-    justifyContent: 'center',
-    alignItems: 'center',
     marginRight: 12,
-  },
-  settingText: {
-    flex: 1,
   },
   settingTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 4,
-    textAlign: 'right',
   },
   settingDescription: {
     fontSize: 14,
     color: '#666',
-    textAlign: 'right',
+    marginLeft: 36,
+    lineHeight: 20,
   },
-  infoBox: {
+  infoSection: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     backgroundColor: '#e3f2fd',
     padding: 16,
     borderRadius: 8,
-    marginTop: 24,
+    marginTop: 16,
   },
   infoText: {
     flex: 1,
     fontSize: 14,
     color: '#1976d2',
+    lineHeight: 20,
     marginLeft: 8,
     textAlign: 'right',
   },

@@ -172,8 +172,7 @@ const TermsContent = () => (
     <Text style={styles.sectionTitle}>תנאי שימוש - NB EYEBROWS{'\n'}</Text>
     
     <Text style={styles.subsectionTitle}>1. קבלת השירות{'\n'}</Text>
-    • השירות מיועד לקביעת תורים במספרה NB EYEBROWS{'\n'}
-    • יש לספק מידע מדויק ומלא בעת קביעת התור{'\n'}
+    • השירות מיועד לקביעת תורים בקליניקה יש לספק מידע מדויק ומלא בעת קביעת התור{'\n'}
     • המספרה שומרת לעצמה את הזכות לסרב לתת שירות במקרים חריגים{'\n'}
     
     <Text style={styles.subsectionTitle}>2. ביטול תורים{'\n'}</Text>
@@ -187,13 +186,13 @@ const TermsContent = () => (
     • המספרה שומרת לעצמה את הזכות לשנות מחירים{'\n'}
     
     <Text style={styles.subsectionTitle}>4. אחריות{'\n'}</Text>
-    • המספרה מתחייבת לאיכות השירות{'\n'}
-    • במקרה של אי שביעות רצון, יש לפנות למנהל המספרה{'\n'}
-    • המספרה לא אחראית לנזקים עקיפים{'\n'}
+    • הקליניקה מתחייבת לאיכות השירות{'\n'}
+    • במקרה של אי שביעות רצון, יש לפנות למנהל הקליניקה{'\n'}
+    • הקליניקה לא אחראית לנזקים עקיפים{'\n'}
     
     <Text style={styles.contactInfo}>
       {require('../../constants/contactInfo').CONTACT_INFO.contactText}{'\n'}
-      מייל: info@Test Salon.co.il
+      מייל: info@NBEYEBROWS.co.il
     </Text>
   </Text>
 );
@@ -214,7 +213,7 @@ const PrivacyContent = () => (
     
     <Text style={styles.subsectionTitle}>3. אבטחה{'\n'}</Text>
     • המידע מאוחסן באופן מאובטח{'\n'}
-    • גישה למידע מוגבלת לעובדי המספרה בלבד{'\n'}
+    • גישה למידע מוגבלת לעובדי הקליניקה בלבד{'\n'}
     • נעדכן את האבטחה לפי הצורך{'\n'}
     
     <Text style={styles.subsectionTitle}>4. זכויות המשתמש{'\n'}</Text>
@@ -229,7 +228,7 @@ const PrivacyContent = () => (
     
     <Text style={styles.contactInfo}>
       {require('../../constants/contactInfo').CONTACT_INFO.contactText}{'\n'}
-      מייל: info@Test Salon.co.il
+      מייל: info@NBEYEBROWS.co.il
     </Text>
   </Text>
 );

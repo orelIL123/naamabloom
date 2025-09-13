@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Timestamp } from 'firebase/firestore';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import {
   Alert,
@@ -95,6 +96,14 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ onNavigate, onBack, onClo
     loadData();
   }, []);
 
+  // Refresh data when screen comes into focus (e.g., returning from admin screen)
+  useFocusEffect(
+    useCallback(() => {
+      console.log('🔄 Booking screen focused, refreshing treatments data...');
+      loadData(true); // Force refresh to get latest treatments
+    }, [])
+  );
+
   // Listen to barber availability in real-time when a barber is selected
   useEffect(() => {
     if (!selectedBarber) {
@@ -134,13 +143,14 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ onNavigate, onBack, onClo
     })();
   }, [barberAvailability]);
 
-  const loadData = async () => {
+  const loadData = async (forceRefresh: boolean = false) => {
     try {
       const [barbersData, treatmentsData] = await Promise.all([
         getBarbers(),
-        getTreatments()
+        getTreatments(!forceRefresh) // Disable cache if force refresh
       ]);
       
+      console.log('📋 Loaded treatments in booking screen:', treatmentsData.map(t => ({ id: t.id, name: t.name })));
       setBarbers(barbersData);
       setTreatments(treatmentsData);
       
@@ -833,7 +843,7 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ onNavigate, onBack, onClo
               {displayTreatments.length === 0 ? (
                 <View style={styles.emptyTreatments}>
                   <Text style={styles.emptyTreatmentsText}>
-                    אין טיפולים זמינים עבור הספר הזה
+                    אין טיפולים זמינים עבור העובד הזה
                   </Text>
                 </View>
               ) : (

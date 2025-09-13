@@ -970,7 +970,7 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
         {/* Hero Section */}
         <View style={styles.backgroundWrapper}>
           <ImageBackground
-            source={settingsImages.atmosphere ? { uri: settingsImages.atmosphere } : require('../../assets/images/ATMOSPHERE.png')}
+            source={settingsImages.atmosphere ? { uri: settingsImages.atmosphere } : require('../../assets/images/atmosphere.png')}
             style={styles.atmosphereImage}
             resizeMode="cover"
           >
@@ -1209,7 +1209,7 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
           <View style={styles.orelSection}>
             <Text style={styles.orelText}>Powered by</Text>
             <TouchableOpacity onPress={handleOrelWhatsAppPress} style={styles.orelButton}>
-              <Text style={styles.orelName}>Orel Aharon</Text>
+              <Text style={styles.orelName}>ToriX</Text>
             </TouchableOpacity>
             <Text style={styles.orelSubtext}>רוצה אפליקציה כזו לעסק שלך?</Text>
           </View>
