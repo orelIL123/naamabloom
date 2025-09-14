@@ -50,7 +50,7 @@
         "cache": {
           "key": "ios-production-{{ platform }}"
         },
-        "image": "latest",
+        "image": "macos-monterey-xcode-15.4",
         "buildConfiguration": "Release"
       }
     }
