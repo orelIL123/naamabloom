@@ -87,7 +87,8 @@
               "TARGET_OS_SIMULATOR": "1"
             },
             "clangCxxLanguageStandard": "c++17",
-            "clangCxxLibrary": "libc++"
+            "clangCxxLibrary": "libc++",
+            "xcodeVersion": "15.4.0"
           },
           "android": {
             "targetSdkVersion": 34,
