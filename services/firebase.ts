@@ -3933,6 +3933,20 @@ export const createNotification = async (notificationData: Omit<NotificationData
 
     const docRef = await addDoc(collection(db, 'notifications'), notification);
     console.log('✅ Notification created successfully:', notification.id);
+    
+    // Send push notification if user has push token
+    try {
+      await sendNotificationToUser(notificationData.userId, notificationData.title, notificationData.message, {
+        type: notificationData.type,
+        appointmentId: notificationData.appointmentId,
+        appointmentDate: notificationData.appointmentDate,
+        appointmentTime: notificationData.appointmentTime
+      });
+    } catch (pushError) {
+      console.log('Failed to send push notification:', pushError);
+      // Don't throw error - notification is still saved to database
+    }
+    
     return docRef.id;
   } catch (error) {
     console.error('Error creating notification:', error);

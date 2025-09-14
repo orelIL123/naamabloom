@@ -58,11 +58,11 @@
     "expo-blur": "~14.0.3",
     "expo-build-properties": "~0.13.3",
     "expo-constants": "~17.0.8",
-    "expo-device": "^8.0.7",
+    "expo-device": "~7.0.3",
     "expo-file-system": "~18.0.12",
     "expo-font": "~13.0.4",
     "expo-haptics": "~14.0.1",
-    "expo-image": "^3",
+    "expo-image": "~2.0.7",
     "expo-image-manipulator": "~13.0.6",
     "expo-image-picker": "~16.0.6",
     "expo-linear-gradient": "~14.0.2",
@@ -72,7 +72,7 @@
     "expo-splash-screen": "~0.29.24",
     "expo-status-bar": "~2.0.1",
     "expo-system-ui": "~4.0.9",
-    "expo-updates": "^29.0.10",
+    "expo-updates": "~0.27.4",
     "expo-web-browser": "~14.0.2",
     "firebase": "^10.8.0",
     "firebase-admin": "^12.5.0",
@@ -109,7 +109,6 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
-    "@react-native-community/cli": "^20.0.2",
     "@types/react": "~18.3.12",
     "axios": "^1.11.0",
     "eslint": "^9.25.0",
@@ -133,7 +132,7 @@
   },
   "overrides": {
     "simple-swizzle": "0.2.2",
-    "expo-modules-autolinking": "~1.10.0"
+    "expo-modules-autolinking": "~2.0.0"
   },
   "description": "naama bloom - naama bloom Booking App"
 }

@@ -8,6 +8,9 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "env": {
+        "EXPO_USE_COMMUNITY_AUTOLINKING": "0"
+      },
       "android": {
         "buildType": "apk",
         "gradleCommand": ":app:assembleDebug"
@@ -16,6 +19,9 @@
     "preview": {
       "channel": "production",
       "distribution": "internal",
+      "env": {
+        "EXPO_USE_COMMUNITY_AUTOLINKING": "0"
+      },
       "ios": {
         "image": "macos-sequoia-15.4-xcode-16.3"
       },
@@ -26,6 +32,7 @@
     "production": {
       "channel": "production",
       "env": {
+        "EXPO_USE_COMMUNITY_AUTOLINKING": "0",
         "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "naama-bloom-88733",
         "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyApnBzRb7EIepMiXWiLplMdqX26BQ0s_Lc",
         "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "naama-bloom-88733.firebasestorage.app",

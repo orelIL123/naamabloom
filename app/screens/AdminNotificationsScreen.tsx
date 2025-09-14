@@ -89,10 +89,36 @@ const AdminNotificationsScreen: React.FC<AdminNotificationsScreenProps> = ({ onN
     }
 
     try {
-      // TODO: Implement actual notification sending when packages are installed
+      setLoading(true);
+      
+      // Import the notification functions
+      const { sendNotificationToAllUsers, sendNotificationToUser } = await import('../../services/firebase');
+      
+      let successCount = 0;
+      
+      if (selectedUser === 'all') {
+        // Send to all users
+        successCount = await sendNotificationToAllUsers(notificationTitle, notificationBody, {
+          type: 'admin_message',
+          timestamp: new Date().toISOString()
+        });
+      } else if (selectedUser === 'with-tokens') {
+        // Send only to users with push tokens
+        const usersWithTokens = getUsersWithTokens();
+        const results = await Promise.allSettled(
+          usersWithTokens.map(user => 
+            sendNotificationToUser(user.uid, notificationTitle, notificationBody, {
+              type: 'admin_message',
+              timestamp: new Date().toISOString()
+            })
+          )
+        );
+        successCount = results.filter(result => result.status === 'fulfilled' && result.value).length;
+      }
+      
       Alert.alert(
         'התראה נשלחה',
-        `ההודעה "${notificationTitle}" נשלחה בהצלחה!`,
+        `ההודעה "${notificationTitle}" נשלחה בהצלחה ל-${successCount} משתמשים!`,
         [
           {
             text: 'אישור',
@@ -106,7 +132,10 @@ const AdminNotificationsScreen: React.FC<AdminNotificationsScreenProps> = ({ onN
         ]
       );
     } catch (error) {
+      console.error('Error sending notification:', error);
       Alert.alert('שגיאה', 'לא ניתן לשלוח את ההודעה');
+    } finally {
+      setLoading(false);
     }
   };
 
