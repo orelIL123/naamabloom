@@ -24,7 +24,7 @@
         "EXPO_USE_COMMUNITY_AUTOLINKING": "0"
       },
       "ios": {
-        "image": "macos-14-xcode-16.3",
+        "image": "macos-sequoia-15.4-xcode-16.3",
         "env": {
           "EXPO_USE_SWIFT_MACROS": "1"
         }
@@ -65,7 +65,7 @@
         "cache": {
           "key": "ios-production-{{ platform }}"
         },
-        "image": "macos-14-xcode-16.3",
+        "image": "macos-sequoia-15.4-xcode-16.3",
         "buildConfiguration": "Release"
       }
     }
