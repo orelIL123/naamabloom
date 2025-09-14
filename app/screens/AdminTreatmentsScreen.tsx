@@ -591,6 +591,15 @@ const AdminTreatmentsScreen: React.FC<AdminTreatmentsScreenProps> = ({ onNavigat
                     onSubmitEditing={handleSave}
                   />
                   <Text style={styles.inputHint}>השאר ריק אם אין תמונה</Text>
+                  
+                  {/* כפתור להעלאת תמונה */}
+                  <TouchableOpacity
+                    style={styles.uploadImageButton}
+                    onPress={uploadTreatmentImage}
+                  >
+                    <Ionicons name="camera" size={24} color="#007bff" />
+                    <Text style={styles.uploadImageText}>העלה תמונה מהמכשיר</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
             </ScrollView>

@@ -1749,18 +1749,20 @@ export const getImageUrl = async (imagePath: string): Promise<string | null> => 
 
 export const getAllStorageImages = async () => {
   try {
-    const [galleryImages, atmosphereImages, splashImages, aboutusImages] = await Promise.all([
+    const [galleryImages, atmosphereImages, splashImages, aboutusImages, treatmentImages] = await Promise.all([
       getStorageImages('gallery'),
       getStorageImages('atmosphere'), 
       getStorageImages('splash'),
-      getStorageImages('aboutus')
+      getStorageImages('aboutus'),
+      getStorageImages('treatments')
     ]);
     
     return {
       gallery: galleryImages,
       atmosphere: atmosphereImages,
       splash: splashImages,
-      aboutus: aboutusImages
+      aboutus: aboutusImages,
+      treatments: treatmentImages
     };
   } catch (error) {
     console.error('Error getting all storage images:', error);
@@ -1768,7 +1770,8 @@ export const getAllStorageImages = async () => {
       gallery: [],
       atmosphere: [],
       splash: [],
-      aboutus: []
+      aboutus: [],
+      treatments: []
     };
   }
 };
@@ -2804,6 +2807,7 @@ export interface AppImages {
   atmosphereImage?: string;
   aboutUsImage?: string;
   galleryImages?: string[];
+  treatmentImages?: string[];
 }
 
 // Get current app images from Firestore
@@ -2817,14 +2821,16 @@ export const getAppImages = async (): Promise<AppImages> => {
       return {
         atmosphereImage: data.atmosphereImage || '',
         aboutUsImage: data.aboutUsImage || '',
-        galleryImages: Array.isArray(data.galleryImages) ? data.galleryImages : []
+        galleryImages: Array.isArray(data.galleryImages) ? data.galleryImages : [],
+        treatmentImages: Array.isArray(data.treatmentImages) ? data.treatmentImages : []
       };
     }
     
     return {
       atmosphereImage: '',
       aboutUsImage: '',
-      galleryImages: []
+      galleryImages: [],
+      treatmentImages: []
     };
   } catch (error) {
     console.error('Error getting app images:', error);

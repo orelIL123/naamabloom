@@ -863,7 +863,15 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ onNavigate, onBack, onClo
                     end={{ x: 1, y: 1 }}
                   >
                     <View style={styles.treatmentImage}>
-                      <Text style={styles.treatmentPlaceholder}>💇</Text>
+                      {treatment.image ? (
+                        <Image
+                          source={{ uri: treatment.image }}
+                          style={styles.treatmentPhoto}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <Text style={styles.treatmentPlaceholder}>💇</Text>
+                      )}
                     </View>
                     <View style={styles.treatmentInfo}>
                       <Text style={styles.treatmentName}>{treatment.name}</Text>
@@ -1403,6 +1411,11 @@ const styles = StyleSheet.create({
   treatmentPlaceholder: {
     fontSize: 30,
     color: '#fff',
+  },
+  treatmentPhoto: {
+    width: 80,
+    height: 80,
+    borderRadius: 16,
   },
   treatmentInfo: {
     flex: 1,

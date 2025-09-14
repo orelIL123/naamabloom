@@ -16,6 +16,9 @@
     "preview": {
       "channel": "production",
       "distribution": "internal",
+      "ios": {
+        "image": "macos-sequoia-15.4-xcode-16.3"
+      },
       "android": {
         "buildType": "apk"
       }
@@ -50,7 +53,7 @@
         "cache": {
           "key": "ios-production-{{ platform }}"
         },
-        "image": "macos-ventura-13.6-xcode-15.0",
+        "image": "macos-sequoia-15.4-xcode-16.3",
         "buildConfiguration": "Release"
       }
     }
