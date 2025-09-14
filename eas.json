@@ -9,7 +9,8 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_USE_COMMUNITY_AUTOLINKING": "0"
+        "EXPO_USE_COMMUNITY_AUTOLINKING": "0",
+        "EXPO_USE_SWIFT_MACROS": "1"
       },
       "android": {
         "buildType": "apk",
@@ -23,7 +24,10 @@
         "EXPO_USE_COMMUNITY_AUTOLINKING": "0"
       },
       "ios": {
-        "image": "macos-sequoia-15.4-xcode-16.3"
+        "image": "macos-14-xcode-16.3",
+        "env": {
+          "EXPO_USE_SWIFT_MACROS": "1"
+        }
       },
       "android": {
         "buildType": "apk"
@@ -33,6 +37,7 @@
       "channel": "production",
       "env": {
         "EXPO_USE_COMMUNITY_AUTOLINKING": "0",
+        "EXPO_USE_SWIFT_MACROS": "1",
         "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "naama-bloom-88733",
         "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyApnBzRb7EIepMiXWiLplMdqX26BQ0s_Lc",
         "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "naama-bloom-88733.firebasestorage.app",
@@ -60,7 +65,7 @@
         "cache": {
           "key": "ios-production-{{ platform }}"
         },
-        "image": "macos-sequoia-15.4-xcode-16.3",
+        "image": "macos-14-xcode-16.3",
         "buildConfiguration": "Release"
       }
     }
