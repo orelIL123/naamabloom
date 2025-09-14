@@ -3,12 +3,12 @@
     "name": "Naama Bloom",
     "slug": "naama-bloom-barbershop",
     "version": "1.0.1",
+    "runtimeVersion": {
+      "ios": "2",
+      "android": "2"
+    },
     "updates": {
-      "url": "https://u.expo.dev/a25844b7-40a6-4320-98e3-878ea7f072e4",
-      "runtimeVersion": {
-        "ios": "2",
-        "android": "2"
-      }
+      "url": "https://u.expo.dev/a25844b7-40a6-4320-98e3-878ea7f072e4"
     },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
