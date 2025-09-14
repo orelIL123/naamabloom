@@ -10,13 +10,13 @@
 		13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB01A68108700A75B9A /* AppDelegate.mm */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
-		34DA4DA340E18683B4D27F4B /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = C0EE169AC9CD885EF88E8E7F /* PrivacyInfo.xcprivacy */; };
+		2A91C79001E510252041A064 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 9F140A200F2706421BDAFF35 /* PrivacyInfo.xcprivacy */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		47F7127555D73252AD8A9EA6 /* Pods_NaamaBloom.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A34A6C8B7E786D6892196639 /* Pods_NaamaBloom.framework */; };
+		72F7D224AAE2353FDFE54CE3 /* Pods_NaamaBloom.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 43C72FD7CC8B1680D1BF006B /* Pods_NaamaBloom.framework */; };
+		732AF94CD3404AE0A4B31EC6 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F82B6F41D8E2465A8A2D2950 /* GoogleService-Info.plist */; };
 		B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
-		DC45FA9593EB4EB888534C29 /* noop-file.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25E501CBBBDD4C2290689DAD /* noop-file.swift */; };
-		F2A156EBEC5949B7B85FD39D /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 2C709ECB041A44368E51C14B /* GoogleService-Info.plist */; };
+		FA4B29FCF4574D86A2B11F32 /* noop-file.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E1B166851A84097A084AB74 /* noop-file.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -26,16 +26,16 @@
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = NaamaBloom/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = NaamaBloom/Info.plist; sourceTree = "<group>"; };
 		13B07FB71A68108700A75B9A /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = main.m; path = NaamaBloom/main.m; sourceTree = "<group>"; };
-		25E501CBBBDD4C2290689DAD /* noop-file.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = "noop-file.swift"; path = "NaamaBloom/noop-file.swift"; sourceTree = "<group>"; };
-		2C709ECB041A44368E51C14B /* GoogleService-Info.plist */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = "NaamaBloom/GoogleService-Info.plist"; sourceTree = "<group>"; };
+		43C72FD7CC8B1680D1BF006B /* Pods_NaamaBloom.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_NaamaBloom.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		6C2E3173556A471DD304B334 /* Pods-NaamaBloom.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-NaamaBloom.debug.xcconfig"; path = "Target Support Files/Pods-NaamaBloom/Pods-NaamaBloom.debug.xcconfig"; sourceTree = "<group>"; };
 		7A4D352CD337FB3A3BF06240 /* Pods-NaamaBloom.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-NaamaBloom.release.xcconfig"; path = "Target Support Files/Pods-NaamaBloom/Pods-NaamaBloom.release.xcconfig"; sourceTree = "<group>"; };
-		A34A6C8B7E786D6892196639 /* Pods_NaamaBloom.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_NaamaBloom.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		8E1B166851A84097A084AB74 /* noop-file.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = "noop-file.swift"; path = "NaamaBloom/noop-file.swift"; sourceTree = "<group>"; };
+		9B834323DFF3488B8347D830 /* NaamaBloom-Bridging-Header.h */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.c.h; name = "NaamaBloom-Bridging-Header.h"; path = "NaamaBloom/NaamaBloom-Bridging-Header.h"; sourceTree = "<group>"; };
+		9F140A200F2706421BDAFF35 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = NaamaBloom/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = NaamaBloom/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		C0EE169AC9CD885EF88E8E7F /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = NaamaBloom/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		E7657B4881F3415880344187 /* NaamaBloom-Bridging-Header.h */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.c.h; name = "NaamaBloom-Bridging-Header.h"; path = "NaamaBloom/NaamaBloom-Bridging-Header.h"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		F82B6F41D8E2465A8A2D2950 /* GoogleService-Info.plist */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = "NaamaBloom/GoogleService-Info.plist"; sourceTree = "<group>"; };
 		FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-NaamaBloom/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -44,7 +44,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				47F7127555D73252AD8A9EA6 /* Pods_NaamaBloom.framework in Frameworks */,
+				72F7D224AAE2353FDFE54CE3 /* Pods_NaamaBloom.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -61,10 +61,10 @@
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				13B07FB71A68108700A75B9A /* main.m */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				2C709ECB041A44368E51C14B /* GoogleService-Info.plist */,
-				25E501CBBBDD4C2290689DAD /* noop-file.swift */,
-				E7657B4881F3415880344187 /* NaamaBloom-Bridging-Header.h */,
-				C0EE169AC9CD885EF88E8E7F /* PrivacyInfo.xcprivacy */,
+				F82B6F41D8E2465A8A2D2950 /* GoogleService-Info.plist */,
+				8E1B166851A84097A084AB74 /* noop-file.swift */,
+				9B834323DFF3488B8347D830 /* NaamaBloom-Bridging-Header.h */,
+				9F140A200F2706421BDAFF35 /* PrivacyInfo.xcprivacy */,
 			);
 			name = NaamaBloom;
 			sourceTree = "<group>";
@@ -73,7 +73,7 @@
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				A34A6C8B7E786D6892196639 /* Pods_NaamaBloom.framework */,
+				43C72FD7CC8B1680D1BF006B /* Pods_NaamaBloom.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -150,13 +150,13 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "NaamaBloom" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				B06E1EEF3334D6204ACB28E1 /* [Expo] Configure project */,
+				E93AB7B420375155344044D2 /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				3633644A2657A7F495716118 /* [CP] Embed Pods Frameworks */,
+				F4057977A7724ABA9EBC6DCF /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -206,8 +206,8 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				F2A156EBEC5949B7B85FD39D /* GoogleService-Info.plist in Resources */,
-				34DA4DA340E18683B4D27F4B /* PrivacyInfo.xcprivacy in Resources */,
+				732AF94CD3404AE0A4B31EC6 /* GoogleService-Info.plist in Resources */,
+				2A91C79001E510252041A064 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -249,24 +249,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
-		};
-		3633644A2657A7F495716118 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-NaamaBloom/Pods-NaamaBloom-frameworks.sh",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputPaths = (
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-NaamaBloom/Pods-NaamaBloom-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */ = {
@@ -317,7 +299,7 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-NaamaBloom/Pods-NaamaBloom-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		B06E1EEF3334D6204ACB28E1 /* [Expo] Configure project */ = {
+		E93AB7B420375155344044D2 /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -336,6 +318,24 @@
 			shellPath = /bin/sh;
 			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-NaamaBloom/expo-configure-project.sh\"\n";
 		};
+		F4057977A7724ABA9EBC6DCF /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-NaamaBloom/Pods-NaamaBloom-frameworks.sh",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-NaamaBloom/Pods-NaamaBloom-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -346,7 +346,7 @@
 				13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */,
 				13B07FC11A68108700A75B9A /* main.m in Sources */,
 				B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */,
-				DC45FA9593EB4EB888534C29 /* noop-file.swift in Sources */,
+				FA4B29FCF4574D86A2B11F32 /* noop-file.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
