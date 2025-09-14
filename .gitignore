@@ -33,6 +33,7 @@ logs
 # Build artifacts
 android/app/build/
 ios/build/
+ios/
 *.ipa
 *.apk
 *.aab

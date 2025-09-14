@@ -1,7 +1,7 @@
 PODS:
   - boost (1.84.0)
   - DoubleConversion (1.1.6)
-  - EASClient (1.0.7):
+  - EASClient (0.13.3):
     - ExpoModulesCore
   - EXApplication (6.0.2):
     - ExpoModulesCore
@@ -10,8 +10,8 @@ PODS:
   - EXImageLoader (5.0.0):
     - ExpoModulesCore
     - React-Core
-  - EXJSONUtils (0.15.0)
-  - EXManifests (1.0.8):
+  - EXJSONUtils (0.14.0)
+  - EXManifests (0.15.8):
     - ExpoModulesCore
   - EXNotifications (0.29.14):
     - ExpoModulesCore
@@ -21,7 +21,7 @@ PODS:
     - ExpoModulesCore
   - ExpoBlur (14.0.3):
     - ExpoModulesCore
-  - ExpoDevice (8.0.7):
+  - ExpoDevice (7.0.3):
     - ExpoModulesCore
   - ExpoFileSystem (18.0.12):
     - ExpoModulesCore
@@ -31,13 +31,12 @@ PODS:
     - ExpoModulesCore
   - ExpoHead (4.0.21):
     - ExpoModulesCore
-  - ExpoImage (3.0.8):
+  - ExpoImage (2.0.7):
     - ExpoModulesCore
     - libavif/libdav1d
-    - SDWebImage (~> 5.21.0)
+    - SDWebImage (~> 5.19.1)
     - SDWebImageAVIFCoder (~> 0.11.0)
     - SDWebImageSVGCoder (~> 1.7.0)
-    - SDWebImageWebPCoder (~> 0.14.6)
   - ExpoImageManipulator (13.0.6):
     - EXImageLoader
     - ExpoModulesCore
@@ -79,8 +78,8 @@ PODS:
     - ExpoModulesCore
   - ExpoWebBrowser (14.0.2):
     - ExpoModulesCore
-  - EXStructuredHeaders (5.0.0)
-  - EXUpdates (29.0.10):
+  - EXStructuredHeaders (4.0.0)
+  - EXUpdates (0.27.4):
     - DoubleConversion
     - EASClient
     - EXManifests
@@ -107,7 +106,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - EXUpdatesInterface (2.0.0):
+  - EXUpdatesInterface (1.0.0):
     - ExpoModulesCore
   - fast_float (6.1.4)
   - FBLazyVector (0.76.9)
@@ -1864,9 +1863,9 @@ PODS:
     - Yoga
   - RNSVG (15.8.0):
     - React-Core
-  - SDWebImage (5.21.2):
-    - SDWebImage/Core (= 5.21.2)
-  - SDWebImage/Core (5.21.2)
+  - SDWebImage (5.19.7):
+    - SDWebImage/Core (= 5.19.7)
+  - SDWebImage/Core (5.19.7)
   - SDWebImageAVIFCoder (0.11.0):
     - libavif/core (>= 0.11.0)
     - SDWebImage (~> 5.10)
@@ -2203,22 +2202,22 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   boost: 1dca942403ed9342f98334bf4c3621f011aa7946
   DoubleConversion: f16ae600a246532c4020132d54af21d0ddb2a385
-  EASClient: 68127f1248d2b25fdc82dbbfb17be95d1c4700be
+  EASClient: 88b5fd19d0787186a0c7e6ba76deb2d4f96395ce
   EXApplication: 4c72f6017a14a65e338c5e74fca418f35141e819
   EXConstants: fcfc75800824ac2d5c592b5bc74130bad17b146b
   EXImageLoader: e5da974e25b13585c196b658a440720c075482d5
-  EXJSONUtils: 1d3e4590438c3ee593684186007028a14b3686cd
-  EXManifests: 224345a575fca389073c416297b6348163f28d1a
+  EXJSONUtils: 01fc7492b66c234e395dcffdd5f53439c5c29c93
+  EXManifests: a19d50504b8826546a4782770317bc83fffec87d
   EXNotifications: 9d3d17e52c95f377750d4a2ae553a716313dd4aa
   Expo: 1687edb10c76b0c0f135306d6ae245379f50ed54
   ExpoAsset: 48386d40d53a8c1738929b3ed509bcad595b5516
   ExpoBlur: 392c1207f71d0ecf22371621c1fbd44ba84d9742
-  ExpoDevice: 2f01090a3115ae223988134a70bf96a2e59dbbfd
+  ExpoDevice: d36ab4186b6799a28fd449bb9a1c77455f23fd1a
   ExpoFileSystem: 42d363d3b96f9afab980dcef60d5657a4443c655
   ExpoFont: f354e926f8feae5e831ec8087f36652b44a0b188
   ExpoHaptics: 8d199b2f33245ea85289ff6c954c7ee7c00a5b5d
   ExpoHead: df924203fbf8e0913fc38b0f6aec71f9a9115482
-  ExpoImage: e88f500585913969b930e13a4be47277eb7c6de8
+  ExpoImage: d840b256050f4428d2942bc2b6e9251f9e0d7021
   ExpoImageManipulator: 4aca9cc1d84e31f62a7e8075c19026d3ad62f852
   ExpoImagePicker: 24e5ba8da111f74519b1e6dc556e0b438b2b8464
   ExpoKeepAwake: b0171a73665bfcefcfcc311742a72a956e6aa680
@@ -2228,9 +2227,9 @@ SPEC CHECKSUMS:
   ExpoSplashScreen: 399ee9f85b6c8a61b965e13a1ecff8384db591c2
   ExpoSystemUI: b82a45cf0f6a4fa18d07c46deba8725dd27688b4
   ExpoWebBrowser: a212e6b480d8857d3e441fba51e0c968333803b3
-  EXStructuredHeaders: c951e77f2d936f88637421e9588c976da5827368
-  EXUpdates: 0f3241dadf6a3edbf7077987051b8acbbe852014
-  EXUpdatesInterface: 5adf50cb41e079c861da6d9b4b954c3db9a50734
+  EXStructuredHeaders: 09c70347b282e3d2507e25fb4c747b1b885f87f6
+  EXUpdates: 6cb35d269f033f8f72aaf25c6f18ad14678771b5
+  EXUpdatesInterface: 7c977640bdd8b85833c19e3959ba46145c5719db
   fast_float: 06eeec4fe712a76acc9376682e4808b05ce978b6
   FBLazyVector: 7605ea4810e0e10ae4815292433c09bf4324ba45
   fmt: 01b82d4ca6470831d1cc0852a1af644be019e8f6
@@ -2305,13 +2304,13 @@ SPEC CHECKSUMS:
   RNReanimated: 9b650d028b9422148b548e80512043a372876c00
   RNScreens: ad2d0cfb3f15c9ed56ffb43651366ec0dcd70c36
   RNSVG: 8542aa11770b27563714bbd8494a8436385fc85f
-  SDWebImage: 9f177d83116802728e122410fb25ad88f5c7608a
+  SDWebImage: 8a6b7b160b4d710e2a22b6900e25301075c34cb3
   SDWebImageAVIFCoder: 00310d246aab3232ce77f1d8f0076f8c4b021d90
   SDWebImageSVGCoder: 15a300a97ec1c8ac958f009c02220ac0402e936c
   SDWebImageWebPCoder: e38c0a70396191361d60c092933e22c20d5b1380
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   Yoga: 1259c7a8cbaccf7b4c3ddf8ee36ca11be9dee407
 
-PODFILE CHECKSUM: 5e69dddd11840590e4c9a770cdf3e60d7949df85
+PODFILE CHECKSUM: e9d55cde79c3ffe1f7f1c3b12e81f46317f48517
 
 COCOAPODS: 1.16.2
