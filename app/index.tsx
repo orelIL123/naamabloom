@@ -6,6 +6,34 @@ import { Animated, Platform, StyleSheet, View } from 'react-native';
 // Preview mode detection
 const isPreviewMode = Platform.OS === 'web' && __DEV__;
 
+// Function to check for updates
+const checkForUpdates = async () => {
+  try {
+    console.log('🔄 Checking for updates...');
+    
+    if (!Updates.isEnabled) {
+      console.log('❌ Updates not enabled');
+      return;
+    }
+
+    const update = await Updates.checkForUpdateAsync();
+    
+    if (update.isAvailable) {
+      console.log('✅ Update available! Downloading...');
+      const downloadResult = await Updates.fetchUpdateAsync();
+      
+      if (downloadResult.isNew) {
+        console.log('🎉 New update downloaded! Restarting app...');
+        await Updates.reloadAsync();
+      }
+    } else {
+      console.log('ℹ️ No updates available');
+    }
+  } catch (error) {
+    console.error('❌ Error checking for updates:', error);
+  }
+};
+
 export default function Index() {
   const router = useRouter();
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -19,6 +47,9 @@ export default function Index() {
     
     // TEST: This will prove OTA update worked! Look for this in console
     console.log("🎯 OTA TEST - UPDATE WORKING! v1.0.6-VERIFIED");
+    
+    // Check for updates automatically
+    checkForUpdates();
     
     // Simple splash animation
     Animated.timing(fadeAnim, {
