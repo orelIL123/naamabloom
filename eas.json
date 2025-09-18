@@ -15,8 +15,7 @@
       "android": {
         "buildType": "apk",
         "gradleCommand": ":app:assembleDebug"
-      },
-      "channel": "development"
+      }
     },
     "preview": {
       "channel": "production",
