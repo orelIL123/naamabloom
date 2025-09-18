@@ -46,7 +46,7 @@ export default function Index() {
     console.log("Update Runtime Version:", Updates.runtimeVersion);
     
     // TEST: This will prove OTA update worked! Look for this in console
-    console.log("🎯 OTA TEST - UPDATE WORKING! v1.0.7-NOTIFICATION-FIXED");
+    console.log("🎯 OTA TEST - UPDATE WORKING! v1.0.1-NOTIFICATION-FIXED");
     
     // Check for updates automatically
     checkForUpdates();
