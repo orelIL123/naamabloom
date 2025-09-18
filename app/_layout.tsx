@@ -57,9 +57,19 @@ import './config/firebase';
 import { useEffect, useState } from 'react';
 import { useColorScheme } from 'react-native';
 import { cleanupOldNotifications } from '../services/firebase';
+import * as Notifications from 'expo-notifications';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
+
+// Configure notification handler
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  }),
+});
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -112,6 +122,25 @@ export default function RootLayout() {
     };
     
     cleanupNotifications();
+  }, []);
+
+  // Set up notification listeners
+  useEffect(() => {
+    // Handle notifications received while app is in foreground
+    const notificationListener = Notifications.addNotificationReceivedListener(notification => {
+      console.log('📱 Notification received:', notification);
+    });
+
+    // Handle notification taps
+    const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
+      console.log('📱 Notification tapped:', response);
+      // You can add navigation logic here based on notification data
+    });
+
+    return () => {
+      Notifications.removeNotificationSubscription(notificationListener);
+      Notifications.removeNotificationSubscription(responseListener);
+    };
   }, []);
         console.warn('⏰ Font loading timeout after 5 seconds, proceeding with system fonts');
         setFontLoadTimeout(true);
