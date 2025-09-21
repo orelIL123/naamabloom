@@ -876,13 +876,11 @@ export const createAppointment = async (appointmentData: Omit<Appointment, 'id' 
       );
       
       // Schedule reminder notifications
-      await scheduleAppointmentReminders(
-        appointmentData.userId,
-        docRef.id,
-        appointmentDate.toLocaleDateString('he-IL'),
-        appointmentTime,
-        barberName
-      );
+      await scheduleAppointmentReminders(docRef.id, {
+        userId: appointmentData.userId,
+        date: appointmentData.date,
+        barberName: barberName
+      });
     } catch (notificationError) {
       console.log('Failed to send appointment notification:', notificationError);
     }
@@ -983,7 +981,14 @@ export const cancelAppointment = async (appointmentId: string, userId: string): 
       cancelledAt: Timestamp.now(),
       cancelledBy: 'customer'
     });
-    
+
+    // Cancel scheduled reminders for this appointment
+    try {
+      await cancelAppointmentReminders(appointmentId);
+    } catch (reminderError) {
+      console.log('Failed to cancel appointment reminders:', reminderError);
+    }
+
     // Send cancellation notification to user
     try {
       const barberDoc = await getDoc(doc(db, 'barbers', appointment.barberId));
@@ -1200,7 +1205,14 @@ export const deleteAppointment = async (appointmentId: string) => {
     } catch (adminNotificationError) {
       console.log('Failed to send admin cancellation notification:', adminNotificationError);
     }
-    
+
+    // Cancel scheduled reminders for this appointment
+    try {
+      await cancelAppointmentReminders(appointmentId);
+    } catch (reminderError) {
+      console.log('Failed to cancel appointment reminders:', reminderError);
+    }
+
     await deleteDoc(doc(db, 'appointments', appointmentId));
   } catch (error) {
     throw error;
@@ -3333,6 +3345,251 @@ export const sendSpecialOfferNotification = async (offerTitle: string, offerDesc
   }
 };
 
+// תזמון תזכורות מתוזמנות לתור
+export const scheduleAppointmentReminders = async (appointmentId: string, appointmentData: any) => {
+  try {
+    const appointmentDate = appointmentData.date.toDate();
+    const now = new Date();
+    const timeDiff = appointmentDate.getTime() - now.getTime();
+    const hoursUntilAppointment = timeDiff / (1000 * 60 * 60);
+
+    console.log(`📅 Scheduling reminders for appointment ${appointmentId}, ${hoursUntilAppointment} hours from now`);
+
+    // תזכורת 24 שעות לפני
+    if (hoursUntilAppointment > 24) {
+      const reminder24hTime = new Date(appointmentDate.getTime() - 24 * 60 * 60 * 1000);
+      await addDoc(collection(db, 'scheduledReminders'), {
+        appointmentId: appointmentId,
+        userId: appointmentData.userId,
+        scheduledTime: Timestamp.fromDate(reminder24hTime),
+        reminderType: '24h',
+        status: 'pending',
+        createdAt: Timestamp.now()
+      });
+      console.log(`⏰ Scheduled 24h reminder for ${reminder24hTime.toISOString()}`);
+    }
+
+    // תזכורת שעה לפני
+    if (hoursUntilAppointment > 1) {
+      const reminder1hTime = new Date(appointmentDate.getTime() - 60 * 60 * 1000);
+      await addDoc(collection(db, 'scheduledReminders'), {
+        appointmentId: appointmentId,
+        userId: appointmentData.userId,
+        scheduledTime: Timestamp.fromDate(reminder1hTime),
+        reminderType: '1h',
+        status: 'pending',
+        createdAt: Timestamp.now()
+      });
+      console.log(`⏰ Scheduled 1h reminder for ${reminder1hTime.toISOString()}`);
+    }
+
+    // תזכורת 15 דקות לפני
+    if (timeDiff > 15 * 60 * 1000) {
+      const reminder15mTime = new Date(appointmentDate.getTime() - 15 * 60 * 1000);
+      await addDoc(collection(db, 'scheduledReminders'), {
+        appointmentId: appointmentId,
+        userId: appointmentData.userId,
+        scheduledTime: Timestamp.fromDate(reminder15mTime),
+        reminderType: '15m',
+        status: 'pending',
+        createdAt: Timestamp.now()
+      });
+      console.log(`⏰ Scheduled 15m reminder for ${reminder15mTime.toISOString()}`);
+    }
+
+    console.log(`✅ All reminders scheduled for appointment ${appointmentId}`);
+  } catch (error) {
+    console.error('Error scheduling appointment reminders:', error);
+    throw error;
+  }
+};
+
+// עיבוד התזכורות המתוזמנות
+export const processScheduledReminders = async () => {
+  try {
+    const now = new Date();
+    console.log(`🔄 Processing scheduled reminders at ${now.toISOString()}`);
+
+    const remindersQuery = query(
+      collection(db, 'scheduledReminders'),
+      where('status', '==', 'pending'),
+      where('scheduledTime', '<=', Timestamp.fromDate(now))
+    );
+
+    const remindersSnapshot = await getDocs(remindersQuery);
+    console.log(`📬 Found ${remindersSnapshot.docs.length} reminders to process`);
+
+    if (remindersSnapshot.empty) {
+      console.log('No reminders to process');
+      return 0;
+    }
+
+    // שליחת כל התזכורות שהגיע זמנן
+    const results = await Promise.allSettled(
+      remindersSnapshot.docs.map(async (reminderDoc) => {
+        try {
+          const reminderData = reminderDoc.data();
+          console.log(`📨 Processing reminder ${reminderDoc.id} for appointment ${reminderData.appointmentId}`);
+
+          // וודא שהתור עדיין קיים ומאושר
+          const appointmentDoc = await getDoc(doc(db, 'appointments', reminderData.appointmentId));
+          if (!appointmentDoc.exists()) {
+            console.log(`❌ Appointment ${reminderData.appointmentId} not found, marking reminder as cancelled`);
+            await updateDoc(doc(db, 'scheduledReminders', reminderDoc.id), {
+              status: 'cancelled',
+              cancelledAt: Timestamp.now(),
+              reason: 'appointment_not_found'
+            });
+            return { success: false, reason: 'appointment_not_found' };
+          }
+
+          const appointmentData = appointmentDoc.data();
+          if (appointmentData.status !== 'confirmed') {
+            console.log(`❌ Appointment ${reminderData.appointmentId} is not confirmed (status: ${appointmentData.status}), marking reminder as cancelled`);
+            await updateDoc(doc(db, 'scheduledReminders', reminderDoc.id), {
+              status: 'cancelled',
+              cancelledAt: Timestamp.now(),
+              reason: 'appointment_not_confirmed'
+            });
+            return { success: false, reason: 'appointment_not_confirmed' };
+          }
+
+          // שליחת התזכורת
+          const success = await sendAppointmentReminderByType(reminderData.appointmentId, reminderData.reminderType);
+
+          // עדכון סטטוס התזכורת
+          if (success) {
+            await updateDoc(doc(db, 'scheduledReminders', reminderDoc.id), {
+              status: 'sent',
+              sentAt: Timestamp.now()
+            });
+            console.log(`✅ Reminder ${reminderDoc.id} sent successfully`);
+            return { success: true };
+          } else {
+            await updateDoc(doc(db, 'scheduledReminders', reminderDoc.id), {
+              status: 'failed',
+              failedAt: Timestamp.now()
+            });
+            console.log(`❌ Failed to send reminder ${reminderDoc.id}`);
+            return { success: false, reason: 'send_failed' };
+          }
+        } catch (error) {
+          console.error(`Error processing reminder ${reminderDoc.id}:`, error);
+          await updateDoc(doc(db, 'scheduledReminders', reminderDoc.id), {
+            status: 'failed',
+            failedAt: Timestamp.now(),
+            error: error.message
+          });
+          return { success: false, reason: 'processing_error' };
+        }
+      })
+    );
+
+    const successful = results.filter(result => result.status === 'fulfilled' && result.value.success).length;
+    console.log(`✅ Successfully processed ${successful}/${results.length} reminders`);
+
+    return successful;
+  } catch (error) {
+    console.error('Error processing scheduled reminders:', error);
+    throw error;
+  }
+};
+
+// שליחת תזכורת לתור לפי סוג
+export const sendAppointmentReminderByType = async (appointmentId: string, reminderType: string) => {
+  try {
+    const appointmentDoc = await getDoc(doc(db, 'appointments', appointmentId));
+    if (!appointmentDoc.exists()) {
+      console.log('Appointment not found');
+      return false;
+    }
+
+    const appointmentData = appointmentDoc.data() as Appointment;
+    const appointmentDate = appointmentData.date.toDate();
+
+    let title = '';
+    let message = '';
+
+    switch (reminderType) {
+      case '24h':
+        title = 'תזכורת לתור מחר! 📅';
+        message = `שלום! יש לך תור מחר ב-${appointmentDate.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}. נשמח לראות אותך!`;
+        break;
+      case '1h':
+        title = 'התור שלך בעוד שעה! ⏰';
+        message = `התור שלך מתחיל בעוד שעה ב-${appointmentDate.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}. זכור להגיע בזמן!`;
+        break;
+      case '15m':
+        title = 'התור שלך בעוד 15 דקות! 🏃‍♂️';
+        message = `התור שלך מתחיל בעוד 15 דקות! אנחנו מחכים לך.`;
+        break;
+      default:
+        title = 'תזכורת לתור! ⏰';
+        message = `יש לך תור ב-${appointmentDate.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`;
+    }
+
+    const success = await sendNotificationToUser(
+      appointmentData.userId,
+      title,
+      message,
+      {
+        appointmentId: appointmentId,
+        reminderType: reminderType,
+        type: 'appointment_reminder'
+      }
+    );
+
+    // יצירת רשומת התראה במסד הנתונים
+    if (success) {
+      await createNotification({
+        userId: appointmentData.userId,
+        title: title,
+        message: message,
+        type: 'reminder',
+        isRead: false,
+        data: { appointmentId: appointmentId, reminderType: reminderType }
+      });
+    }
+
+    return success;
+  } catch (error) {
+    console.error('Error sending appointment reminder by type:', error);
+    return false;
+  }
+};
+
+// ביטול תזכורות לתור שבוטל
+export const cancelAppointmentReminders = async (appointmentId: string) => {
+  try {
+    console.log(`🚫 Cancelling reminders for appointment ${appointmentId}`);
+
+    const remindersQuery = query(
+      collection(db, 'scheduledReminders'),
+      where('appointmentId', '==', appointmentId),
+      where('status', '==', 'pending')
+    );
+
+    const remindersSnapshot = await getDocs(remindersQuery);
+    console.log(`Found ${remindersSnapshot.docs.length} pending reminders to cancel`);
+
+    const cancelPromises = remindersSnapshot.docs.map(reminderDoc =>
+      updateDoc(doc(db, 'scheduledReminders', reminderDoc.id), {
+        status: 'cancelled',
+        cancelledAt: Timestamp.now(),
+        reason: 'appointment_cancelled'
+      })
+    );
+
+    await Promise.all(cancelPromises);
+    console.log(`✅ Cancelled ${cancelPromises.length} reminders for appointment ${appointmentId}`);
+
+    return cancelPromises.length;
+  } catch (error) {
+    console.error('Error cancelling appointment reminders:', error);
+    return 0;
+  }
+};
+
 // Send notification about new barber
 export const sendNewBarberNotification = async (barberName: string) => {
   try {
@@ -4041,8 +4298,8 @@ export const sendAppointmentConfirmationNotification = async (
   }
 };
 
-// Schedule reminder notifications
-export const scheduleAppointmentReminders = async (
+// Schedule reminder notifications (legacy - use scheduleAppointmentReminders instead)
+export const scheduleAppointmentRemindersLegacy = async (
   userId: string,
   appointmentId: string,
   appointmentDate: string,
@@ -4051,40 +4308,15 @@ export const scheduleAppointmentReminders = async (
 ): Promise<void> => {
   try {
     const appointmentDateTime = new Date(`${appointmentDate}T${appointmentTime}`);
-    
-    // 1 hour before reminder
-    const oneHourBefore = new Date(appointmentDateTime.getTime() - 60 * 60 * 1000);
-    if (oneHourBefore > new Date()) {
-      await createNotification({
-        userId,
-        title: 'תזכורת לתור - שעה לפני',
-        message: `התור שלך עם ${barberName} מתחיל בעוד שעה. אל תשכח!`,
-        type: 'reminder',
-        appointmentId,
-        appointmentDate,
-        appointmentTime,
-        scheduledFor: oneHourBefore,
-        isRead: false
-      });
-    }
-    
-    // 5 minutes before reminder
-    const fiveMinutesBefore = new Date(appointmentDateTime.getTime() - 5 * 60 * 1000);
-    if (fiveMinutesBefore > new Date()) {
-      await createNotification({
-        userId,
-        title: 'תזכורת לתור - 5 דקות לפני',
-        message: `התור שלך עם ${barberName} מתחיל בעוד 5 דקות!`,
-        type: 'reminder',
-        appointmentId,
-        appointmentDate,
-        appointmentTime,
-        scheduledFor: fiveMinutesBefore,
-        isRead: false
-      });
-    }
-    
-    console.log('✅ Appointment reminders scheduled');
+
+    // Use the new scheduling system
+    await scheduleAppointmentReminders(appointmentId, {
+      userId,
+      date: Timestamp.fromDate(appointmentDateTime),
+      barberName
+    });
+
+    console.log('✅ Appointment reminders scheduled (legacy method)');
   } catch (error) {
     console.error('Error scheduling appointment reminders:', error);
   }

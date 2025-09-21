@@ -29,7 +29,8 @@
     "update:prod": "eas update --branch production --message \"prod update\"",
     "postinstall": "patch-package",
     "prebuild:android": "npx patch-package --error-on-fail",
-    "seed": "ts-node scripts/seed.ts"
+    "seed": "ts-node scripts/seed.ts",
+    "process-reminders": "ts-node scripts/process-reminders.ts"
   },
   "dependencies": {
     "@expo-google-fonts/heebo": "^0.4.1",

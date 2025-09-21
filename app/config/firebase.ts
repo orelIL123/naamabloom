@@ -5,6 +5,7 @@ import 'text-encoding';
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import { getAuth, initializeAuth, onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, getFirestore, initializeFirestore, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getStorage } from 'firebase/storage';
 
 // Firebase configuration with robust fallbacks for preview mode
@@ -59,15 +60,15 @@ const initializeFirebase = async (): Promise<boolean> => {
         console.log('✅ Firebase app retrieved from existing instance');
       }
 
-      // Initialize Auth with fallback
+      // Initialize Auth (Firebase Auth automatically persists in React Native)
       try {
         authInstance = getAuth(app);
-        console.log('✅ Firebase Auth initialized');
+        console.log('✅ Firebase Auth initialized (auth state automatically persists in React Native)');
       } catch (authError) {
         console.warn('Auth getAuth failed, trying initializeAuth:', authError);
         try {
           authInstance = initializeAuth(app);
-          console.log('✅ Firebase Auth initialized with initializeAuth');
+          console.log('✅ Firebase Auth initialized with initializeAuth (auth state automatically persists)');
         } catch (initAuthError) {
           console.error('❌ Firebase Auth initialization failed:', initAuthError);
           return false;

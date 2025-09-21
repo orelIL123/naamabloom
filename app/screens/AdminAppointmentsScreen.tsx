@@ -102,7 +102,7 @@ const AdminAppointmentsScreen: React.FC<AdminAppointmentsScreenProps> = ({ onNav
             willAutoComplete: isPast && appointment.status === 'pending'
           });
           
-          if (isPast && appointment.status === 'pending') {
+          if (isPast && (appointment.status === 'pending' || appointment.status === 'confirmed')) {
             console.log(`🔄 Auto-completing past appointment: ${appointment.id}`);
             await updateAppointment(appointment.id, { status: 'completed' });
             return { ...appointment, status: 'completed' as const };
@@ -397,6 +397,21 @@ const AdminAppointmentsScreen: React.FC<AdminAppointmentsScreenProps> = ({ onNav
   const filteredAppointments = appointments
     .filter(apt => {
       if (filter === 'all') return true;
+
+      const now = new Date();
+      const aptTime = apt.date.toMillis ? apt.date.toMillis() : new Date(apt.date).getTime();
+      const isFuture = aptTime > now.getTime();
+
+      if (filter === 'pending') {
+        // Show future appointments that are pending or confirmed
+        return isFuture && (apt.status === 'pending' || apt.status === 'confirmed');
+      }
+
+      if (filter === 'completed') {
+        // Show completed appointments or cancelled ones
+        return apt.status === 'completed' || apt.status === 'cancelled';
+      }
+
       return apt.status === filter;
     })
     .sort((a, b) => {
@@ -423,24 +438,28 @@ const AdminAppointmentsScreen: React.FC<AdminAppointmentsScreenProps> = ({ onNav
     return upcomingAppointments[0] || null;
   };
 
-  // Find the next/closest appointment to highlight
-  const getClosestAppointment = () => {
+  // Find the next upcoming appointment to highlight (only future appointments)
+  const getNextUpcomingAppointment = () => {
     const now = new Date();
-    return appointments
+    const upcomingAppointments = appointments
       .filter(apt => apt.status === 'pending' || apt.status === 'confirmed')
+      .filter(apt => {
+        const aptTime = apt.date.toMillis ? apt.date.toMillis() : new Date(apt.date).getTime();
+        return aptTime > now.getTime(); // Only future appointments
+      })
       .sort((a, b) => {
         const aTime = a.date.toMillis ? a.date.toMillis() : new Date(a.date).getTime();
         const bTime = b.date.toMillis ? b.date.toMillis() : new Date(b.date).getTime();
-        const aDiff = Math.abs(aTime - now.getTime());
-        const bDiff = Math.abs(bTime - now.getTime());
-        return aDiff - bDiff;
-      })[0];
+        return aTime - bTime; // Sort by earliest first
+      });
+
+    return upcomingAppointments[0] || null;
   };
 
-  // Check if appointment is the closest one
+  // Check if appointment is the next upcoming one (green frame)
   const isCurrentAppointment = (appointment: Appointment) => {
-    const closestAppointment = getClosestAppointment();
-    const isCurrent = closestAppointment && closestAppointment.id === appointment.id;
+    const nextAppointment = getNextUpcomingAppointment();
+    const isCurrent = nextAppointment && nextAppointment.id === appointment.id;
     
     console.log(`🔍 Checking appointment ${appointment.id}:`, {
       appointmentTime: new Date(appointment.date.toMillis ? appointment.date.toMillis() : new Date(appointment.date).getTime()).toISOString(),
@@ -463,8 +482,21 @@ const AdminAppointmentsScreen: React.FC<AdminAppointmentsScreenProps> = ({ onNav
 
   const filterButtons = [
     { key: 'all', label: 'הכל', count: appointments.length },
-    { key: 'pending', label: 'ממתין', count: appointments.filter(a => a.status === 'pending').length },
-    { key: 'completed', label: 'הושלם', count: appointments.filter(a => a.status === 'completed').length },
+    {
+      key: 'pending',
+      label: 'ממתין',
+      count: appointments.filter(a => {
+        const now = new Date();
+        const aptTime = a.date.toMillis ? a.date.toMillis() : new Date(a.date).getTime();
+        const isFuture = aptTime > now.getTime();
+        return isFuture && (a.status === 'pending' || a.status === 'confirmed');
+      }).length
+    },
+    {
+      key: 'completed',
+      label: 'הושלם',
+      count: appointments.filter(a => a.status === 'completed' || a.status === 'cancelled').length
+    },
   ];
 
   return (
