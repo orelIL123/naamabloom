@@ -56,7 +56,9 @@ import './config/firebase';
 
 import { useEffect, useState } from 'react';
 import { useColorScheme } from 'react-native';
-import { cleanupOldNotifications } from '../services/firebase';
+import { cleanupOldNotifications, registerForPushNotifications } from '../services/firebase';
+import { auth } from './config/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 import * as Notifications from 'expo-notifications';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -122,6 +124,25 @@ export default function RootLayout() {
     };
     
     cleanupNotifications();
+  }, []);
+
+  // Set up auth state listener for push notification registration
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        console.log('🔐 User authenticated, re-registering for push notifications:', user.uid);
+        try {
+          await registerForPushNotifications(user.uid);
+          console.log('✅ Push notifications re-registered for authenticated user');
+        } catch (error) {
+          console.error('❌ Failed to re-register push notifications:', error);
+        }
+      } else {
+        console.log('🔓 User logged out, push notifications will not be active');
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
   // Set up notification listeners
