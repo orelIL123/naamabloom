@@ -3362,7 +3362,7 @@ export const registerForPushNotifications = async (userId: string) => {
     }
 
     // Request notification permission with proper explanation
-    const { requestNotificationPermission } = await Promise.resolve().then(() => require('./permissions'));
+    const { requestNotificationPermission } = await import('./permissions');
     const hasPermission = await requestNotificationPermission();
     
     if (!hasPermission) {
@@ -4453,25 +4453,35 @@ export const cleanupOldNotifications = async (): Promise<void> => {
 
 // Send appointment confirmation notification
 export const sendAppointmentConfirmationNotification = async (
-  userId: string, 
-  appointmentId: string, 
-  appointmentDate: string, 
+  userId: string,
+  appointmentId: string,
+  appointmentDate: string,
   appointmentTime: string,
   barberName: string
 ): Promise<void> => {
   try {
-    await createNotification({
-      userId,
-      title: 'אישור תור',
-      message: `התור שלך ליום ${appointmentDate} בשעה ${appointmentTime} עם ${barberName} אושר בהצלחה!`,
-      type: 'confirmation',
+    const title = 'התור שלך אושר! ✅';
+    const message = `התור שלך ליום ${appointmentDate} בשעה ${appointmentTime} עם ${barberName} אושר בהצלחה!`;
+
+    // Send push notification
+    await sendNotificationToUser(userId, title, message, {
       appointmentId,
       appointmentDate,
       appointmentTime,
+      barberName,
+      type: 'appointment_confirmation'
+    });
+
+    // Create database notification
+    await createNotification({
+      userId,
+      title: title,
+      message: message,
+      type: 'confirmation',
       isRead: false
     });
-    
-    console.log('✅ Appointment confirmation notification sent');
+
+    console.log('✅ Appointment confirmation notification sent (push + database)');
   } catch (error) {
     console.error('Error sending appointment confirmation notification:', error);
   }
