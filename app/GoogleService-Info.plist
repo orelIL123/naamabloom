@@ -3,17 +3,17 @@
 <plist version="1.0">
 <dict>
 	<key>API_KEY</key>
-	<string>AIzaSyD607IWv6N8gyyxYnuI9VpOIIfrNXqEkhI</string>
+	<string>AIzaSyAKEPu7-naLTdeBGAu5dVyvDuGKsFz2E4c</string>
 	<key>GCM_SENDER_ID</key>
-	<string>448973562994</string>
+	<string>53851377123</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.naama.bloom</string>
+	<string>com.barbersbar.app</string>
 	<key>PROJECT_ID</key>
-	<string>naama-bloom-88733</string>
+	<string>barbers-bar-ae31f</string>
 	<key>STORAGE_BUCKET</key>
-	<string>naama-bloom-88733.firebasestorage.app</string>
+	<string>barbers-bar-ae31f.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:448973562994:ios:69718dbfe3941bcbb1ceeb</string>
+	<string>1:53851377123:ios:b4d77fde0e97fdab6a24d6</string>
 </dict>
 </plist>

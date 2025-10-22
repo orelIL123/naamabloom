@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { onAuthStateChanged } from 'firebase/auth';
 import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -20,11 +21,11 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { CONTACT_INFO } from '../../constants/contactInfo';
-import { getCurrentUser, getUserNotifications, NotificationData } from '../../services/firebase';
+import { cancelAppointment, getBarbers, getCurrentUser, getStorageImages, getTreatments, getUserAppointments, getUserNotifications, NotificationData } from '../../services/firebase';
 import AboutModal from '../components/AboutModal';
 import SideMenu from '../components/SideMenu';
 import TopNav from '../components/TopNav';
+import { auth, checkFirebaseReady, checkIsAdmin, checkIsBarber, db } from '../config/firebase';
 
 // Preview mode detection
 const isPreviewMode = Platform.OS === 'web' && __DEV__;
@@ -82,9 +83,9 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isBarber, setIsBarber] = useState(false);
-  const [welcomeMessage, setWelcomeMessage] = useState('ברוכים הבאים ל-naama bloom!');
-  const [subtitleMessage, setSubtitleMessage] = useState('הקליניקה המקצועית שלך');
-  const [aboutUsMessage, setAboutUsMessage] = useState('ברוכים הבאים ל-naama bloom! כאן תיהנו מחוויה אישית, מקצועית ומפנקת, עם יחס חם לכל לקוח. רן אגלריסי, בעל ניסיון של שנים בתחום, מזמין אתכם להתרווח, להתחדש ולהרגיש בבית.');
+  const [welcomeMessage, setWelcomeMessage] = useState('ברוכים הבאים ל-Barbers Bar!');
+  const [subtitleMessage, setSubtitleMessage] = useState('המספרה המקצועית שלך');
+  const [aboutUsMessage, setAboutUsMessage] = useState('ברוכים הבאים ל-Barbers Bar! כאן תיהנו מחוויה אישית, מקצועית ומפנקת, עם יחס חם לכל לקוח. רן אגלריסי, בעל ניסיון של שנים בתחום, מזמין אתכם להתרווח, להתחדש ולהרגיש בבית.');
   const [showPopup, setShowPopup] = useState(false);
   const [popupMessage, setPopupMessage] = useState('');
 
@@ -97,13 +98,14 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
   const ctaFade = useRef(new Animated.Value(0)).current;
   const cardsFade = useRef(new Animated.Value(0)).current;
 
-  // 3D Carousel refs
+  // 3D Carousel refs - Enhanced for better 3D effect
   const carousel3DRef = useRef<ScrollView>(null);
-  const cardWidth = 180;
-  const cardHeight = 320; // 9:16 aspect ratio
-  const cardSpacing = -30; // Negative spacing to show next image
+  const cardWidth = 280;
+  const cardHeight = 380; // Better aspect ratio for 3D effect
+  const cardSpacing = 20; // More spacing for better 3D separation
   const scrollX = useRef(new Animated.Value(0)).current;
-  const isJumping = useRef(false); // Prevent rapid jumping
+  const isJumping = useRef(false);
+  const autoScrollRef = useRef<NodeJS.Timeout | null>(null);
 
   // Get original images array from Firebase Storage
   console.log('Gallery images from Firebase:', settingsImages.gallery);
@@ -112,74 +114,92 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
   // Only show gallery if we have Firebase images and they're loaded
   const originalImages = settingsImages.gallery.length > 0 ? settingsImages.gallery : [];
 
-  // Create smooth infinite loop gallery with 5 copies for ultra-smooth scrolling
+  // Create smooth infinite loop gallery with 7 copies for ultra-smooth scrolling
   const galleryImages = originalImages.length > 0 ? [
     ...originalImages, 
     ...originalImages, 
     ...originalImages, 
     ...originalImages, 
+    ...originalImages,
+    ...originalImages,
     ...originalImages
   ] : [];
   const originalLength = originalImages.length;
   const itemWidth = cardWidth + cardSpacing;
 
-  // 3D Transform function for carousel cards
+  // Enhanced 3D Transform function for carousel cards
   const getCardTransform = (index: number, scrollXValue: Animated.Value) => {
     const cardOffset = index * (cardWidth + cardSpacing);
     const inputRange = [
       cardOffset - cardWidth - cardSpacing,
+      cardOffset - cardWidth / 2,
       cardOffset,
+      cardOffset + cardWidth / 2,
       cardOffset + cardWidth + cardSpacing,
     ];
     
     const translateX = scrollXValue.interpolate({
       inputRange,
-      outputRange: [cardWidth / 2, 0, -cardWidth / 2],
-      extrapolate: 'extend',
+      outputRange: [cardWidth / 2, cardWidth / 4, 0, -cardWidth / 4, -cardWidth / 2],
+      extrapolate: 'clamp',
     });
     
     const scale = scrollXValue.interpolate({
       inputRange,
-      outputRange: [0.8, 1, 0.8],
-      extrapolate: 'extend',
+      outputRange: [0.9, 0.95, 1, 0.95, 0.9], // Less dramatic scaling
+      extrapolate: 'clamp',
     });
     
     const rotateY = scrollXValue.interpolate({
       inputRange,
-      outputRange: ['-45deg', '0deg', '45deg'],
-      extrapolate: 'extend',
+      outputRange: ['-15deg', '-8deg', '0deg', '8deg', '15deg'], // Less dramatic rotation
+      extrapolate: 'clamp',
     });
     
     const opacity = scrollXValue.interpolate({
       inputRange,
-      outputRange: [0.5, 1, 0.5],
-      extrapolate: 'extend',
+      outputRange: [0.8, 0.9, 1, 0.9, 0.8], // Less dramatic opacity - all images visible
+      extrapolate: 'clamp',
+    });
+
+    const translateY = scrollXValue.interpolate({
+      inputRange,
+      outputRange: [50, 25, 0, 25, 50],
+      extrapolate: 'clamp',
+    });
+
+    const rotateX = scrollXValue.interpolate({
+      inputRange,
+      outputRange: ['15deg', '8deg', '0deg', '8deg', '15deg'],
+      extrapolate: 'clamp',
     });
 
     return {
       transform: [
         { translateX },
+        { translateY },
         { scale },
         { rotateY },
-        { perspective: 1000 },
+        { rotateX },
+        { perspective: 1200 },
       ],
       opacity,
     };
   };
 
-  // Ultra-smooth infinite scroll with 5-copy system
+  // Ultra-smooth infinite scroll with 7-copy system
   const handleScroll = (event: any) => {
     if (originalLength === 0 || isJumping.current) return;
     
     const offsetX = event.nativeEvent.contentOffset.x;
     const totalWidth = originalLength * itemWidth;
     
-    // With 5 copies, we have more room for smooth transitions
-    // Structure: [1][2][3][4][5] where we start at position 2
-    const rightBoundary = totalWidth * 3.8; // Near end of 4th set
-    const leftBoundary = totalWidth * 1.2;  // Near beginning of 2nd set
+    // With 7 copies, we have more room for smooth transitions
+    // Structure: [1][2][3][4][5][6][7] where we start at position 3
+    const rightBoundary = totalWidth * 4.8; // Near end of 5th set
+    const leftBoundary = totalWidth * 2.2;  // Near beginning of 3rd set
     
-    // When scrolling right beyond 4th set, jump back by one set
+    // When scrolling right beyond 5th set, jump back by one set
     if (offsetX >= rightBoundary) {
       isJumping.current = true;
       const newPosition = offsetX - totalWidth;
@@ -197,10 +217,10 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
         
         setTimeout(() => {
           isJumping.current = false;
-        }, 100);
+        }, 50);
       });
     }
-    // When scrolling left beyond 2nd set, jump forward by one set
+    // When scrolling left beyond 3rd set, jump forward by one set
     else if (offsetX <= leftBoundary) {
       isJumping.current = true;
       const newPosition = offsetX + totalWidth;
@@ -218,27 +238,55 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
         
         setTimeout(() => {
           isJumping.current = false;
-        }, 100);
+        }, 50);
       });
     }
   };
 
-  // Initialize gallery to start at the 3rd set (middle of 5 copies) for ultra-smooth scrolling
+  // Initialize gallery to start at the 3rd set (middle of 7 copies) for ultra-smooth scrolling
   useEffect(() => {
     if (originalLength > 0 && carousel3DRef.current) {
       // Use a longer timeout to ensure the gallery is fully loaded
       const timer = setTimeout(() => {
-        const startPosition = originalLength * itemWidth * 2; // Start at 3rd set (middle)
+        const startPosition = originalLength * itemWidth * 3; // Start at 4th set (middle of 7)
         console.log('🎯 Initializing gallery at position:', Math.round(startPosition));
         carousel3DRef.current?.scrollTo({
           x: startPosition,
           animated: false,
         });
-      }, 500); // Longer timeout for better stability
+      }, 800); // Longer timeout for better stability
       
       return () => clearTimeout(timer);
     }
   }, [originalLength, itemWidth, galleryImages.length]);
+
+  // Auto-scroll gallery every 4 seconds with better control
+  useEffect(() => {
+    if (originalLength === 0) return;
+    
+    const startAutoScroll = () => {
+      autoScrollRef.current = setInterval(() => {
+        if (carousel3DRef.current && !isJumping.current) {
+          // Use a ref to track current position instead of accessing _value
+          const nextPosition = (scrollX as any)._value + itemWidth;
+          carousel3DRef.current.scrollTo({
+            x: nextPosition,
+            animated: true,
+          });
+        }
+      }, 4000); // Slower auto-scroll for better viewing
+    };
+
+    // Start auto-scroll after a delay
+    const startTimer = setTimeout(startAutoScroll, 2000);
+    
+    return () => {
+      clearTimeout(startTimer);
+      if (autoScrollRef.current) {
+        clearInterval(autoScrollRef.current);
+      }
+    };
+  }, [originalLength, itemWidth]);
 
   useEffect(() => {
     setTimeout(() => {
@@ -286,9 +334,9 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
       console.log('🌐 Preview mode detected, using fallback data');
       setImagesLoading(false);
       setLoading(false);
-      setWelcomeMessage('ברוכים הבאים ל-naama bloom!');
+      setWelcomeMessage('ברוכים הבאים ל-Barbers Bar!');
       setSubtitleMessage('המספרה המקצועית שלך');
-      setAboutUsMessage('ברוכים הבאים ל-naama bloom! כאן תיהנו מחוויה אישית, מקצועית ומפנקת, עם יחס חם לכל לקוח. רן אגלריסי, בעל ניסיון של שנים בתחום, מזמין אתכם להתרווח, להתחדש ולהרגיש בבית.');
+      setAboutUsMessage('ברוכים הבאים ל-Barbers Bar! כאן תיהנו מחוויה אישית, מקצועית ומפנקת, עם יחס חם לכל לקוח. רן אגלריסי, בעל ניסיון של שנים בתחום, מזמין אתכם להתרווח, להתחדש ולהרגיש בבית.');
       return;
     }
 
@@ -296,8 +344,7 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
     InteractionManager.runAfterInteractions(async () => {
       // Wait for Firebase to be ready before making calls
       try {
-        const { waitForFirebaseReady } = await import('../config/firebase');
-        const isReady = await waitForFirebaseReady(5000);
+        const isReady = checkFirebaseReady();
         
         if (isReady) {
           console.log('✅ Firebase ready, loading HomeScreen data');
@@ -324,16 +371,12 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
       }
 
       try {
-        const { waitForFirebaseReady, getAuthInstance } = await import('../config/firebase');
-        const { onAuthStateChanged } = await import('firebase/auth');
-        
-        const isReady = await waitForFirebaseReady(3000);
+        const isReady = checkFirebaseReady();
         if (!isReady) {
           console.warn('⚠️ Firebase not ready for auth listener');
           return;
         }
 
-        const auth = getAuthInstance();
         if (!auth) {
           console.warn('⚠️ Auth instance not available');
           return;
@@ -344,12 +387,9 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
           if (user) {
             // Check if user is admin or barber with timeout protection
             try {
-              const { safeFirebaseOperation } = await import('../config/firebase');
-              const { checkIsAdmin, checkIsBarber } = await import('../../services/firebase');
-              
               const [adminStatus, barberStatus] = await Promise.all([
-                safeFirebaseOperation(() => checkIsAdmin(user.uid), 2, 'Check admin status'),
-                safeFirebaseOperation(() => checkIsBarber(user.uid), 2, 'Check barber status')
+                checkIsAdmin(user.uid),
+                checkIsBarber(user.uid)
               ]);
               
               console.log('✅ User permissions check:', { 
@@ -391,95 +431,75 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
   // Fetch images from Firebase gallery collection and settings with enhanced error handling
   const fetchImages = async () => {
     try {
-      const { safeFirebaseOperation, getDbInstance } = await import('../config/firebase');
-      const { getStorageImages } = await import('../../services/firebase');
-      
-      const db = getDbInstance();
       if (!db) {
-        console.warn('⚠️ Firestore not available, using fallback images');
+        console.error('❌ Firestore not available');
         setImagesLoading(false);
         return;
       }
 
-      // Safely fetch gallery images
-      const galleryImages: string[] = await safeFirebaseOperation(async () => {
-        const galleryQuery = query(collection(db, 'gallery'), where('isActive', '==', true));
-        const gallerySnapshot = await getDocs(galleryQuery);
-        const images: string[] = [];
-        
-        gallerySnapshot.forEach((doc) => {
-          const data = doc.data();
-          if (data.type === 'gallery' && data.imageUrl) {
-            images.push(data.imageUrl);
-          }
-        });
-        
-        // Sort by order
-        images.sort((a, b) => {
-          const docA = gallerySnapshot.docs.find(doc => doc.data().imageUrl === a);
-          const docB = gallerySnapshot.docs.find(doc => doc.data().imageUrl === b);
-          const orderA = docA?.data().order || 0;
-          const orderB = docB?.data().order || 0;
-          return orderA - orderB;
-        });
-        
-        return images;
-      }, 3, 'Fetch gallery images') || [];
-
-      // Safely fetch settings images
-      const settingsImages = await safeFirebaseOperation(async () => {
-        const settingsDocRef = doc(db, 'settings', 'images');
-        const settingsDocSnap = await getDoc(settingsDocRef);
-        
-        if (settingsDocSnap.exists()) {
-          const data = settingsDocSnap.data();
-          return {
-            atmosphere: data.atmosphereImage || '',
-            aboutUs: data.aboutUsImage || '',
-            aboutUsBottom: data.aboutUsBottomImage || ''
-          };
+      // Fetch gallery images
+      const galleryQuery = query(collection(db, 'gallery'), where('isActive', '==', true));
+      const gallerySnapshot = await getDocs(galleryQuery);
+      const galleryImages: string[] = [];
+      
+      gallerySnapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.type === 'gallery' && data.imageUrl) {
+          galleryImages.push(data.imageUrl);
         }
-        return { atmosphere: '', aboutUs: '', aboutUsBottom: '' };
-      }, 2, 'Fetch settings images') || { atmosphere: '', aboutUs: '', aboutUsBottom: '' };
+      });
+      
+      // Sort by order
+      galleryImages.sort((a, b) => {
+        const docA = gallerySnapshot.docs.find(doc => doc.data().imageUrl === a);
+        const docB = gallerySnapshot.docs.find(doc => doc.data().imageUrl === b);
+        const orderA = docA?.data().order || 0;
+        const orderB = docB?.data().order || 0;
+        return orderA - orderB;
+      });
 
-      let { atmosphere: atmosphereImage, aboutUs: aboutUsImage, aboutUsBottom: aboutUsBottomImage } = settingsImages;
+      // Fetch settings images
+      const settingsDocRef = doc(db, 'settings', 'images');
+      const settingsDocSnap = await getDoc(settingsDocRef);
+      
+      let atmosphereImage = '';
+      let aboutUsImage = '';
+      let aboutUsBottomImage = '';
+      
+      if (settingsDocSnap.exists()) {
+        const data = settingsDocSnap.data();
+        atmosphereImage = data?.atmosphereImage || '';
+        aboutUsImage = data?.aboutUsImage || '';
+        aboutUsBottomImage = data?.aboutUsBottomImage || '';
+      }
 
-      // If no aboutUsImage from settings, try storage with timeout protection
+      // If no aboutUsImage from settings, try storage
       if (!aboutUsImage) {
-        const aboutusImages = await safeFirebaseOperation(async () => {
-          return await getStorageImages('aboutus');
-        }, 2, 'Fetch aboutus storage images') || [];
-
-        if (aboutusImages.length > 0) {
-          const aboutUsFile = aboutusImages.find(url => 
-            url.toLowerCase().includes('aboutus.png') || 
-            url.toLowerCase().includes('aboutus.jpg')
-          );
-          aboutUsImage = aboutUsFile || aboutusImages[0];
+        try {
+          const aboutusImages = await getStorageImages('aboutus');
+          if (aboutusImages.length > 0) {
+            const aboutUsFile = aboutusImages.find((url: string) => 
+              url.toLowerCase().includes('aboutus.png') || 
+              url.toLowerCase().includes('aboutus.jpg')
+            );
+            aboutUsImage = aboutUsFile || aboutusImages[0];
+          }
+        } catch (error) {
+          console.warn('⚠️ Could not load aboutus images:', error);
         }
       }
 
       // If no aboutUsBottomImage, try to get additional images
       if (!aboutUsBottomImage) {
-        const additionalImages = await safeFirebaseOperation(async () => {
+        try {
           const aboutusImages = await getStorageImages('aboutus');
-          return aboutusImages.filter(url => url !== aboutUsImage);
-        }, 2, 'Fetch additional aboutus images') || [];
-
-        if (additionalImages.length > 0) {
-          aboutUsBottomImage = additionalImages[0];
-        } else {
-          // Fallback to gallery collection
-          const galleryAboutUs = await safeFirebaseOperation(async () => {
-            const aboutUsQuery = query(collection(db, 'gallery'), 
-              where('path', '==', 'aboutus/ABOUTUS'),
-              where('isActive', '==', true)
-            );
-            const aboutUsSnapshot = await getDocs(aboutUsQuery);
-            return aboutUsSnapshot.empty ? '' : aboutUsSnapshot.docs[0].data().imageUrl || '';
-          }, 2, 'Fetch gallery aboutus image') || '';
+          const additionalImages = aboutusImages.filter((url: string) => url !== aboutUsImage);
           
-          aboutUsBottomImage = galleryAboutUs;
+          if (additionalImages.length > 0) {
+            aboutUsBottomImage = additionalImages[0];
+          }
+        } catch (error) {
+          console.warn('⚠️ Could not load additional aboutus images:', error);
         }
       }
 
@@ -514,33 +534,26 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
   // Fetch messages from Firebase settings with enhanced error handling
   const fetchMessages = async () => {
     try {
-      const { safeFirebaseOperation, getDbInstance } = await import('../config/firebase');
-      
-      const db = getDbInstance();
       if (!db) {
-        console.warn('⚠️ Firestore not available for messages, using defaults');
+        console.error('❌ Firestore not available for messages');
         return;
       }
 
-      // Load welcome messages with safe operation
-      const welcomeData = await safeFirebaseOperation(async () => {
-        const welcomeDoc = await getDoc(doc(db, 'settings', 'homeMessages'));
-        return welcomeDoc.exists() ? welcomeDoc.data() : null;
-      }, 2, 'Fetch welcome messages');
+      // Load welcome messages
+      const welcomeDoc = await getDoc(doc(db, 'settings', 'homeMessages'));
+      const welcomeData = welcomeDoc.exists() ? welcomeDoc.data() : null;
 
       if (welcomeData) {
-        setWelcomeMessage(welcomeData.welcome || 'ברוכים הבאים ל-NB EYEBROWS!');
-        setSubtitleMessage(welcomeData.subtitle || 'הקליניקה המקצועית שלך');
+        setWelcomeMessage(welcomeData.welcome || 'ברוכים הבאים ל-Barbers Bar!');
+        setSubtitleMessage(welcomeData.subtitle || 'המספרה המקצועית שלך');
       }
 
-      // Load about us text with safe operation
-      const aboutData = await safeFirebaseOperation(async () => {
-        const aboutDoc = await getDoc(doc(db, 'settings', 'aboutUsText'));
-        return aboutDoc.exists() ? aboutDoc.data() : null;
-      }, 2, 'Fetch about us text');
+      // Load about us text
+      const aboutDoc = await getDoc(doc(db, 'settings', 'aboutUsText'));
+      const aboutData = aboutDoc.exists() ? aboutDoc.data() : null;
 
       if (aboutData) {
-        setAboutUsMessage(aboutData.text || 'ברוכים הבאים ל-naama bloom! כאן תיהנו מחוויה אישית, מקצועית ומפנקת, עם יחס חם לכל לקוח. רן אגלריסי, בעל ניסיון של שנים בתחום, מזמין אתכם להתרווח, להתחדש ולהרגיש בבית.');
+        setAboutUsMessage(aboutData.text || 'ברוכים הבאים ל-Barbers Bar! כאן תיהנו מחוויה אישית, מקצועית ומפנקת, עם יחס חם לכל לקוח. רן אגלריסי, בעל ניסיון של שנים בתחום, מזמין אתכם להתרווח, להתחדש ולהרגיש בבית.');
       }
 
       console.log('✅ Messages loaded successfully');
@@ -580,10 +593,6 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
     }
 
     try {
-      const { getAuthInstance } = await import('../config/firebase');
-      const { cancelAppointment } = await import('../../services/firebase');
-      
-      const auth = getAuthInstance();
       const currentUserId = auth?.currentUser?.uid;
       
       if (!currentUserId) {
@@ -634,11 +643,6 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
     }
 
     try {
-      // Import the function to get user appointments
-      const { getAuthInstance } = await import('../config/firebase');
-      const { getUserAppointments } = await import('../../services/firebase');
-      
-      const auth = getAuthInstance();
       const currentUserId = auth?.currentUser?.uid;
       
       if (!currentUserId) {
@@ -713,14 +717,13 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
       const appointmentDetails = await Promise.all(
         upcomingAppointments.map(async (apt) => {
           try {
-            const [treatment, barber] = await Promise.all([
-              import('../../services/firebase').then(m => m.getTreatments()).then(treatments => 
-                treatments.find(t => t.id === apt.treatmentId)
-              ),
-              import('../../services/firebase').then(m => m.getBarbers()).then(barbers => 
-                barbers.find(b => b.id === apt.barberId)
-              )
+            const [treatments, barbers] = await Promise.all([
+              getTreatments(),
+              getBarbers()
             ]);
+            
+            const treatment = treatments.find(t => t.id === apt.treatmentId);
+            const barber = barbers.find(b => b.id === apt.barberId);
             
             return {
               ...apt,
@@ -869,7 +872,7 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
   };
 
   const handleCallPress = () => {
-    const phoneNumber = CONTACT_INFO.displayPhone;
+    const phoneNumber = '0548353232';
     Linking.openURL(`tel:${phoneNumber}`);
   };
 
@@ -878,7 +881,8 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
   };
 
   const handleWazePress = () => {
-    const address = CONTACT_INFO.displayAddress;
+    // Waze navigation to Barbers Bar - רפיח ים 13, נתיבות
+    const address = 'רפיח ים 13, נתיבות';
     
     // Use HTTPS URL with address - works without LSApplicationQueriesSchemes
     const wazeUrl = `https://waze.com/ul?q=${encodeURIComponent(address)}&navigate=yes&z=17`;
@@ -888,7 +892,7 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
   };
 
   const handleOrelWhatsAppPress = () => {
-    const phoneNumber = '+972523456789';
+    const phoneNumber = '0523985505';
     const message = 'שלום! אני מעוניין באפליקציה לעסק שלי';
     
     // Try different WhatsApp URL formats for different platforms
@@ -910,7 +914,7 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
   };
 
   const handleBarberWhatsAppPress = () => {
-    const phoneNumber = CONTACT_INFO.phone; // מספר הטלפון של הספר (רן)
+    const phoneNumber = '0548353232'; // מספר הטלפון של הספר (רן)
     const message = 'שלום! אני מעוניין לקבוע תור';
     
     // Use HTTPS URL - works without LSApplicationQueriesSchemes
@@ -961,7 +965,7 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
   return (
     <SafeAreaView style={styles.container}>
       <TopNav 
-        title="NB EYEBROWS" 
+        title="Barbers Bar" 
         onMenuPress={() => setSideMenuVisible(true)}
         onBellPress={handleNotificationPress}
       />
@@ -970,7 +974,7 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
         {/* Hero Section */}
         <View style={styles.backgroundWrapper}>
           <ImageBackground
-            source={settingsImages.atmosphere ? { uri: settingsImages.atmosphere } : require('../../assets/images/atmosphere.png')}
+            source={settingsImages.atmosphere ? { uri: settingsImages.atmosphere } : require('../../assets/images/ATMOSPHERE.jpg')}
             style={styles.atmosphereImage}
             resizeMode="cover"
           >
@@ -994,7 +998,7 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
           ]}
         >
           <LinearGradient
-            colors={['rgba(255, 0, 170, 0.1)', 'rgba(255, 0, 170, 0.05)', 'rgba(3, 3, 3, 0.95)']}
+            colors={['rgba(59, 130, 246, 0.1)', 'rgba(59, 130, 246, 0.05)', 'rgba(3, 3, 3, 0.95)']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.cardGradient}
@@ -1019,34 +1023,34 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
             <View style={styles.quickActionsContainer}>
               <TouchableOpacity style={styles.quickActionButton} onPress={handleTeamPress}>
                 <LinearGradient
-                  colors={['rgba(255, 0, 170, 0.1)', 'rgba(255, 255, 255, 0.95)']}
+                  colors={['rgba(59, 130, 246, 0.1)', 'rgba(255, 255, 255, 0.95)']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.quickActionGradient}
                 />
-                <Ionicons name="people" size={28} color="#FF00AA" />
+                <Ionicons name="people" size={28} color="#3b82f6" />
                 <Text style={styles.quickActionText}>הצוות שלנו</Text>
               </TouchableOpacity>
               
               <TouchableOpacity style={styles.quickActionButton} onPress={handleMyAppointmentsPress}>
                 <LinearGradient
-                  colors={['rgba(255, 0, 170, 0.1)', 'rgba(255, 255, 255, 0.95)']}
+                  colors={['rgba(59, 130, 246, 0.1)', 'rgba(255, 255, 255, 0.95)']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.quickActionGradient}
                 />
-                <Ionicons name="calendar" size={28} color="#FF00AA" />
+                <Ionicons name="calendar" size={28} color="#3b82f6" />
                 <Text style={styles.quickActionText}>התורים שלי</Text>
               </TouchableOpacity>
               
               <TouchableOpacity style={styles.quickActionButton} onPress={handleCallPress}>
                 <LinearGradient
-                  colors={['rgba(255, 0, 170, 0.1)', 'rgba(255, 255, 255, 0.95)']}
+                  colors={['rgba(59, 130, 246, 0.1)', 'rgba(255, 255, 255, 0.95)']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.quickActionGradient}
                 />
-                <Ionicons name="call" size={28} color="#FF00AA" />
+                <Ionicons name="call" size={28} color="#3b82f6" />
                 <Text style={styles.quickActionText}>התקשר</Text>
               </TouchableOpacity>
               
@@ -1060,7 +1064,7 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
               <View style={styles.carousel3DContainer}>
                 {imagesLoading || galleryImages.length === 0 ? (
                   <View style={styles.galleryLoadingContainer}>
-                    <ActivityIndicator size="large" color="#FF00AA" />
+                    <ActivityIndicator size="large" color="#3b82f6" />
                     <Text style={styles.galleryLoadingText}>טוען גלריה...</Text>
                   </View>
                 ) : (
@@ -1093,16 +1097,27 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
                         ]}
                       >
                         <Image
-                          source={{ uri: img }}
+                          source={{ 
+                            uri: img,
+                            cache: 'force-cache'
+                          }}
                           style={styles.carousel3DImage}
                           resizeMode="cover"
+                          blurRadius={0}
                         />
                         <View style={styles.carousel3DOverlay}>
                           <LinearGradient
-                            colors={['transparent', 'rgba(0,0,0,0.8)']}
+                            colors={['transparent', 'rgba(0,0,0,0.9)']}
                             style={styles.carousel3DGradient}
                           />
                         </View>
+                        {/* Reflection effect removed - was covering gallery images */}
+                        {/* <View style={styles.carousel3DReflection}>
+                          <LinearGradient
+                            colors={['rgba(255,255,255,0.3)', 'transparent']}
+                            style={styles.carousel3DReflectionGradient}
+                          />
+                        </View> */}
                       </Animated.View>
                     ))}
                   </Animated.ScrollView>
@@ -1114,13 +1129,13 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
             <Text style={styles.sectionTitle}>הכירו אותנו</Text>
             <View style={styles.aboutUsCard}>
               <LinearGradient
-                colors={['rgba(255, 0, 170, 0.1)', 'rgba(139, 69, 19, 0.1)', 'rgba(0, 0, 0, 0.05)']}
+                colors={['rgba(59, 130, 246, 0.1)', 'rgba(139, 69, 19, 0.1)', 'rgba(0, 0, 0, 0.05)']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.aboutUsGradient}
               />
               <Image
-                source={settingsImages.aboutUs ? { uri: settingsImages.aboutUs } : require('../../assets/images/aboutus.png')}
+                source={settingsImages.aboutUs ? { uri: settingsImages.aboutUs } : require('../../assets/images/ATMOSPHERE.jpg')}
                 style={styles.aboutUsTopImage}
                 resizeMode="cover"
               />
@@ -1178,21 +1193,21 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
             <Text style={styles.sectionTitle}>צור קשר</Text>
             <View style={styles.contactInfo}>
               <LinearGradient
-                colors={['rgba(255, 0, 170, 0.05)', 'rgba(255, 255, 255, 0.95)']}
+                colors={['rgba(59, 130, 246, 0.05)', 'rgba(255, 255, 255, 0.95)']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.contactGradient}
               />
               <View style={styles.contactItem}>
-                <Ionicons name="call" size={20} color="#FF00AA" />
-                <Text style={styles.contactText}>{CONTACT_INFO.displayPhone}</Text>
+                <Ionicons name="call" size={20} color="#3b82f6" />
+                <Text style={styles.contactText}>0548353232</Text>
               </View>
               <View style={styles.contactItem}>
-                <Ionicons name="location" size={20} color="#FF00AA" />
-                <Text style={styles.contactText}>{CONTACT_INFO.displayAddress}</Text>
+                <Ionicons name="location" size={20} color="#3b82f6" />
+                <Text style={styles.contactText}>{require('../../constants/contactInfo').CONTACT_INFO.displayAddress}</Text>
               </View>
               <View style={styles.contactItem}>
-                <Ionicons name="time" size={20} color="#FF00AA" />
+                <Ionicons name="time" size={20} color="#3b82f6" />
                 <Text style={styles.contactText}>א&apos;-ה&apos; 9:00-20:00, ו&apos; 9:00-15:00</Text>
               </View>
             </View>
@@ -1209,7 +1224,7 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
           <View style={styles.orelSection}>
             <Text style={styles.orelText}>Powered by</Text>
             <TouchableOpacity onPress={handleOrelWhatsAppPress} style={styles.orelButton}>
-              <Text style={styles.orelName}>ToriX</Text>
+              <Text style={styles.orelName}>Orel Aharon</Text>
             </TouchableOpacity>
             <Text style={styles.orelSubtext}>רוצה אפליקציה כזו לעסק שלך?</Text>
           </View>
@@ -1255,17 +1270,14 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
                 notifications.map((notification) => (
                   <View key={notification.id} style={styles.notificationItem}>
                     <View style={styles.notificationIcon}>
-                      {notification.type === 'appointment' || notification.type === 'confirmation' && (
-                        <Ionicons name="calendar" size={20} color="#FF00AA" />
+                      {(notification.type === 'appointment' || notification.type === 'confirmation') && (
+                        <Ionicons name="calendar" size={20} color="#3b82f6" />
                       )}
                       {notification.type === 'reminder' && (
                         <Ionicons name="alarm" size={20} color="#FF9800" />
                       )}
                       {notification.type === 'cancellation' && (
                         <Ionicons name="close-circle" size={20} color="#ef4444" />
-                      )}
-                      {notification.type === 'general' && (
-                        <Ionicons name="megaphone" size={20} color="#4CAF50" />
                       )}
                     </View>
                     <View style={styles.notificationContent}>
@@ -1296,10 +1308,10 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
             <Text style={styles.modalTitle}>תנאי שימוש ומדיניות פרטיות</Text>
             <ScrollView style={styles.modalScrollView}>
               <Text style={styles.modalText}>
-                <Text style={styles.sectionTitle}>תנאי שימוש - Test Salon{'\n'}</Text>
+                <Text style={styles.sectionTitle}>תנאי שימוש - Barbers Bar{'\n'}</Text>
                 
                 <Text style={styles.subsectionTitle}>1. קבלת השירות{'\n'}</Text>
-                • השירות מיועד לקביעת תורים במספרה Test Salon{'\n'}
+                • השירות מיועד לקביעת תורים במספרה Barbers Bar{'\n'}
                 • יש לספק מידע מדויק ומלא בעת קביעת התור{'\n'}
                 • המספרה שומרת לעצמה את הזכות לסרב לתת שירות במקרים חריגים{'\n\n'}
                 
@@ -1347,7 +1359,7 @@ function HomeScreen({ onNavigate }: HomeScreenProps) {
                 
                 <Text style={styles.contactInfoText}>
                   {require('../../constants/contactInfo').CONTACT_INFO.contactText}{'\n'}
-                  מייל: info@Test Salon.co.il
+                  מייל: info@barbersbar.co.il
                 </Text>
               </Text>
             </ScrollView>
@@ -1430,14 +1442,14 @@ const styles = StyleSheet.create({
   ctaButton: {
     position: 'absolute',
     bottom: 20,
-    left: 20,
+    left: 20, // כפתור משמאל לטקסט
     zIndex: 2,
   },
   greetingContainer: {
     position: 'absolute',
     bottom: 20,
-    right: 20,
-    left: 140,
+    right: 20,  // טקסט מימין
+    left: 140,  // מקום לכפתור משמאל
     zIndex: 2,
   },
   greeting: {
@@ -1470,7 +1482,7 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#FF00AA',
+    shadowColor: '#3b82f6',
     shadowOffset: {
       width: 0,
       height: 4,
@@ -1481,14 +1493,14 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   neonButtonPrimary: {
-    backgroundColor: '#FF00AA',
-    borderColor: '#FF00AA',
-    shadowColor: '#FF00AA',
+    backgroundColor: '#3b82f6',
+    borderColor: '#60a5fa',
+    shadowColor: '#3b82f6',
   },
   neonButtonSecondary: {
-    backgroundColor: 'rgba(255, 0, 170, 0.1)',
-    borderColor: '#FF00AA',
-    shadowColor: '#FF00AA',
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    borderColor: '#3b82f6',
+    shadowColor: '#3b82f6',
   },
   neonButtonText: {
     fontSize: 14,
@@ -1501,7 +1513,7 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
   neonButtonTextSecondary: {
-    color: '#FF00AA',
+    color: '#3b82f6',
   },
   sectionTitle: {
     fontSize: 24,
@@ -1515,7 +1527,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   quickActionsContainer: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse', // Fixed: Changed to row-reverse for RTL
     justifyContent: 'space-between',
     paddingHorizontal: 10,
   },
@@ -1558,40 +1570,53 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   carousel3DContainer: {
-    height: 340,
+    height: 420,
     overflow: 'hidden',
+    marginVertical: 20,
   },
   carousel3DContent: {
-    paddingHorizontal: 50,
+    paddingHorizontal: 80,
     alignItems: 'center',
   },
   carousel3DCard: {
-    width: 180,
-    height: 320,
-    marginHorizontal: 5,
-    borderRadius: 20,
+    width: 280,
+    height: 380,
+    marginHorizontal: 10,
+    borderRadius: 25,
     overflow: 'hidden',
+    backgroundColor: '#fff',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 15,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    elevation: 20,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.8)',
   },
   carousel3DImage: {
     width: '100%',
     height: '100%',
+    resizeMode: 'cover',
+    backgroundColor: '#f0f0f0',
   },
   carousel3DOverlay: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: '50%',
+    height: '60%',
   },
   carousel3DGradient: {
+    flex: 1,
+  },
+  carousel3DReflection: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '40%',
+  },
+  carousel3DReflectionGradient: {
     flex: 1,
   },
   aboutUsSection: {
@@ -1766,7 +1791,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   modalCloseButton: {
-    backgroundColor: '#FF00AA',
+    backgroundColor: '#3b82f6',
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',

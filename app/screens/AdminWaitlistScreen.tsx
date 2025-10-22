@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { collection, doc, getDoc, getDocs, getFirestore } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
     Dimensions,
@@ -14,13 +15,13 @@ import {
 import {
     Barber,
     cleanupExpiredWaitlistEntries,
-    WaitlistEntry,
-    getAllWaitlistEntries,
     getBarbers,
     listenWaitlistChanges,
     removeFromWaitlist,
-    updateWaitlistStatus
+    updateWaitlistStatus,
+    WaitlistEntry
 } from '../../services/firebase';
+import { auth } from '../config/firebase';
 import ToastMessage from '../components/ToastMessage';
 import TopNav from '../components/TopNav';
 
@@ -61,18 +62,48 @@ const AdminWaitlistScreen: React.FC<AdminWaitlistScreenProps> = ({ onNavigate, o
     };
   }, []);
 
+  const getAllWaitlistEntries = async (): Promise<WaitlistEntry[]> => {
+    const db = getFirestore();
+    const snapshot = await getDocs(collection(db, 'waitlist'));
+    return snapshot.docs.map(doc => ({ waitlistId: doc.id, ...doc.data() } as WaitlistEntry));
+  };
+
   const loadData = async () => {
     try {
       console.log('🔄 Starting to load waitlist data...');
       setLoading(true);
-      
+
       // First cleanup expired entries
       await cleanupExpiredWaitlistEntries();
-      
+
       const [barbersData, waitlistData] = await Promise.all([
         getBarbers(),
         getAllWaitlistEntries()
       ]);
+
+      // Check if current user is a barber
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        const db = getFirestore();
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          const userRole = userData?.role;
+          const userBarberId = userData?.barberId;
+
+          // If user is a barber, filter to show only their own waitlist
+          if (userRole === 'barber' && userBarberId) {
+            const filteredWaitlist = waitlistData.filter(entry => entry.barberId === userBarberId);
+            console.log('✅ Barber data loaded:', { waitlist: filteredWaitlist.length });
+            setBarbers(barbersData.filter(b => b.id === userBarberId));
+            setWaitlistEntries(filteredWaitlist);
+            setLoading(false);
+            return;
+          }
+        }
+      }
+
+      // Admin - show all
       console.log('✅ Data loaded successfully:', { barbers: barbersData.length, waitlist: waitlistData.length });
       setBarbers(barbersData);
       setWaitlistEntries(waitlistData);
@@ -114,8 +145,14 @@ const AdminWaitlistScreen: React.FC<AdminWaitlistScreenProps> = ({ onNavigate, o
     return `${day} ${date.getDate()}/${date.getMonth() + 1}`;
   };
 
-  const formatTime = (timeString: string) => {
-    return timeString;
+  const formatTimeRange = (entry: WaitlistEntry) => {
+    // Support both old and new format
+    if (entry.requestedTimeStart && entry.requestedTimeEnd) {
+      return `${entry.requestedTimeStart} - ${entry.requestedTimeEnd}`;
+    } else if (entry.requestedTime) {
+      return entry.requestedTime; // Legacy format
+    }
+    return 'לא צוין';
   };
 
   const getBarberName = (barberId: string) => {
@@ -167,11 +204,30 @@ const AdminWaitlistScreen: React.FC<AdminWaitlistScreenProps> = ({ onNavigate, o
       
       <View style={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>רשימת המתנה - כל הספרים</Text>
+          <Text style={styles.headerTitle}>רשימת המתנה</Text>
           <Text style={styles.headerSubtitle}>
             ניהול לקוחות שממתינים לתורים
           </Text>
         </View>
+
+        {/* Statistics */}
+        <View style={styles.statsContainer}>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{waitlistEntries.length}</Text>
+            <Text style={styles.statLabel}>סך הכל ברשימה</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>
+              {new Set(waitlistEntries.map(e => e.requestedDate)).size}
+            </Text>
+            <Text style={styles.statLabel}>ימים עם רשומות</Text>
+          </View>
+        </View>
+
+        <TouchableOpacity style={styles.refreshButton} onPress={loadData}>
+          <Ionicons name="refresh" size={20} color="#fff" />
+          <Text style={styles.refreshButtonText}>רענן</Text>
+        </TouchableOpacity>
 
         {waitlistEntries.length === 0 ? (
           <View style={styles.emptyContainer}>
@@ -203,7 +259,7 @@ const AdminWaitlistScreen: React.FC<AdminWaitlistScreenProps> = ({ onNavigate, o
                   </View>
                   <View style={styles.detailRow}>
                     <Ionicons name="time" size={16} color="#666" />
-                    <Text style={styles.detailText}>{formatTime(entry.requestedTime)}</Text>
+                    <Text style={styles.detailText}>{formatTimeRange(entry)}</Text>
                   </View>
                   <View style={styles.detailRow}>
                     <Ionicons name="cut" size={16} color="#666" />
@@ -319,7 +375,7 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 16,
   },
   headerTitle: {
     fontSize: 24,
@@ -332,6 +388,53 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     textAlign: 'right',
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  statCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    flex: 1,
+    marginHorizontal: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  statNumber: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#007bff',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+  },
+  refreshButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#007bff',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    marginHorizontal: 20,
+    marginBottom: 16,
+  },
+  refreshButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 8,
   },
   emptyContainer: {
     flex: 1,
@@ -422,12 +525,12 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   waitlistActions: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse', // Fixed: Changed to row-reverse for RTL
     justifyContent: 'space-around',
     marginTop: 10,
   },
   actionButton: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse', // Fixed: Changed to row-reverse for RTL
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 8,

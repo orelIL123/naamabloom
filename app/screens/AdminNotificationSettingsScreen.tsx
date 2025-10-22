@@ -1,29 +1,30 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  Switch,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { auth, db } from '../config/firebase';
+import {
+    getAvailableNotificationTypes,
+    getNotificationDescription,
+    getNotificationDisplayName,
+    getNotificationSettings,
+    NotificationSettings,
+    NotificationType,
+    toggleAllNotifications,
+    toggleNotification,
+    updateReminderTimes
+} from '../../services/notificationSettings';
 import ToastMessage from '../components/ToastMessage';
 import TopNav from '../components/TopNav';
 
-interface NotificationSettings {
-  newAppointment: boolean;
-  canceledAppointment: boolean;
-  newUser: boolean;
-  appointmentReminders: boolean;
-  upcomingAppointments: boolean;
-}
-
 interface AdminNotificationSettingsScreenProps {
-  onNavigate: (screen: string) => void;
+  onNavigate?: (screen: string) => void;
   onBack?: () => void;
 }
 
@@ -31,82 +32,28 @@ const AdminNotificationSettingsScreen: React.FC<AdminNotificationSettingsScreenP
   onNavigate, 
   onBack 
 }) => {
-  console.log('🎯 AdminNotificationSettingsScreen component mounted!');
-  console.log('🎯 onNavigate prop:', typeof onNavigate);
-  console.log('🎯 onBack prop:', typeof onBack);
-  
-  const [settings, setSettings] = useState<NotificationSettings>({
-    newAppointment: true,
-    canceledAppointment: true,
-    newUser: true,
-    appointmentReminders: true,
-    upcomingAppointments: true,
-  });
+  const [settings, setSettings] = useState<NotificationSettings | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
 
   useEffect(() => {
-    console.log('🎯 AdminNotificationSettingsScreen useEffect triggered');
     loadSettings();
   }, []);
 
   const loadSettings = async () => {
     try {
-      console.log('🎯 loadSettings started');
       setLoading(true);
-      const user = auth.currentUser;
-      console.log('🎯 Current user:', user?.uid || 'No user');
-      
-      if (!user) {
-        console.log('🎯 No user found, stopping load');
-        setLoading(false);
-        return;
-      }
-
-      console.log('🎯 Attempting to load settings from Firestore...');
-      const settingsDoc = await getDoc(doc(db, 'adminNotifications', user.uid));
-      console.log('🎯 Settings doc exists:', settingsDoc.exists());
-      
-      if (settingsDoc.exists()) {
-        const data = settingsDoc.data();
-        console.log('🎯 Settings data:', data);
-        setSettings({ ...settings, ...data });
-      } else {
-        console.log('🎯 No settings doc found, using defaults');
-      }
+      // For admin, we'll use a hardcoded admin ID or get it from auth
+      const adminId = 'admin'; // You might want to get this from auth context
+      const notificationSettings = await getNotificationSettings(adminId, 'admin');
+      setSettings(notificationSettings);
     } catch (error) {
-      console.error('❌ Error loading notification settings:', error);
+      console.error('Error loading notification settings:', error);
       showToast('שגיאה בטעינת הגדרות התראות', 'error');
     } finally {
-      console.log('🎯 loadSettings finished');
       setLoading(false);
     }
-  };
-
-  const saveSettings = async (newSettings: NotificationSettings) => {
-    try {
-      const user = auth.currentUser;
-      if (!user) return;
-
-      await setDoc(doc(db, 'adminNotifications', user.uid), {
-        ...newSettings,
-        updatedAt: new Date()
-      });
-
-      setSettings(newSettings);
-      showToast('הגדרות ההתראות נשמרו בהצלחה', 'success');
-    } catch (error) {
-      console.error('Error saving notification settings:', error);
-      showToast('שגיאה בשמירת הגדרות התראות', 'error');
-    }
-  };
-
-  const toggleSetting = async (key: keyof NotificationSettings) => {
-    const newSettings = {
-      ...settings,
-      [key]: !settings[key],
-    };
-    await saveSettings(newSettings);
   };
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
@@ -117,91 +64,223 @@ const AdminNotificationSettingsScreen: React.FC<AdminNotificationSettingsScreenP
     setToast({ ...toast, visible: false });
   };
 
-  const settingsConfig = [
-    {
-      key: 'newAppointment' as keyof NotificationSettings,
-      title: 'תור חדש נקבע',
-      description: 'קבל התראה כאשר לקוח קובע תור חדש',
-      icon: 'calendar' as const,
-    },
-    {
-      key: 'canceledAppointment' as keyof NotificationSettings,
-      title: 'תור בוטל',
-      description: 'קבל התראה כאשר לקוח מבטל תור',
-      icon: 'close-circle' as const,
-    },
-    {
-      key: 'newUser' as keyof NotificationSettings,
-      title: 'משתמש חדש נרשם',
-      description: 'קבל התראה כאשר משתמש חדש נרשם לאפליקציה',
-      icon: 'person-add' as const,
-    },
-    {
-      key: 'appointmentReminders' as keyof NotificationSettings,
-      title: 'תזכורות תורים',
-      description: 'שלח תזכורות ללקוחות לפני התור',
-      icon: 'alarm' as const,
-    },
-    {
-      key: 'upcomingAppointments' as keyof NotificationSettings,
-      title: 'תורים קרובים',
-      description: 'קבל התראה על תורים שמתקרבים',
-      icon: 'time' as const,
-    },
-  ];
+  const handleToggleAll = async (enabled: boolean) => {
+    if (!settings) return;
+    
+    try {
+      setSaving(true);
+      await toggleAllNotifications(settings.userId, enabled);
+      setSettings(prev => prev ? { ...prev, enabled } : null);
+      showToast(enabled ? 'כל ההתראות הופעלו' : 'כל ההתראות הושבתו');
+    } catch (error) {
+      console.error('Error toggling all notifications:', error);
+      showToast('שגיאה בעדכון הגדרות', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggleNotification = async (type: NotificationType, enabled: boolean) => {
+    if (!settings) return;
+    
+    try {
+      setSaving(true);
+      await toggleNotification(settings.userId, type, enabled);
+      setSettings(prev => prev ? {
+        ...prev,
+        notifications: {
+          ...prev.notifications,
+          [type]: enabled
+        }
+      } : null);
+      showToast(enabled ? 'התראה הופעלה' : 'התראה הושבתה');
+    } catch (error) {
+      console.error('Error toggling notification:', error);
+      showToast('שגיאה בעדכון התראה', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUpdateReminderTimes = async (times: number[]) => {
+    if (!settings) return;
+    
+    try {
+      setSaving(true);
+      await updateReminderTimes(settings.userId, times);
+      setSettings(prev => prev ? {
+        ...prev,
+        reminderTimes: {
+          ...prev.reminderTimes,
+          times
+        }
+      } : null);
+      showToast('זמני התזכורות עודכנו');
+    } catch (error) {
+      console.error('Error updating reminder times:', error);
+      showToast('שגיאה בעדכון זמני התזכורות', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const availableNotificationTypes = getAvailableNotificationTypes('admin');
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <TopNav 
+          title="הגדרות התראות"
+          showBackButton={true}
+          onBackPress={onBack || (() => onNavigate && onNavigate('admin-home'))}
+        />
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>טוען הגדרות...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!settings) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <TopNav 
+          title="הגדרות התראות"
+          showBackButton={true}
+          onBackPress={onBack || (() => onNavigate && onNavigate('admin-home'))}
+        />
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>שגיאה בטעינת ההגדרות</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
       <TopNav 
         title="הגדרות התראות"
-        onBellPress={() => {}}
-        onMenuPress={() => {}}
         showBackButton={true}
-        onBackPress={onBack}
+        onBackPress={onBack || (() => onNavigate && onNavigate('admin-home'))}
       />
-
-      <ScrollView style={styles.content}>
-        <View style={styles.header}>
-          <Ionicons name="notifications" size={32} color="#ff69b4" />
-          <Text style={styles.headerTitle}>הגדרות התראות אדמין</Text>
-          <Text style={styles.headerSubtitle}>
-            בחר אילו התראות תרצה לקבל כמנהל המערכת
-          </Text>
-        </View>
-
-        <View style={styles.settingsContainer}>
-          {settingsConfig.map((item) => (
-            <View key={item.key} style={styles.settingItem}>
-              <View style={styles.settingInfo}>
-                <View style={styles.settingHeader}>
-                  <Ionicons 
-                    name={item.icon} 
-                    size={24} 
-                    color="#ff69b4" 
-                    style={styles.settingIcon}
-                  />
-                  <Text style={styles.settingTitle}>{item.title}</Text>
-                </View>
-                <Text style={styles.settingDescription}>{item.description}</Text>
-              </View>
-              <Switch
-                value={settings[item.key]}
-                onValueChange={() => toggleSetting(item.key)}
-                trackColor={{ false: '#767577', true: '#ff69b4' }}
-                thumbColor={settings[item.key] ? '#ffffff' : '#f4f3f4'}
-                ios_backgroundColor="#3e3e3e"
-                disabled={loading}
-              />
+      
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Master Toggle */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="notifications" size={24} color="#007bff" />
+            <Text style={styles.sectionTitle}>התראות כלליות</Text>
+          </View>
+          
+          <View style={styles.masterToggleContainer}>
+            <View style={styles.masterToggleInfo}>
+              <Text style={styles.masterToggleTitle}>הפעל/השבת כל ההתראות</Text>
+              <Text style={styles.masterToggleDescription}>
+                שליטה מרכזית על כל סוגי ההתראות
+              </Text>
             </View>
-          ))}
+            <Switch
+              value={settings.enabled}
+              onValueChange={handleToggleAll}
+              disabled={saving}
+              trackColor={{ false: '#767577', true: '#81b0ff' }}
+              thumbColor={settings.enabled ? '#007bff' : '#f4f3f4'}
+            />
+          </View>
         </View>
 
-        <View style={styles.infoSection}>
-          <Ionicons name="information-circle" size={20} color="#6c757d" />
-          <Text style={styles.infoText}>
-            התראות יישלחו בזמן אמת כאשר מתרחשים אירועים במערכת. 
-            ניתן לשנות הגדרות אלו בכל עת.
-          </Text>
+        {/* Notification Types */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="list" size={24} color="#007bff" />
+            <Text style={styles.sectionTitle}>סוגי התראות</Text>
+          </View>
+          
+          {availableNotificationTypes.map((type) => {
+            // Group notifications by category for better UI
+            const isAppointmentNotification = type.includes('appointment') && !type.includes('reminder');
+            const isReminderNotification = type.includes('reminder');
+            const isSystemNotification = ['push_notifications', 'sms_notifications', 'local_reminders'].includes(type);
+            
+            return (
+              <View key={type} style={[
+                styles.notificationItem,
+                isSystemNotification && styles.systemNotificationItem
+              ]}>
+                <View style={styles.notificationInfo}>
+                  <Text style={[
+                    styles.notificationTitle,
+                    isSystemNotification && styles.systemNotificationTitle
+                  ]}>
+                    {getNotificationDisplayName(type)}
+                  </Text>
+                  <Text style={[
+                    styles.notificationDescription,
+                    isSystemNotification && styles.systemNotificationDescription
+                  ]}>
+                    {getNotificationDescription(type)}
+                  </Text>
+                </View>
+                <Switch
+                  value={settings.notifications[type]}
+                  onValueChange={(enabled) => handleToggleNotification(type, enabled)}
+                  disabled={!settings.enabled || saving}
+                  trackColor={{ false: '#767577', true: '#81b0ff' }}
+                  thumbColor={settings.notifications[type] ? '#007bff' : '#f4f3f4'}
+                />
+              </View>
+            );
+          })}
+        </View>
+
+        {/* Reminder Times */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="time" size={24} color="#007bff" />
+            <Text style={styles.sectionTitle}>זמני תזכורות</Text>
+          </View>
+          
+          <View style={styles.reminderTimesContainer}>
+            <Text style={styles.reminderTimesDescription}>
+              בחר מתי לקבל תזכורות לפני תורים
+            </Text>
+            
+            <View style={styles.reminderTimesGrid}>
+              {[10, 15, 30, 60].map((minutes) => (
+                <TouchableOpacity
+                  key={minutes}
+                  style={[
+                    styles.reminderTimeButton,
+                    settings.reminderTimes.times.includes(minutes) && styles.reminderTimeButtonActive
+                  ]}
+                  onPress={() => {
+                    const newTimes = settings.reminderTimes.times.includes(minutes)
+                      ? settings.reminderTimes.times.filter(t => t !== minutes)
+                      : [...settings.reminderTimes.times, minutes].sort((a, b) => a - b);
+                    handleUpdateReminderTimes(newTimes);
+                  }}
+                  disabled={saving}
+                >
+                  <Text style={[
+                    styles.reminderTimeText,
+                    settings.reminderTimes.times.includes(minutes) && styles.reminderTimeTextActive
+                  ]}>
+                    {minutes} דק
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+
+        {/* Info Section */}
+        <View style={styles.section}>
+          <View style={styles.infoContainer}>
+            <Ionicons name="information-circle" size={20} color="#666" />
+            <Text style={styles.infoText}>
+              ההגדרות נשמרות אוטומטית ונכנסות לתוקף מיד
+            </Text>
+          </View>
         </View>
       </ScrollView>
 
@@ -224,81 +303,147 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
   },
-  header: {
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
-    paddingVertical: 20,
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    marginTop: 12,
-    textAlign: 'center',
-  },
-  headerSubtitle: {
-    fontSize: 16,
+  loadingText: {
+    fontSize: 18,
     color: '#666',
-    textAlign: 'center',
-    marginTop: 8,
-    lineHeight: 24,
   },
-  settingsContainer: {
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorText: {
+    fontSize: 18,
+    color: '#dc3545',
+  },
+  section: {
     backgroundColor: '#fff',
     borderRadius: 12,
+    marginBottom: 16,
+    padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    marginBottom: 20,
   },
-  settingItem: {
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginLeft: 8,
+  },
+  masterToggleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
   },
-  settingInfo: {
+  masterToggleInfo: {
     flex: 1,
     marginRight: 16,
   },
-  settingHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  settingIcon: {
-    marginRight: 12,
-  },
-  settingTitle: {
+  masterToggleTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
+    marginBottom: 4,
   },
-  settingDescription: {
+  masterToggleDescription: {
     fontSize: 14,
     color: '#666',
-    marginLeft: 36,
+  },
+  notificationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  notificationInfo: {
+    flex: 1,
+    marginRight: 16,
+  },
+  notificationTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  notificationDescription: {
+    fontSize: 14,
+    color: '#666',
     lineHeight: 20,
   },
-  infoSection: {
+  reminderTimesContainer: {
+    marginTop: 8,
+  },
+  reminderTimesDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 16,
+  },
+  reminderTimesGrid: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  reminderTimeButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    backgroundColor: '#f8f9fa',
+  },
+  reminderTimeButtonActive: {
+    backgroundColor: '#007bff',
+    borderColor: '#007bff',
+  },
+  reminderTimeText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+  reminderTimeTextActive: {
+    color: '#fff',
+  },
+  infoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#e3f2fd',
-    padding: 16,
+    padding: 12,
     borderRadius: 8,
-    marginTop: 16,
   },
   infoText: {
-    flex: 1,
     fontSize: 14,
     color: '#1976d2',
-    lineHeight: 20,
     marginLeft: 8,
-    textAlign: 'right',
+    flex: 1,
+  },
+  // Styles for system notification categories (technical notifications)
+  systemNotificationItem: {
+    backgroundColor: '#f0f8ff',
+    borderLeftWidth: 4,
+    borderLeftColor: '#007bff',
+    paddingVertical: 16,
+  },
+  systemNotificationTitle: {
+    color: '#007bff',
+    fontWeight: 'bold',
+  },
+  systemNotificationDescription: {
+    color: '#0056b3',
   },
 });
 

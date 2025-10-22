@@ -4,17 +4,18 @@ import { collection, doc, getDoc, getDocs, getFirestore, limit, orderBy, query, 
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Dimensions,
-  Linking,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Dimensions,
+    Linking,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { checkIsAdmin, initializeCollections, initializeGalleryImages, listAllStorageImages, onAuthStateChange, replaceGalleryPlaceholders, resetGalleryWithRealImages, restoreGalleryFromStorage } from '../../services/firebase';
+import { MirroredIcon } from '../components/MirroredIcon';
 import ToastMessage from '../components/ToastMessage';
 import TopNav from '../components/TopNav';
 import { auth } from '../config/firebase';
@@ -59,14 +60,13 @@ const AdminHomeScreen: React.FC<AdminHomeScreenProps> = ({ onNavigate, onBack })
             message: t('admin.no_permission', { uid: user.uid }),
             type: 'error'
           });
-          // Give user more time to see the UID and debug
-          setTimeout(() => onNavigate('home'), 5000);
+          // User will stay on admin screen to see the error
         } else {
           console.log('✅ Admin confirmed, can proceed');
         }
       } else {
         console.log('🚪 User not authenticated');
-        onNavigate('home');
+        // Don't navigate away, just show loading
       }
       setLoading(false);
     });
@@ -280,6 +280,13 @@ const AdminHomeScreen: React.FC<AdminHomeScreenProps> = ({ onNavigate, onBack })
       color: '#007bff'
     },
     {
+      title: 'יומן',
+      subtitle: 'צפייה ביומן התורים',
+      icon: 'calendar-outline',
+      screen: 'calendar',
+      color: '#6366f1'
+    },
+    {
       title: t('admin.manage_treatments_title'),
       subtitle: t('admin.manage_treatments_subtitle'),
       icon: 'cut',
@@ -292,6 +299,13 @@ const AdminHomeScreen: React.FC<AdminHomeScreenProps> = ({ onNavigate, onBack })
       icon: 'people',
       screen: 'admin-team',
       color: '#ffc107'
+    },
+    {
+      title: 'רשימת לקוחות',
+      subtitle: 'צפייה בכל הלקוחות הרשומים עם אפשרות התקשרות ומחיקה',
+      icon: 'people-outline',
+      screen: 'admin-customers',
+      color: '#20c997'
     },
     {
       title: t('admin.manage_gallery_title'),
@@ -322,18 +336,18 @@ const AdminHomeScreen: React.FC<AdminHomeScreenProps> = ({ onNavigate, onBack })
       color: '#17a2b8'
     },
     {
-      title: 'ניהול התראות',
-      subtitle: 'הצג והפעל התראות מערכת',
+      title: t('admin.manage_notifications_title'),
+      subtitle: t('admin.manage_notifications_subtitle'),
       icon: 'notifications',
       screen: 'admin-notifications',
       color: '#6c757d'
     },
     {
       title: 'הגדרות התראות',
-      subtitle: 'קבע אילו התראות תרצה לקבל',
+      subtitle: 'נהל את ההתראות שאתה מקבל',
       icon: 'notifications-outline',
       screen: 'admin-notification-settings',
-      color: '#ff69b4'
+      color: '#9c27b0'
     },
     {
       title: t('admin.admin_settings_title'),
@@ -491,8 +505,6 @@ const AdminHomeScreen: React.FC<AdminHomeScreenProps> = ({ onNavigate, onBack })
                   
                   if (item.screen === 'home') {
                     showToast(t('admin.switching_to_client_view'));
-                  } else if (item.screen === 'admin-notification-settings') {
-                    showToast('פותח הגדרות התראות...');
                   } else {
                     showToast(t('admin.opening_screen', { title: item.title }));
                   }
@@ -509,7 +521,7 @@ const AdminHomeScreen: React.FC<AdminHomeScreenProps> = ({ onNavigate, onBack })
                   <Text style={styles.menuTitle}>{item.title}</Text>
                   <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color="#999" />
+                <MirroredIcon name="chevron-back" size={20} color="#999" type="ionicons" />
               </TouchableOpacity>
             ))}
           </View>
@@ -563,7 +575,7 @@ const AdminHomeScreen: React.FC<AdminHomeScreenProps> = ({ onNavigate, onBack })
           onPress={() => setShowNextAppointmentModal(true)}
         >
           <LinearGradient
-            colors={['#FF00AA', '#1d4ed8']}
+            colors={['#3b82f6', '#1d4ed8']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.nextAppointmentBubbleGradient}
@@ -590,7 +602,7 @@ const AdminHomeScreen: React.FC<AdminHomeScreenProps> = ({ onNavigate, onBack })
             
             <View style={styles.nextAppointmentModalContent}>
               <View style={styles.nextAppointmentInfo}>
-                <Ionicons name="person" size={24} color="#FF00AA" />
+                <Ionicons name="person" size={24} color="#3b82f6" />
                 <View style={styles.nextAppointmentInfoText}>
                   <Text style={styles.nextAppointmentLabel}>לקוח:</Text>
                   <Text style={styles.nextAppointmentValue}>{nextAppointment.clientName}</Text>
@@ -598,7 +610,7 @@ const AdminHomeScreen: React.FC<AdminHomeScreenProps> = ({ onNavigate, onBack })
               </View>
               
               <View style={styles.nextAppointmentInfo}>
-                <Ionicons name="call" size={24} color="#FF00AA" />
+                <Ionicons name="call" size={24} color="#3b82f6" />
                 <View style={styles.nextAppointmentInfoText}>
                   <Text style={styles.nextAppointmentLabel}>טלפון:</Text>
                   <TouchableOpacity 
@@ -610,13 +622,13 @@ const AdminHomeScreen: React.FC<AdminHomeScreenProps> = ({ onNavigate, onBack })
                     style={styles.phoneButton}
                   >
                     <Text style={styles.nextAppointmentValue}>{nextAppointment.clientPhone}</Text>
-                    <Ionicons name="call" size={16} color="#FF00AA" style={{ marginLeft: 8 }} />
+                    <Ionicons name="call" size={16} color="#3b82f6" style={{ marginRight: 8 }} />
                   </TouchableOpacity>
                 </View>
               </View>
               
               <View style={styles.nextAppointmentInfo}>
-                <Ionicons name="calendar" size={24} color="#FF00AA" />
+                <Ionicons name="calendar" size={24} color="#3b82f6" />
                 <View style={styles.nextAppointmentInfoText}>
                   <Text style={styles.nextAppointmentLabel}>תאריך:</Text>
                   <Text style={styles.nextAppointmentValue}>
@@ -642,7 +654,7 @@ const AdminHomeScreen: React.FC<AdminHomeScreenProps> = ({ onNavigate, onBack })
               </View>
               
               <View style={styles.nextAppointmentInfo}>
-                <Ionicons name="time" size={24} color="#FF00AA" />
+                <Ionicons name="time" size={24} color="#3b82f6" />
                 <View style={styles.nextAppointmentInfoText}>
                   <Text style={styles.nextAppointmentLabel}>שעה:</Text>
                   <Text style={styles.nextAppointmentValue}>{nextAppointment.time}</Text>
@@ -650,7 +662,7 @@ const AdminHomeScreen: React.FC<AdminHomeScreenProps> = ({ onNavigate, onBack })
               </View>
               
               <View style={styles.nextAppointmentInfo}>
-                <Ionicons name="cut" size={24} color="#FF00AA" />
+                <Ionicons name="cut" size={24} color="#3b82f6" />
                 <View style={styles.nextAppointmentInfoText}>
                   <Text style={styles.nextAppointmentLabel}>ספר:</Text>
                   <Text style={styles.nextAppointmentValue}>{nextAppointment.barberName}</Text>
@@ -764,7 +776,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   menuItem: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse', // Fixed: Changed to row-reverse for RTL
     alignItems: 'center',
     backgroundColor: '#fff',
     borderRadius: 12,
@@ -782,7 +794,7 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginLeft: 16, // Keep marginLeft for icon spacing in RTL
   },
   menuTextContainer: {
     flex: 1,
@@ -859,7 +871,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
-    marginLeft: 8,
+    marginRight: 8, // Changed from marginLeft to marginRight for RTL
   },
   systemSection: {
     backgroundColor: '#fff',
@@ -937,7 +949,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
-    marginLeft: 8,
+    marginRight: 8, // Changed from marginLeft to marginRight for RTL
   },
   modalOverlay: {
     position: 'absolute',
@@ -988,7 +1000,7 @@ const styles = StyleSheet.create({
   },
   nextAppointmentInfoText: {
     flex: 1,
-    marginLeft: 12,
+    marginRight: 12, // Changed from marginLeft to marginRight for RTL
   },
   nextAppointmentLabel: {
     fontSize: 14,
@@ -1003,12 +1015,12 @@ const styles = StyleSheet.create({
   phoneButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 0, 170, 0.1)',
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#FF00AA',
+    borderColor: '#3b82f6',
   },
   nextAppointmentModalActions: {
     padding: 20,
@@ -1033,7 +1045,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
-    marginLeft: 8,
+    marginRight: 8, // Changed from marginLeft to marginRight for RTL
   },
 });
 

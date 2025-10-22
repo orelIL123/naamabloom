@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { doc, getDoc, getFirestore } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -13,14 +14,14 @@ import {
 } from 'react-native';
 import {
     checkIsAdmin,
-    getAllAppointments,
-    getRecentAppointments,
-    getCurrentMonthAppointments,
     getBarbers,
+    getCurrentMonthAppointments,
+    getRecentAppointments,
     getTreatments,
     onAuthStateChange,
     updateAppointment
 } from '../../services/firebase';
+import { auth } from '../config/firebase';
 import TopNav from '../components/TopNav';
 
 const { width } = Dimensions.get('window');
@@ -141,13 +142,31 @@ const AdminStatisticsScreen: React.FC<AdminStatisticsScreenProps> = ({ onNavigat
   const loadStatistics = async () => {
     try {
       setLoading(true);
-      
+
       // Load optimized data (current month appointments + cached static data)
       const [appointments, barbers, treatments] = await Promise.all([
         getCurrentMonthAppointments(), // Only current month for faster loading
         getBarbers(), // Uses cache
         getTreatments() // Uses cache
       ]);
+
+      // Check if current user is a barber - filter appointments
+      let filteredAppointments = appointments;
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        const db = getFirestore();
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          const userRole = userData?.role;
+          const userBarberId = userData?.barberId;
+
+          // If user is a barber, filter to show only their own stats
+          if (userRole === 'barber' && userBarberId) {
+            filteredAppointments = appointments.filter(apt => apt.barberId === userBarberId);
+          }
+        }
+      }
 
       // Calculate statistics
       const now = new Date();
@@ -162,8 +181,8 @@ const AdminStatisticsScreen: React.FC<AdminStatisticsScreenProps> = ({ onNavigat
       const treatmentCounts: { [key: string]: { count: number; revenue: number } } = {};
       const barberCounts: { [key: string]: { appointments: number; revenue: number } } = {};
 
-      // Process appointments
-      appointments.forEach(appointment => {
+      // Process appointments (use filtered appointments)
+      filteredAppointments.forEach(appointment => {
         let appointmentDate: Date;
         
         try {
@@ -242,7 +261,7 @@ const AdminStatisticsScreen: React.FC<AdminStatisticsScreenProps> = ({ onNavigat
       setStats({
         totalRevenue,
         totalCustomers: completedAppointments,
-        totalAppointments: appointments.length,
+        totalAppointments: filteredAppointments.length,
         completedAppointments,
         pendingAppointments,
         monthlyRevenue,
@@ -496,7 +515,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   statsGrid: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse', // Fixed: Changed to row-reverse for RTL
     flexWrap: 'wrap',
     justifyContent: 'space-between',
     gap: 12,
@@ -604,7 +623,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 16,
     marginBottom: 8,
-    flexDirection: 'row',
+    flexDirection: 'row-reverse', // Fixed: Changed to row-reverse for RTL
     justifyContent: 'space-between',
     alignItems: 'center',
     shadowColor: '#000',
@@ -635,19 +654,19 @@ const styles = StyleSheet.create({
   },
   refreshSection: {
     marginTop: 24,
-    flexDirection: 'row',
+    flexDirection: 'row-reverse', // Fixed: Changed to row-reverse for RTL
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   refreshButton: {
     backgroundColor: '#17a2b8',
-    flexDirection: 'row',
+    flexDirection: 'row-reverse', // Fixed: Changed to row-reverse for RTL
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
     borderRadius: 8,
     flex: 1,
-    marginRight: 8,
+    marginLeft: 8, // Fixed: Changed from marginRight to marginLeft for RTL
   },
   refreshButtonText: {
     color: '#fff',
@@ -657,19 +676,19 @@ const styles = StyleSheet.create({
   },
   checkButton: {
     backgroundColor: '#dc3545',
-    flexDirection: 'row',
+    flexDirection: 'row-reverse', // Fixed: Changed to row-reverse for RTL
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
     borderRadius: 8,
     flex: 1,
-    marginLeft: 8,
+    marginRight: 8, // Fixed: Changed from marginLeft to marginRight for RTL
   },
   checkButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
-    marginLeft: 8,
+    marginRight: 8, // Fixed: Changed from marginLeft to marginRight for RTL
   },
 });
 

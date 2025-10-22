@@ -1,96 +1,200 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isSignedIn() { return request.auth != null; }
-    function isAdmin() { return request.auth != null && request.auth.token.admin == true; }
+    // Helper: check if the authenticated user is the owner barber for a given barberId
+    function isBarberFor(barberId) {
+      return isAuthenticated() &&
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.barberId == barberId;
+    }
 
+    // Helper: check if the authenticated user is a barber
+    function isBarber() {
+      return isAuthenticated() &&
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isBarber == true;
+    }
+
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isValidUserData() {
+      return request.resource.data.keys().hasAll(['uid', 'displayName', 'phone', 'createdAt']) &&
+             request.resource.data.uid == request.auth.uid;
+    }
+    
+    // Users collection - users can read/write their own data, admins can read all
     match /users/{userId} {
-      // Allow read so phone-based login can check existence before auth
-      allow read: if true;
-      allow create: if isSignedIn() && request.auth.uid == userId;
-      allow update, delete: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+      // Allow read for login flow - user needs to read their profile during login
+      allow read: if true; // PUBLIC READ for login/registration flow
+      // Allow phone/email lookup for registration/login flow (PUBLIC OPERATION)
+      // This is CRITICAL for checkPhoneUserExists() to work BEFORE login
+      allow list: if true; // Allow anyone to query by phone for login/registration
+      allow create: if request.resource.data.uid == request.auth.uid;
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isOwner(userId) || isAdmin();
     }
-
-    // User notifications: only the owner can read/write their notifications
-    match /notifications/{docId} {
-      allow read, write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-    }
-
+    
+    // Appointments collection - users can manage their own appointments
     match /appointments/{appointmentId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if isAdmin() || (isSignedIn() && (
-        request.resource.data.userId == request.auth.uid || resource.data.userId == request.auth.uid
-      ));
+      // Allow read for specific appointment
+      allow read: if isAuthenticated() &&
+                     (resource.data.userId == request.auth.uid ||
+                      resource.data.barberId == request.auth.uid ||
+                      isAdmin());
+      // Allow list/query for admins and barbers
+      // Barbers will only see their own appointments through query filters
+      allow list: if isAuthenticated() && (isAdmin() || isBarber());
+      allow create: if isAuthenticated() &&
+                       (request.resource.data.userId == request.auth.uid || isAdmin()) &&
+                       request.resource.data.barberId is string &&
+                       request.resource.data.date is timestamp;
+      allow update: if isAuthenticated() && 
+                       (resource.data.userId == request.auth.uid || 
+                        resource.data.barberId == request.auth.uid || 
+                        isAdmin());
+      allow delete: if isAdmin() || 
+                       (isAuthenticated() && resource.data.userId == request.auth.uid);
     }
-
-    // Artists (formerly barbers)
-    match /artists/{artistId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    // Keep backward compatibility if legacy data exists
+    
+    // Barbers collection - public read, create by owner, updates by admin or owner
     match /barbers/{barberId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read: if true; // Allow guests to see barber info (name, photo, specialties)
+      // On create, resource doesn't exist yet; validate with request.resource
+      allow create: if isAdmin() || 
+                       (isAuthenticated() && request.resource.data.userId == request.auth.uid);
+      allow update, delete: if isAdmin() || 
+                       (isAuthenticated() && resource.data.userId == request.auth.uid);
     }
-
+    
+    // Treatments collection - public read, write by admin only
     match /treatments/{treatmentId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    match /gallery/{imageId} {
+    // Barber-specific treatments - public read, barbers can manage their own
+    match /barberTreatments/{treatmentId} {
+      allow read: if true;
+      allow create: if isAdmin() || isBarberFor(request.resource.data.barberId);
+      allow update: if isAdmin() || isBarberFor(resource.data.barberId);
+      allow delete: if isAdmin() || isBarberFor(resource.data.barberId);
+    }
+
+    // Availability collection - public read, barbers manage their own weekly availability
+    match /availability/{availabilityId} {
+      allow read: if true; // Allow guests to see availability
+      // Create: allow admin or the barber that owns the barberId being created
+      allow create: if isAdmin() || isBarberFor(request.resource.data.barberId);
+      // Update: allow admin or the barber who owns the existing (and new) barberId
+      allow update: if isAdmin() || isBarberFor(resource.data.barberId);
+      // Delete: allow admin or barber who owns the availability record
+      allow delete: if isAdmin() || isBarberFor(resource.data.barberId);
+    }
+
+    // Barber availability collection - public read for date-specific availability, barbers and admin can manage
+    match /barberAvailability/{barberId} {
+      allow read: if true; // Allow guests to see date-specific availability for booking
+      // Allow admin or the barber themselves to manage their date-specific availability
+      allow create, update: if isAdmin() || isBarberFor(barberId);
+      allow delete: if isAdmin() || isBarberFor(barberId);
+    }
+    
+    // Gallery collection - public read, write by admin and barbers
+    match /gallery/{galleryId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update: if isAdmin() || 
+                       (isAuthenticated() && resource.data.uploadedBy == request.auth.uid);
+      allow delete: if isAdmin() || 
+                       (isAuthenticated() && resource.data.uploadedBy == request.auth.uid);
+    }
+    
+    // Waitlist collection - users can manage their own waitlist entries
+    match /waitlist/{waitlistId} {
+      allow read: if isAuthenticated() &&
+                     (resource.data.clientId == request.auth.uid ||
+                      resource.data.barberId == request.auth.uid ||
+                      isAdmin());
+      allow list: if isAuthenticated() && (isAdmin() || isBarber()); // Barbers can list waitlist
+      allow create: if isAuthenticated() &&
+                       request.resource.data.clientId == request.auth.uid;
+      allow update: if isAdmin() ||
+                       (isAuthenticated() && resource.data.barberId == request.auth.uid);
+      allow delete: if isAdmin() ||
+                       (isAuthenticated() && (resource.data.clientId == request.auth.uid || resource.data.barberId == request.auth.uid));
+    }
+    
+    // Settings collection - public read, write by admin only
+    match /settings/{settingId} {
       allow read: if true;
       allow write: if isAdmin();
     }
-
-    match /artistTreatments/{docId} {
-      allow read: if true;        // public can view treatments
+    
+    // Shop collection - read by all authenticated users, write by admin only
+    match /shop/{shopId} {
+      allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
-
-    // Legacy barberTreatments collection for backward compatibility
-    match /barberTreatments/{docId} {
-      allow read: if true;        // public can view treatments
+    
+    // Notifications collection - users can read their own notifications
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && 
+                     (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAdmin();
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+    
+    // Push tokens collection - users can manage their own tokens
+    match /pushTokens/{userId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+    }
+    
+    // Notification settings collection - users can manage their own settings
+    match /notificationSettings/{userId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+    }
+    
+    // Analytics collection - admin only
+    match /analytics/{docId} {
+      allow read, write: if isAdmin();
+    }
+    
+    // Business config collection - public read for app configuration
+    match /businessConfigs/{configId} {
+      allow read: if true; // Allow all users to read business config
       allow write: if isAdmin();
     }
-
-    match /artistAvailability/{docId} {
-      allow read: if isSignedIn();
+    
+    // BarbersBar config collection - public read for app configuration
+    match /barbersBarConfigs/{configId} {
+      allow read: if true; // Allow all users to read app config
       allow write: if isAdmin();
     }
-
-    // Legacy availability collections used by app code
-    match /availability/{docId} {
-      allow read: if true;        // public can view availability
+    
+    // Config collection - public read for general app configuration
+    match /config/{configId} {
+      allow read: if true; // Allow all users to read general config
       allow write: if isAdmin();
     }
-
-    match /barberAvailability/{docId} {
-      allow read: if true;        // public can view availability
-      allow write: if isAdmin();
-    }
-
-    match /settings/{docId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    match /shopItems/{docId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    // Admin notification settings
-    match /adminNotifications/{userId} {
-      allow read, write: if isAdmin() && request.auth.uid == userId;
-    }
-
+    
+    // Default deny rule for any other documents
     match /{document=**} {
       allow read, write: if false;
     }
   }
 }
-

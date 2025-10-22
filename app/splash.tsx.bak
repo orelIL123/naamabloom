@@ -1,0 +1,157 @@
+import { useRouter } from 'expo-router';
+import { onAuthStateChanged } from 'firebase/auth';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, StyleSheet, View } from 'react-native';
+import { checkIsAdmin, getAuthInstance, waitForFirebaseReady } from '../config/firebase';
+import { attemptAutoLogin, authManager } from '../services/authManager';
+
+export default function SplashScreen() {
+  const router = useRouter();
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [hasNavigated, setHasNavigated] = useState(false);
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 1000,
+      useNativeDriver: true,
+    }).start();
+
+    let authUnsubscribe: (() => void) | null = null;
+    let navigationTimeout: NodeJS.Timeout;
+
+    const handleNavigation = async (user: any = null) => {
+      if (hasNavigated) {
+        console.log('Navigation already handled, skipping...');
+        return;
+      }
+      
+      console.log('Handling navigation...');
+      setHasNavigated(true);
+      
+      // Clean up auth listener
+      if (authUnsubscribe) {
+        authUnsubscribe();
+      }
+      
+      // Navigate based on user type
+      try {
+        // Add small delay to ensure app is ready
+        setTimeout(async () => {
+          if (user) {
+            // Check if user is admin
+            try {
+              const isAdmin = await checkIsAdmin(user.uid);
+              if (isAdmin) {
+                console.log('Admin user detected, navigating to admin panel');
+                router.replace('/admin-home');
+              } else {
+                console.log('Regular user, navigating to tabs');
+                router.replace('/(tabs)');
+              }
+            } catch (error) {
+              console.error('Error checking admin status:', error);
+              // Fallback to normal navigation
+              router.replace('/(tabs)');
+            }
+          } else {
+            console.log('No user, navigating to tabs');
+            router.replace('/(tabs)');
+          }
+          console.log('Navigation successful');
+        }, 100);
+      } catch (error) {
+        console.error('Navigation error:', error);
+      }
+    };
+
+    // Set up auth state listener with enhanced error handling
+    const initializeAuth = async () => {
+      try {
+        // Initialize auth manager
+        await authManager.initialize();
+        
+        // Wait for Firebase to be ready before setting up auth listener
+        const isReady = await waitForFirebaseReady(4000); // 4 second timeout for this splash
+        
+        if (isReady) {
+          // Try auto login first
+          const autoLoginResult = await attemptAutoLogin();
+          if (autoLoginResult.success && autoLoginResult.user) {
+            console.log('✅ Auto login successful');
+            await handleNavigation(autoLoginResult.user);
+            return;
+          }
+
+          const auth = getAuthInstance();
+          if (auth) {
+            // Set up the listener.
+            authUnsubscribe = onAuthStateChanged(auth, (user) => {
+              // This function will be called when the auth state is determined.
+              // It will be called with a user object if signed in, or null if not.
+              // In either case, we are ready to navigate away from the splash.
+              console.log('✅ Auth state determined, navigating.');
+              handleNavigation(user);
+            }, (error) => {
+              // This is an error handler for the listener itself.
+              console.error('❌ Auth state listener error:', error);
+              handleNavigation(); // Navigate away even if there's an error.
+            });
+            console.log('✅ Auth listener set up successfully');
+          } else {
+            console.warn('⚠️ Auth instance not available, navigating anyway');
+            handleNavigation();
+          }
+        } else {
+          console.warn('⚠️ Firebase not ready within timeout, navigating anyway');
+          handleNavigation();
+        }
+      } catch (error) {
+        console.error('❌ Failed to import or set up auth listener:', error);
+        // If we can't even set up the listener, navigate away.
+        handleNavigation();
+      }
+    };
+
+    // Start auth check after splash animation
+    const splashTimer = setTimeout(() => {
+      initializeAuth();
+      
+      // Failsafe: navigate after 4 seconds only if auth is taking too long
+      navigationTimeout = setTimeout(() => {
+        if (!hasNavigated) {
+          console.warn('Navigation timeout - proceeding anyway');
+          handleNavigation();
+        }
+      }, 4000);
+    }, 2000);
+
+    return () => {
+      clearTimeout(splashTimer);
+      clearTimeout(navigationTimeout);
+      if (authUnsubscribe) {
+        authUnsubscribe();
+      }
+    };
+  }, [router, hasNavigated]);
+
+  return (
+    <View style={styles.container}>
+      <Animated.Image
+        source={require('../assets/images/splash.png')}
+        style={[styles.splashImage, { opacity: fadeAnim }]}
+        resizeMode="cover"
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  splashImage: {
+    width: '100%',
+    height: '100%',
+  },
+});

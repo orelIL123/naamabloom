@@ -29,12 +29,16 @@ import {
     where,
     writeBatch
 } from 'firebase/firestore';
-import { deleteObject, getDownloadURL, listAll, ref, uploadBytes, uploadString } from 'firebase/storage';
-import base64 from 'react-native-base64';
+import { deleteObject, getDownloadURL, listAll, ref, uploadBytes } from 'firebase/storage';
 import { auth, db, storage } from '../app/config/firebase';
+import { scheduleAppointmentReminders } from './appointmentReminderManager';
+import { clearStoredAuthData } from './authManager';
+import { scheduleBarberReminders } from './barberReminderManager';
 import { CacheUtils } from './cache';
 import { ImageOptimizer } from './imageOptimization';
 import { messagingService } from './messaging';
+import { cancelAllLocal, revokePushTokenForUser } from './notificationManager';
+import { getPhoneVariants, normalizePhoneNumber } from './phoneNormalizer';
 
 // Export db for use in other components
 export { db };
@@ -93,6 +97,7 @@ export interface Barber {
   phone?: string; // Phone number for contact
   photoUrl?: string; // Photo URL for profile image
   bio?: string; // Biography description
+  primaryTreatmentDuration?: number; // Primary treatment duration in minutes (20/30/40/45) - defines slot size for this barber
 }
 
 export interface Treatment {
@@ -116,6 +121,7 @@ export interface BarberTreatment {
   description: string;
   image: string;
   isActive: boolean;
+  isPrimary?: boolean; // Primary treatment for this barber - defines their slot duration
   createdAt: any;
   updatedAt: any;
 }
@@ -135,7 +141,7 @@ export interface Appointment {
 export interface GalleryImage {
   id: string;
   imageUrl: string;
-  type: 'gallery' | 'background' | 'splash' | 'aboutus' | 'atmosphere' | 'shop';
+  type: 'gallery' | 'background' | 'splash' | 'aboutus';
   order: number;
   isActive: boolean;
   createdAt: Timestamp;
@@ -223,8 +229,47 @@ export const registerUser = async (email: string, password: string, displayName:
 
 export const logoutUser = async () => {
   try {
+    const currentUser = auth.currentUser;
+
+    if (currentUser) {
+      console.log('🔓 Logging out user:', currentUser.uid);
+
+      // 1. Revoke push token from Firestore
+      console.log('🗑️ Revoking push token...');
+      try {
+        await revokePushTokenForUser(currentUser.uid);
+        console.log('✅ Push token revoked successfully');
+      } catch (tokenError) {
+        console.error('❌ Error revoking push token:', tokenError);
+        // Continue with logout even if token removal fails
+      }
+
+      // 2. Cancel all local scheduled notifications
+      console.log('🗑️ Cancelling all local notifications...');
+      try {
+        await cancelAllLocal();
+        console.log('✅ All local notifications cancelled');
+      } catch (notifError) {
+        console.error('❌ Error cancelling notifications:', notifError);
+        // Continue with logout
+      }
+
+      // 3. Clear auth storage
+      console.log('🗑️ Clearing stored auth data...');
+      try {
+        await clearStoredAuthData();
+        console.log('✅ Auth data cleared');
+      } catch (storageError) {
+        console.error('❌ Error clearing auth data:', storageError);
+        // Continue with logout
+      }
+    }
+
+    // 4. Sign out from Firebase
     await signOut(auth);
+    console.log('✅ User logged out successfully');
   } catch (error) {
+    console.error('❌ Error logging out:', error);
     throw error;
   }
 };
@@ -240,19 +285,10 @@ export const onAuthStateChange = (callback: (user: User | null) => void) => {
 // Phone authentication functions using messaging service
 export const sendSMSVerification = async (phoneNumber: string) => {
   try {
-    // The phone number should be in international format
-    let formattedPhone = phoneNumber;
+    // Normalize phone number
+    const formattedPhone = normalizePhoneNumber(phoneNumber);
     
-    // Add +972 prefix if not present
-    if (!phoneNumber.startsWith('+')) {
-      if (phoneNumber.startsWith('0')) {
-        formattedPhone = '+972' + phoneNumber.substring(1);
-      } else {
-        formattedPhone = '+972' + phoneNumber;
-      }
-    }
-    
-    console.log('📱 Sending SMS to:', formattedPhone);
+    console.log('📱 Sending SMS to:', phoneNumber, '=> normalized:', formattedPhone);
 
     // Generate verification code
     const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -408,21 +444,45 @@ export const sendAppointmentNotification = async (userId: string, appointmentDat
 
 export const registerUserWithPhone = async (phoneNumber: string, displayName:string, password: string) => {
   try {
-    // Format phone number consistently
-    let formattedPhone = phoneNumber;
-    if (!phoneNumber.startsWith('+')) {
-      if (phoneNumber.startsWith('0')) {
-        formattedPhone = '+972' + phoneNumber.substring(1);
-      } else {
-        formattedPhone = '+972' + phoneNumber;
-      }
+    // Normalize phone number
+    const formattedPhone = normalizePhoneNumber(phoneNumber);
+    
+    console.log('═══════════════════════════════════════');
+    console.log('📝📝📝 REGISTRATION ATTEMPT 📝📝📝');
+    console.log('Input phone:', phoneNumber);
+    console.log('Normalized to:', formattedPhone);
+    console.log('Display name:', displayName);
+    console.log('Password length:', password.length);
+    console.log('═══════════════════════════════════════');
+    
+    // Check if user already exists (searches all variants)
+    const existingUser = await checkPhoneUserExists(phoneNumber);
+    if (existingUser.exists) {
+      console.log('❌ REGISTRATION FAILED: User already exists');
+      throw new Error('משתמש עם מספר טלפון זה כבר קיים במערכת. אנא התחבר במקום.');
     }
     
     // Create a unique temporary email for this phone user
-    const tempEmail = `${formattedPhone.replace(/[^0-9]/g, '')}@phonesign.local`;
+    const tempEmail = `${formattedPhone.replace(/[^0-9]/g, '')}@phone.barbersbar.com`;
     
     // Create user with email/password (since phone auth requires special setup)
-    const userCredential = await createUserWithEmailAndPassword(auth, tempEmail, password);
+    let userCredential;
+    try {
+      userCredential = await createUserWithEmailAndPassword(auth, tempEmail, password);
+    } catch (authError: any) {
+      console.error('Firebase Auth error:', authError);
+      
+      // Handle specific Firebase errors
+      if (authError.code === 'auth/email-already-in-use') {
+        throw new Error('משתמש עם מספר טלפון זה כבר קיים במערכת. אנא התחבר במקום.');
+      } else if (authError.code === 'auth/weak-password') {
+        throw new Error('הסיסמה חלשה מדי. אנא בחר סיסמה חזקה יותר (לפחות 6 תווים).');
+      } else if (authError.code === 'auth/invalid-email') {
+        throw new Error('שגיאה פנימית במערכת. אנא נסה שוב.');
+      } else {
+        throw new Error('שגיאה ביצירת חשבון. אנא נסה שוב.');
+      }
+    }
     const user = userCredential.user;
     
     await updateProfile(user, {
@@ -439,13 +499,21 @@ export const registerUserWithPhone = async (phoneNumber: string, displayName:str
       email: tempEmail,
       displayName: displayName,
       firstName: displayName.split(' ')[0] || displayName, // Take first word as firstName
-      phone: formattedPhone,
+      phone: formattedPhone, // IMPORTANT: Always save in normalized format (+972XXXXXXXXX)
       isAdmin: isAdmin,
       hasPassword: true, // User now has a password (the temp one)
       createdAt: Timestamp.now()
     };
     
+    console.log('💾 Saving user profile to Firestore:');
+    console.log('   - UID:', user.uid);
+    console.log('   - Phone (normalized):', formattedPhone);
+    console.log('   - Email (temp):', tempEmail);
+    console.log('   - Display name:', displayName);
+    
     await setDoc(doc(db, 'users', user.uid), userProfile);
+    
+    console.log('✅ User profile saved to Firestore');
     
     // Register for push notifications after successful registration
     await registerForPushNotifications(user.uid);
@@ -460,7 +528,12 @@ export const registerUserWithPhone = async (phoneNumber: string, displayName:str
       console.log('Failed to send new user notification to admin:', adminNotificationError);
     }
     
-    console.log('✅ User registered successfully with phone:', formattedPhone);
+    console.log('═══════════════════════════════════════');
+    console.log('✅✅✅ REGISTRATION SUCCESSFUL! ✅✅✅');
+    console.log('User ID:', user.uid);
+    console.log('Phone (saved as):', formattedPhone);
+    console.log('═══════════════════════════════════════');
+    
     return user;
   } catch (error) {
     console.error('Error registering user with phone:', error);
@@ -469,43 +542,59 @@ export const registerUserWithPhone = async (phoneNumber: string, displayName:str
 };
 
 // New function to check if phone user exists and has password
-export const checkPhoneUserExists = async (phoneNumber: string): Promise<{ exists: boolean; hasPassword: boolean; uid?: string; email?: string }> => {
+export const checkPhoneUserExists = async (phoneNumber: string): Promise<{ exists: boolean; hasPassword: boolean; uid?: string }> => {
   try {
-    // Format phone number consistently - convert to international format
-    let formattedPhone = phoneNumber;
-    if (!phoneNumber.startsWith('+')) {
-      if (phoneNumber.startsWith('0')) {
-        formattedPhone = '+972' + phoneNumber.substring(1);
+    // Normalize phone number and get all possible variants
+    const normalizedPhone = normalizePhoneNumber(phoneNumber);
+    const phoneVariants = getPhoneVariants(phoneNumber);
+    
+    console.log('═══════════════════════════════════════');
+    console.log('📱 PHONE CHECK - Input:', phoneNumber);
+    console.log('🔍 Normalized to:', normalizedPhone);
+    console.log('🔍 Will check these variants:', phoneVariants);
+    console.log('═══════════════════════════════════════');
+
+    // Query users collection for any of the phone variants
+    // NOTE: This is a public operation needed for login/registration flow
+    const usersRef = collection(db, 'users');
+    
+    // Try to find user with any variant of the phone number
+    for (let i = 0; i < phoneVariants.length; i++) {
+      const variant = phoneVariants[i];
+      console.log(`🔎 Checking variant ${i + 1}/${phoneVariants.length}: "${variant}"`);
+      
+      const q = query(usersRef, where('phone', '==', variant));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        const userDoc = querySnapshot.docs[0];
+        const userData = userDoc.data();
+
+        console.log('═══════════════════════════════════════');
+        console.log('✅✅✅ USER FOUND! ✅✅✅');
+        console.log('Found with variant:', variant);
+        console.log('User ID:', userDoc.id);
+        console.log('User email:', userData.email);
+        console.log('Has password:', !!userData.hasPassword);
+        console.log('═══════════════════════════════════════');
+        
+        return {
+          exists: true,
+          hasPassword: userData.hasPassword || false,
+          uid: userDoc.id
+        };
       } else {
-        formattedPhone = '+972' + phoneNumber;
+        console.log(`   ❌ Not found with variant: "${variant}"`);
       }
     }
-    
-    console.log(`🔍 Checking phone user: ${phoneNumber} -> ${formattedPhone}`);
-    
-    const usersRef = collection(db, 'users');
-    const q = query(usersRef, where('phone', '==', formattedPhone));
-    const querySnapshot = await getDocs(q);
-    
-    console.log(`🔍 Query result: ${querySnapshot.size} users found`);
-    
-    if (querySnapshot.empty) {
-      return { exists: false, hasPassword: false };
-    }
-    
-    const userDoc = querySnapshot.docs[0];
-    const userData2 = userDoc.data();
-    
-    console.log(`✅ User found: ${userData2.displayName}, hasPassword: ${userData2.hasPassword}`);
-    
-    return {
-      exists: true,
-      hasPassword: userData2.hasPassword || false,
-      uid: userDoc.id,
-      email: userData2.email
-    };
+
+    console.log('═══════════════════════════════════════');
+    console.log('❌❌❌ USER NOT FOUND ❌❌❌');
+    console.log('Tried all variants:', phoneVariants);
+    console.log('═══════════════════════════════════════');
+    return { exists: false, hasPassword: false };
   } catch (error) {
-    console.error('Error checking phone user:', error);
+    console.error('❌ Error checking phone user:', error);
     return { exists: false, hasPassword: false };
   }
 };
@@ -513,41 +602,78 @@ export const checkPhoneUserExists = async (phoneNumber: string): Promise<{ exist
 // New function to login with phone + password (no SMS)
 export const loginWithPhoneAndPassword = async (phoneNumber: string, password: string) => {
   try {
-    // First check if user exists with this phone
+    console.log('═══════════════════════════════════════');
+    console.log('🔐🔐🔐 LOGIN ATTEMPT 🔐🔐🔐');
+    console.log('Input phone:', phoneNumber);
+    console.log('Password length:', password.length);
+    console.log('═══════════════════════════════════════');
+    
+    // First check if user exists with this phone (will search all variants)
     const userCheck = await checkPhoneUserExists(phoneNumber);
-    if (!userCheck.exists || !userCheck.hasPassword) {
-      throw new Error('משתמש לא נמצא או לא הוגדרה סיסמה');
+    
+    if (!userCheck.exists) {
+      console.log('❌ LOGIN FAILED: User does not exist');
+      throw new Error('משתמש לא נמצא. אנא הירשם תחילה.');
+    }
+    
+    if (!userCheck.hasPassword) {
+      console.log('❌ LOGIN FAILED: User has no password set');
+      throw new Error('לא הוגדרה סיסמה למשתמש זה. השתמש באימות SMS.');
     }
 
     // Get user profile
+    console.log('📋 Fetching user profile for UID:', userCheck.uid);
     const userProfile = await getUserProfile(userCheck.uid!);
+    
     if (!userProfile) {
+      console.log('❌ LOGIN FAILED: User profile not found in database');
       throw new Error('פרופיל משתמש לא נמצא');
     }
 
-    // Use the synthetic email we store for phone users
-    // Format phone number consistently for email lookup (same as registration)
-    let formattedPhone = phoneNumber;
-    if (!phoneNumber.startsWith('+')) {
-      if (phoneNumber.startsWith('0')) {
-        formattedPhone = '+972' + phoneNumber.substring(1);
-      } else {
-        formattedPhone = '+972' + phoneNumber;
+    console.log('📋 User profile found:');
+    console.log('   - Display name:', userProfile.displayName);
+    console.log('   - Email:', userProfile.email);
+    console.log('   - Phone:', userProfile.phone);
+    console.log('   - Has password:', userProfile.hasPassword);
+
+    // If user has email, use email+password login
+    if (userProfile.email) {
+      console.log('🔐 Attempting Firebase Auth login with email:', userProfile.email);
+      
+      try {
+        const userCredential = await signInWithEmailAndPassword(auth, userProfile.email, password);
+        
+        console.log('═══════════════════════════════════════');
+        console.log('✅✅✅ LOGIN SUCCESSFUL! ✅✅✅');
+        console.log('User ID:', userCredential.user.uid);
+        console.log('Email:', userCredential.user.email);
+        console.log('═══════════════════════════════════════');
+
+        // Register for push notifications after successful login
+        await registerForPushNotifications(userCredential.user.uid);
+
+        return userCredential.user;
+      } catch (authError: any) {
+        console.log('❌ Firebase Auth login failed:', authError.code, authError.message);
+        
+        if (authError.code === 'auth/wrong-password') {
+          throw new Error('סיסמה שגויה');
+        } else if (authError.code === 'auth/user-not-found') {
+          throw new Error('משתמש לא נמצא ב-Firebase Auth');
+        } else if (authError.code === 'auth/too-many-requests') {
+          throw new Error('יותר מדי ניסיונות התחברות. נסה שוב מאוחר יותר');
+        } else {
+          throw new Error('שגיאה בהתחברות: ' + authError.message);
+        }
       }
+    } else {
+      console.log('❌ LOGIN FAILED: User has no email address');
+      throw new Error('משתמש לא נמצא עם אימייל');
     }
-    
-    // Always use the stored email from the profile, not generate a new one
-    const email = userCheck.email;
-    if (!email) {
-      throw new Error('אימייל משתמש לא נמצא בפרופיל');
-    }
-    
-    console.log(`🔐 Login attempt with email: ${email}`);
-    
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    return userCredential.user;
-  } catch (error) {
-    console.error('Error login with phone and password:', error);
+  } catch (error: any) {
+    console.error('═══════════════════════════════════════');
+    console.error('❌ LOGIN ERROR:', error.message || error);
+    console.error('═══════════════════════════════════════');
     throw error;
   }
 };
@@ -566,16 +692,8 @@ export const setPasswordForPhoneUser = async (phoneNumber: string, password: str
     }
 
     // Create email from phone number for Firebase Auth (same format as registration)
-    let formattedPhone = phoneNumber;
-    if (!phoneNumber.startsWith('+')) {
-      if (phoneNumber.startsWith('0')) {
-        formattedPhone = '+972' + phoneNumber.substring(1);
-      } else {
-        formattedPhone = '+972' + phoneNumber;
-      }
-    }
-    
-    const email = `${formattedPhone.replace(/[^0-9]/g, '')}@phonesign.local`;
+    const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : '+972' + phoneNumber.substring(1);
+    const email = `${formattedPhone.replace(/[^0-9]/g, '')}@phone.barbersbar.com`;
     
     // Link email/password credential to existing phone user
     const emailCredential = EmailAuthProvider.credential(email, password);
@@ -612,13 +730,21 @@ export const loginWithPhone = async (phoneNumber: string, verificationId: string
 // User profile functions
 export const getUserProfile = async (uid: string): Promise<UserProfile | null> => {
   try {
-    console.log(`🔍 Getting user profile for UID: ${uid}`);
+    console.log('📋 Getting user profile for UID:', uid);
     
-    // Check if user is authenticated (but allow during login process)
-    const currentUser = auth.currentUser;
-    if (currentUser && currentUser.uid !== uid) {
-      // Check if current user is admin (only if requesting other user's profile)
-      const currentUserDoc = await getDoc(doc(db, 'users', currentUser.uid));
+    // Check if user is authenticated
+    if (!auth.currentUser) {
+      console.warn('⚠️ User not authenticated, attempting to get profile anyway');
+      // Still try to get profile - might be called during auth flow
+    } else {
+      console.log('✅ Current user authenticated:', auth.currentUser.uid);
+    }
+    
+    // Check if user is requesting their own profile or is admin
+    if (auth.currentUser && auth.currentUser.uid !== uid) {
+      console.log('🔍 Requesting different user profile, checking admin status...');
+      // Check if current user is admin
+      const currentUserDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
       if (!currentUserDoc.exists() || !currentUserDoc.data().isAdmin) {
         console.log('❌ Insufficient permissions to access other user profile');
         return null;
@@ -628,18 +754,20 @@ export const getUserProfile = async (uid: string): Promise<UserProfile | null> =
     const docRef = doc(db, 'users', uid);
     const docSnap = await getDoc(docRef);
     
-    console.log(`🔍 Profile document exists: ${docSnap.exists()}`);
-    
     if (docSnap.exists()) {
-      const profileData = docSnap.data() as UserProfile;
-      console.log(`✅ Profile found: ${profileData.displayName}`);
-      return profileData;
+      const profile = docSnap.data() as UserProfile;
+      console.log('✅ User profile found:');
+      console.log('   - Display name:', profile.displayName);
+      console.log('   - Phone:', profile.phone);
+      console.log('   - Email:', profile.email);
+      console.log('   - First name:', profile.firstName);
+      return profile;
+    } else {
+      console.log('❌ User profile document does not exist');
+      return null;
     }
-    
-    console.log('❌ Profile document not found');
-    return null;
   } catch (error) {
-    console.error('Error getting user profile:', error);
+    console.error('❌ Error getting user profile:', error);
     return null;
   }
 };
@@ -707,31 +835,8 @@ export const getBarbers = async (useCache: boolean = false): Promise<Barber[]> =
       return nameA.localeCompare(nameB, 'he');
     });
     
-    // Fallback: if no barbers in legacy collection, read from artists and map
-    if (barbers.length === 0) {
-      const artistsSnapshot = await getDocs(collection(db, 'artists'));
-      artistsSnapshot.forEach((docItem) => {
-        const a = docItem.data() as any;
-        barbers.push({
-          id: docItem.id,
-          name: a.name,
-          userId: a.userId,
-          phone: a.phone,
-          whatsapp: a.whatsapp,
-          isMainBarber: a.isMainArtist ?? false,
-          experience: a.experience,
-          specialties: a.specialties,
-          available: a.available,
-        } as Barber);
-      });
-    }
-
-    // If still empty, synthesize Naama to avoid empty flow
-    if (barbers.length === 0) {
-      barbers.push({ id: 'naama', name: 'Naama Bloom', isMainBarber: true, available: true } as unknown as Barber);
-    }
-
     console.log('✅ Returning', barbers.length, 'barber(s)');
+    
     return barbers;
   } catch (error) {
     console.error('Error getting barbers:', error);
@@ -739,32 +844,44 @@ export const getBarbers = async (useCache: boolean = false): Promise<Barber[]> =
   }
 };
 
+// Real-time listener for all barbers (for syncing across screens)
+export const listenBarbers = (callback: (barbers: Barber[]) => void) => {
+  console.log('🔊 Setting up real-time listener for barbers');
+  
+  const barbersRef = collection(db, 'barbers');
+  
+  return onSnapshot(barbersRef, (snapshot) => {
+    const barbers: Barber[] = [];
+    
+    snapshot.forEach((doc) => {
+      const barberData = { id: doc.id, ...doc.data() } as Barber;
+      barbers.push(barberData);
+    });
+    
+    // Sort barbers by name for consistent ordering
+    barbers.sort((a, b) => {
+      const nameA = a.name || '';
+      const nameB = b.name || '';
+      return nameA.localeCompare(nameB, 'he');
+    });
+    
+    console.log('📡 Barbers updated in real-time:', barbers.length);
+    callback(barbers);
+  }, (error) => {
+    console.error('❌ Error in barbers listener:', error);
+    callback([]); // Return empty array on error
+  });
+};
+
 export const getBarber = async (barberId: string): Promise<Barber | null> => {
   try {
     const docRef = doc(db, 'barbers', barberId);
-    let docSnap = await getDoc(docRef);
+    const docSnap = await getDoc(docRef);
     
     if (docSnap.exists()) {
       return {
         id: docSnap.id,
         ...docSnap.data()
-      } as Barber;
-    }
-    // Fallback to artists
-    const artistRef = doc(db, 'artists', barberId);
-    docSnap = await getDoc(artistRef);
-    if (docSnap.exists()) {
-      const a = docSnap.data() as any;
-      return {
-        id: docSnap.id,
-        name: a.name,
-        userId: a.userId,
-        phone: a.phone,
-        whatsapp: a.whatsapp,
-        isMainBarber: a.isMainArtist ?? false,
-        experience: a.experience,
-        specialties: a.specialties,
-        available: a.available,
       } as Barber;
     }
     return null;
@@ -777,31 +894,13 @@ export const getBarber = async (barberId: string): Promise<Barber | null> => {
 export const getBarberByUserId = async (userId: string): Promise<Barber | null> => {
   try {
     const q = query(collection(db, 'barbers'), where('userId', '==', userId));
-    let querySnapshot = await getDocs(q);
+    const querySnapshot = await getDocs(q);
     
     if (!querySnapshot.empty) {
       const doc = querySnapshot.docs[0];
       return {
         id: doc.id,
         ...doc.data()
-      } as Barber;
-    }
-    // Fallback to artists
-    const qa = query(collection(db, 'artists'), where('userId', '==', userId));
-    querySnapshot = await getDocs(qa);
-    if (!querySnapshot.empty) {
-      const d = querySnapshot.docs[0];
-      const a = d.data() as any;
-      return {
-        id: d.id,
-        name: a.name,
-        userId: a.userId,
-        phone: a.phone,
-        whatsapp: a.whatsapp,
-        isMainBarber: a.isMainArtist ?? false,
-        experience: a.experience,
-        specialties: a.specialties,
-        available: a.available,
       } as Barber;
     }
     return null;
@@ -862,11 +961,15 @@ export const createAppointment = async (appointmentData: Omit<Appointment, 'id' 
       // Get barber name from barberId
       const barberDoc = await getDoc(doc(db, 'barbers', appointmentData.barberId));
       const barberName = barberDoc.exists() ? barberDoc.data().name : 'הספר';
-      
+
+      // Get treatment name from treatmentId
+      const treatmentDoc = await getDoc(doc(db, 'treatments', appointmentData.treatmentId));
+      const treatmentName = treatmentDoc.exists() ? treatmentDoc.data().name : 'תספורת';
+
       // Get time from date (extract hour and minute)
       const appointmentDate = appointmentData.date.toDate();
       const appointmentTime = `${appointmentDate.getHours().toString().padStart(2, '0')}:${appointmentDate.getMinutes().toString().padStart(2, '0')}`;
-      
+
       await sendAppointmentConfirmationNotification(
         appointmentData.userId,
         docRef.id,
@@ -874,13 +977,31 @@ export const createAppointment = async (appointmentData: Omit<Appointment, 'id' 
         appointmentTime,
         barberName
       );
-      
-      // Schedule reminder notifications
-      await scheduleAppointmentReminders(docRef.id, {
-        userId: appointmentData.userId,
-        date: appointmentData.date,
-        barberName: barberName
+
+      // Schedule customer reminders using new reminder manager
+      await scheduleAppointmentReminders({
+        id: docRef.id,
+        startsAt: appointmentDate.toISOString(), // Convert to ISO string
+        clientName: 'לקוח יקר',
+        barberName: barberName,
+        treatment: treatmentName,
       });
+
+      // Schedule barber reminders (local notifications on barber's device)
+      // Note: This will only work when the barber has the app installed
+      try {
+        await scheduleBarberReminders({
+          id: docRef.id,
+          startsAt: appointmentDate.toISOString(),
+          barberId: appointmentData.barberId,
+          clientName: 'לקוח יקר',
+          treatment: treatmentName,
+        });
+        console.log('✅ Barber reminders scheduled');
+      } catch (barberReminderError) {
+        console.log('⚠️ Could not schedule barber reminders (barber may not have app):', barberReminderError);
+        // This is OK - barber might not have the app or notifications enabled
+      }
     } catch (notificationError) {
       console.log('Failed to send appointment notification:', notificationError);
     }
@@ -890,8 +1011,7 @@ export const createAppointment = async (appointmentData: Omit<Appointment, 'id' 
       await sendNotificationToAdmin(
         'תור חדש! 📅',
         `תור חדש נוצר עבור ${appointmentData.date.toDate().toLocaleDateString('he-IL')}`,
-        { appointmentId: docRef.id },
-        'new_appointment'
+        { appointmentId: docRef.id }
       );
     } catch (adminNotificationError) {
       console.log('Failed to send admin notification:', adminNotificationError);
@@ -981,14 +1101,7 @@ export const cancelAppointment = async (appointmentId: string, userId: string): 
       cancelledAt: Timestamp.now(),
       cancelledBy: 'customer'
     });
-
-    // Cancel scheduled reminders for this appointment
-    try {
-      await cancelAppointmentReminders(appointmentId);
-    } catch (reminderError) {
-      console.log('Failed to cancel appointment reminders:', reminderError);
-    }
-
+    
     // Send cancellation notification to user
     try {
       const barberDoc = await getDoc(doc(db, 'barbers', appointment.barberId));
@@ -1046,6 +1159,21 @@ export const cancelAppointment = async (appointmentId: string, userId: string): 
     } catch (notificationError) {
       console.error('Error sending admin notification:', notificationError);
       // Don't fail the cancellation if notification fails
+    }
+    
+    // Notify waitlist users about the available slot
+    try {
+      const appointmentDate = appointment.date.toDate();
+      const appointmentTime = `${appointmentDate.getHours().toString().padStart(2, '0')}:${appointmentDate.getMinutes().toString().padStart(2, '0')}`;
+      
+      await notifyWaitlistOnSlotAvailable(
+        appointment.barberId,
+        appointmentDate,
+        appointmentTime
+      );
+    } catch (waitlistError) {
+      console.error('Error notifying waitlist users:', waitlistError);
+      // Don't fail the cancellation if waitlist notification fails
     }
     
     return { success: true, message: 'התור בוטל בהצלחה' };
@@ -1199,20 +1327,27 @@ export const deleteAppointment = async (appointmentId: string) => {
       await sendNotificationToAdmin(
         'תור בוטל! ❌',
         `תור בוטל עבור ${appointmentData.date.toDate().toLocaleDateString('he-IL')}`,
-        { appointmentId: appointmentId },
-        'canceled_appointment'
+        { appointmentId: appointmentId }
       );
     } catch (adminNotificationError) {
       console.log('Failed to send admin cancellation notification:', adminNotificationError);
     }
-
-    // Cancel scheduled reminders for this appointment
+    
+    // Notify waitlist users about the available slot
     try {
-      await cancelAppointmentReminders(appointmentId);
-    } catch (reminderError) {
-      console.log('Failed to cancel appointment reminders:', reminderError);
+      const appointmentDate = appointmentData.date.toDate();
+      const appointmentTime = `${appointmentDate.getHours().toString().padStart(2, '0')}:${appointmentDate.getMinutes().toString().padStart(2, '0')}`;
+      
+      await notifyWaitlistOnSlotAvailable(
+        appointmentData.barberId,
+        appointmentDate,
+        appointmentTime
+      );
+    } catch (waitlistError) {
+      console.log('Failed to notify waitlist users:', waitlistError);
+      // Continue even if waitlist notification fails
     }
-
+    
     await deleteDoc(doc(db, 'appointments', appointmentId));
   } catch (error) {
     throw error;
@@ -1455,24 +1590,37 @@ export const getAllAppointments = async (): Promise<Appointment[]> => {
 };
 
 // Optimized appointment queries
-export const getAppointmentsByDateRange = async (startDate: Date, endDate: Date): Promise<Appointment[]> => {
+export const getAppointmentsByDateRange = async (startDate: Date, endDate: Date, barberId?: string): Promise<Appointment[]> => {
   try {
-    const q = query(
-      collection(db, 'appointments'),
-      where('date', '>=', Timestamp.fromDate(startDate)),
-      where('date', '<=', Timestamp.fromDate(endDate)),
-      orderBy('date', 'desc')
-    );
+    let q;
+    if (barberId) {
+      // Filter by barberId for barbers
+      q = query(
+        collection(db, 'appointments'),
+        where('barberId', '==', barberId),
+        where('date', '>=', Timestamp.fromDate(startDate)),
+        where('date', '<=', Timestamp.fromDate(endDate)),
+        orderBy('date', 'desc')
+      );
+    } else {
+      // Get all appointments for admins
+      q = query(
+        collection(db, 'appointments'),
+        where('date', '>=', Timestamp.fromDate(startDate)),
+        where('date', '<=', Timestamp.fromDate(endDate)),
+        orderBy('date', 'desc')
+      );
+    }
     const querySnapshot = await getDocs(q);
     const appointments: Appointment[] = [];
-    
+
     querySnapshot.forEach((doc) => {
       appointments.push({
         id: doc.id,
         ...doc.data()
       } as Appointment);
     });
-    
+
     return appointments;
   } catch (error) {
     console.error('Error getting appointments by date range:', error);
@@ -1480,26 +1628,26 @@ export const getAppointmentsByDateRange = async (startDate: Date, endDate: Date)
   }
 };
 
-export const getCurrentMonthAppointments = async (): Promise<Appointment[]> => {
+export const getCurrentMonthAppointments = async (barberId?: string): Promise<Appointment[]> => {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-  
-  return getAppointmentsByDateRange(startOfMonth, endOfMonth);
+
+  return getAppointmentsByDateRange(startOfMonth, endOfMonth, barberId);
 };
 
-export const getRecentAppointments = async (days: number = 30): Promise<Appointment[]> => {
+export const getRecentAppointments = async (days: number = 30, barberId?: string): Promise<Appointment[]> => {
   const now = new Date();
   const startDate = new Date(now.getTime() - (days * 24 * 60 * 60 * 1000));
-  
-  return getAppointmentsByDateRange(startDate, now);
+
+  return getAppointmentsByDateRange(startDate, now, barberId);
 };
 
-export const getUpcomingAppointments = async (days: number = 30): Promise<Appointment[]> => {
+export const getUpcomingAppointments = async (days: number = 30, barberId?: string): Promise<Appointment[]> => {
   const now = new Date();
   const endDate = new Date(now.getTime() + (days * 24 * 60 * 60 * 1000));
-  
-  return getAppointmentsByDateRange(now, endDate);
+
+  return getAppointmentsByDateRange(now, endDate, barberId);
 };
 
 // Gallery functions
@@ -1550,10 +1698,6 @@ export const addTreatment = async (treatmentData: Omit<Treatment, 'id'>) => {
   try {
     const docRef = await addDoc(collection(db, 'treatments'), treatmentData);
     
-    // Clear treatments cache to ensure fresh data
-    await CacheUtils.invalidateDataCaches();
-    console.log('🔄 Treatments cache cleared after adding new treatment');
-    
     // Send notification about new treatment
     try {
       await sendNewTreatmentNotification(treatmentData.name);
@@ -1571,10 +1715,6 @@ export const updateTreatment = async (treatmentId: string, updates: Partial<Trea
   try {
     const docRef = doc(db, 'treatments', treatmentId);
     await updateDoc(docRef, updates);
-    
-    // Clear treatments cache to ensure fresh data
-    await CacheUtils.invalidateDataCaches();
-    console.log('🔄 Treatments cache cleared after updating treatment');
   } catch (error) {
     throw error;
   }
@@ -1583,10 +1723,6 @@ export const updateTreatment = async (treatmentId: string, updates: Partial<Trea
 export const deleteTreatment = async (treatmentId: string) => {
   try {
     await deleteDoc(doc(db, 'treatments', treatmentId));
-    
-    // Clear treatments cache to ensure fresh data
-    await CacheUtils.invalidateDataCaches();
-    console.log('🔄 Treatments cache cleared after deleting treatment');
   } catch (error) {
     throw error;
   }
@@ -1604,10 +1740,6 @@ export const addBarberTreatment = async (treatmentData: Omit<BarberTreatment, 'i
     };
     
     const docRef = await addDoc(collection(db, 'barberTreatments'), data);
-    
-    // Clear cache to ensure fresh data
-    await CacheUtils.invalidateDataCaches();
-    console.log('🔄 Cache cleared after adding barber treatment');
     
     // Send notification about new barber treatment
     try {
@@ -1629,10 +1761,6 @@ export const updateBarberTreatment = async (treatmentId: string, updates: Partia
       updatedAt: Timestamp.now()
     };
     await updateDoc(doc(db, 'barberTreatments', treatmentId), updatedData);
-    
-    // Clear cache to ensure fresh data
-    await CacheUtils.invalidateDataCaches();
-    console.log('🔄 Cache cleared after updating barber treatment');
   } catch (error) {
     throw error;
   }
@@ -1641,10 +1769,6 @@ export const updateBarberTreatment = async (treatmentId: string, updates: Partia
 export const deleteBarberTreatment = async (treatmentId: string) => {
   try {
     await deleteDoc(doc(db, 'barberTreatments', treatmentId));
-    
-    // Clear cache to ensure fresh data
-    await CacheUtils.invalidateDataCaches();
-    console.log('🔄 Cache cleared after deleting barber treatment');
   } catch (error) {
     throw error;
   }
@@ -1698,15 +1822,32 @@ export const getAllBarberTreatments = async (): Promise<BarberTreatment[]> => {
 export const addBarberProfile = async (barberData: Omit<Barber, 'id'>) => {
   try {
     const docRef = await addDoc(collection(db, 'barbers'), barberData);
-    
+    const barberId = docRef.id;
+
+    // If barber has userId, update the user document to mark them as barber
+    if ((barberData as any).userId) {
+      try {
+        const userId = (barberData as any).userId;
+        await updateDoc(doc(db, 'users', userId), {
+          isBarber: true,
+          barberId: barberId,
+          updatedAt: serverTimestamp()
+        });
+        console.log(`✅ User ${userId} marked as barber with barberId: ${barberId}`);
+      } catch (userUpdateError) {
+        console.error('❌ Error updating user barber status:', userUpdateError);
+        // Don't throw - barber profile was created successfully
+      }
+    }
+
     // Send notification about new barber
     try {
       await sendNewBarberNotification(barberData.name);
     } catch (notificationError) {
       console.log('Failed to send new barber notification:', notificationError);
     }
-    
-    return docRef.id;
+
+    return barberId;
   } catch (error) {
     throw error;
   }
@@ -1714,17 +1855,128 @@ export const addBarberProfile = async (barberData: Omit<Barber, 'id'>) => {
 
 export const updateBarberProfile = async (barberId: string, updates: Partial<Barber>) => {
   try {
+    console.log('🔥 updateBarberProfile called');
+    console.log('   📝 barberId:', barberId);
+    console.log('   📋 updates:', JSON.stringify(updates, null, 2));
+
     const docRef = doc(db, 'barbers', barberId);
     await updateDoc(docRef, updates);
+
+    console.log('   ✅ Update successful');
+
+    // Verify the update
+    const updatedDoc = await getDoc(docRef);
+    if (updatedDoc.exists()) {
+      const data = updatedDoc.data();
+      console.log('   🔍 Verified primaryTreatmentDuration after update:', data.primaryTreatmentDuration);
+    }
   } catch (error) {
+    console.error('   ❌ Update failed:', error);
     throw error;
   }
 };
 
 export const deleteBarberProfile = async (barberId: string) => {
   try {
+    // First, get the barber data to find associated userId
+    const barberDoc = await getDoc(doc(db, 'barbers', barberId));
+    if (barberDoc.exists()) {
+      const barberData = barberDoc.data() as Barber;
+
+      // If barber has userId, remove barber status from user
+      if ((barberData as any).userId) {
+        try {
+          await updateDoc(doc(db, 'users', (barberData as any).userId), {
+            isBarber: false,
+            barberId: null,
+            updatedAt: serverTimestamp()
+          });
+          console.log(`✅ Removed barber status from user ${(barberData as any).userId}`);
+        } catch (userUpdateError) {
+          console.error('❌ Error removing user barber status:', userUpdateError);
+        }
+      }
+    }
+
+    // Delete the barber profile
     await deleteDoc(doc(db, 'barbers', barberId));
   } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * Link an existing user to a barber profile
+ * This grants the user barber permissions and access
+ */
+export const linkUserToBarber = async (userId: string, barberId: string): Promise<void> => {
+  try {
+    // Validate user exists
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    if (!userDoc.exists()) {
+      throw new Error('User not found');
+    }
+
+    // Validate barber exists
+    const barberDoc = await getDoc(doc(db, 'barbers', barberId));
+    if (!barberDoc.exists()) {
+      throw new Error('Barber not found');
+    }
+
+    // Update user document with barber status
+    await updateDoc(doc(db, 'users', userId), {
+      isBarber: true,
+      barberId: barberId,
+      updatedAt: serverTimestamp()
+    });
+
+    // Update barber document with userId
+    await updateDoc(doc(db, 'barbers', barberId), {
+      userId: userId
+    });
+
+    console.log(`✅ Successfully linked user ${userId} to barber ${barberId}`);
+  } catch (error) {
+    console.error('❌ Error linking user to barber:', error);
+    throw error;
+  }
+};
+
+/**
+ * Unlink a user from a barber profile
+ * This removes barber permissions from the user
+ */
+export const unlinkUserFromBarber = async (userId: string): Promise<void> => {
+  try {
+    // Get user's barber ID
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    if (!userDoc.exists()) {
+      throw new Error('User not found');
+    }
+
+    const userData = userDoc.data() as UserProfile;
+    const barberId = userData.barberId;
+
+    // Update user document to remove barber status
+    await updateDoc(doc(db, 'users', userId), {
+      isBarber: false,
+      barberId: null,
+      updatedAt: serverTimestamp()
+    });
+
+    // If user had a barberId, remove userId from barber document
+    if (barberId) {
+      const barberDoc = await getDoc(doc(db, 'barbers', barberId));
+      if (barberDoc.exists()) {
+        await updateDoc(doc(db, 'barbers', barberId), {
+          userId: null
+        });
+      }
+    }
+
+    console.log(`✅ Successfully unlinked user ${userId} from barber`);
+  } catch (error) {
+    console.error('❌ Error unlinking user from barber:', error);
     throw error;
   }
 };
@@ -1732,18 +1984,32 @@ export const deleteBarberProfile = async (barberId: string) => {
 // Firebase Storage helper functions
 export const getStorageImages = async (folderPath: string): Promise<string[]> => {
   try {
+    console.log(`🔍 [getStorageImages] Fetching images from: ${folderPath}`);
     const imagesRef = ref(storage, folderPath);
     const result = await listAll(imagesRef);
-    
+
+    console.log(`📊 [getStorageImages] Found ${result.items.length} items in ${folderPath}`);
+    result.items.forEach((item, index) => {
+      console.log(`  ${index + 1}. ${item.name}`);
+    });
+
     const urls = await Promise.all(
       result.items.map(async (imageRef) => {
-        return await getDownloadURL(imageRef);
+        const url = await getDownloadURL(imageRef);
+        console.log(`✅ [getStorageImages] Got URL for ${imageRef.name}: ${url.substring(0, 80)}...`);
+        return url;
       })
     );
-    
+
+    console.log(`✅ [getStorageImages] Successfully loaded ${urls.length} URLs from ${folderPath}`);
     return urls;
-  } catch (error) {
-    console.error(`Error getting images from ${folderPath}:`, error);
+  } catch (error: any) {
+    console.error(`❌ [getStorageImages] Error getting images from ${folderPath}:`, error);
+    console.error(`❌ Error details:`, {
+      message: error?.message,
+      code: error?.code,
+      name: error?.name
+    });
     return [];
   }
 };
@@ -1761,122 +2027,110 @@ export const getImageUrl = async (imagePath: string): Promise<string | null> => 
 
 export const getAllStorageImages = async () => {
   try {
-    const [galleryImages, atmosphereImages, splashImages, aboutusImages, treatmentImages] = await Promise.all([
+    console.log('🚀 [getAllStorageImages] Starting to fetch all storage images...');
+    const [galleryImages, backgroundImages, splashImages, workersImages, aboutusImages, shopImages] = await Promise.all([
       getStorageImages('gallery'),
-      getStorageImages('atmosphere'), 
+      getStorageImages('backgrounds'),
       getStorageImages('splash'),
+      getStorageImages('workers'),
       getStorageImages('aboutus'),
-      getStorageImages('treatments')
+      getStorageImages('shop')
     ]);
-    
-    return {
+
+    const result = {
       gallery: galleryImages,
-      atmosphere: atmosphereImages,
+      backgrounds: backgroundImages,
       splash: splashImages,
+      workers: workersImages,
       aboutus: aboutusImages,
-      treatments: treatmentImages
+      shop: shopImages
     };
+
+    console.log('✅ [getAllStorageImages] Summary:', {
+      gallery: result.gallery.length,
+      backgrounds: result.backgrounds.length,
+      splash: result.splash.length,
+      workers: result.workers.length,
+      aboutus: result.aboutus.length,
+      shop: result.shop.length
+    });
+
+    return result;
   } catch (error) {
-    console.error('Error getting all storage images:', error);
+    console.error('❌ [getAllStorageImages] Error getting all storage images:', error);
     return {
       gallery: [],
-      atmosphere: [],
+      backgrounds: [],
       splash: [],
+      workers: [],
       aboutus: [],
-      treatments: []
+      shop: []
     };
   }
 };
 
 // Upload image to Firebase Storage
 export const uploadImageToStorage = async (
-  imageUri: string, 
-  folderPath: string, 
+  imageUri: string,
+  folderPath: string,
   fileName: string,
   compress: boolean = true
 ): Promise<string> => {
   try {
-    console.log('📱 Starting image upload:', { imageUri, folderPath, fileName });
+    console.log('🚀 [uploadImageToStorage] Starting upload...');
+    console.log('  📁 Folder:', folderPath);
+    console.log('  📄 File:', fileName);
+    console.log('  🗜️ Compress:', compress);
+
+    // Check if user is authenticated
+    const user = auth.currentUser;
+    if (!user) {
+      console.error('❌ User not authenticated');
+      throw new Error('User must be authenticated to upload images');
+    }
+    console.log('  ✅ User authenticated:', user.uid);
+
     let finalImageUri = imageUri;
-    
+
     // Compress image before upload if requested
     if (compress) {
-      console.log('🗜️ Compressing image before upload...');
       try {
-        const preset = folderPath === 'profiles' ? 'PROFILE' : 
-                      folderPath === 'gallery' ? 'GALLERY' : 
+        console.log('  🗜️ Starting image compression...');
+        const preset = folderPath === 'profiles' ? 'PROFILE' :
+                      folderPath === 'gallery' ? 'GALLERY' :
                       folderPath === 'atmosphere' ? 'ATMOSPHERE' : 'GALLERY';
+        console.log('  📐 Using preset:', preset);
         finalImageUri = await ImageOptimizer.compressImage(imageUri, ImageOptimizer.PRESETS[preset]);
-        console.log('✅ Image compressed successfully:', finalImageUri);
-      } catch (compressionError) {
-        console.warn('⚠️ Compression failed, using original:', compressionError);
+        console.log('  ✅ Image compressed successfully');
+      } catch (compressError) {
+        console.warn('  ⚠️ Compression failed, using original:', compressError);
         finalImageUri = imageUri;
       }
     }
-    
-    console.log('🔄 Fetching image as blob...');
-    
-    // Determine content type first
-    let contentType = 'image/jpeg'; // Default content type
-    const lowerFileName = fileName.toLowerCase();
-    if (lowerFileName.endsWith('.png')) contentType = 'image/png';
-    if (lowerFileName.endsWith('.webp')) contentType = 'image/webp';
-    if (lowerFileName.endsWith('.jpg') || lowerFileName.endsWith('.jpeg')) contentType = 'image/jpeg';
-    
-    console.log('📋 Content type determined:', contentType);
-    
-    // Try different approaches for React Native
-    let blob;
-    try {
-      // First try: direct fetch
-      const response = await fetch(finalImageUri);
-      if (response.ok) {
-        blob = await response.blob();
-        console.log('📦 Direct fetch blob:', { size: blob.size, type: blob.type });
-      }
-    } catch (e) {
-      console.warn('Direct fetch failed:', e);
+
+    console.log('  📥 Fetching image blob...');
+    const response = await fetch(finalImageUri);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.statusText}`);
     }
-    
-    // If direct fetch failed or blob is empty, try alternative
-    if (!blob || blob.size === 0) {
-      console.log('🔄 Trying FileSystem approach...');
-      try {
-        const FileSystem = await import('expo-file-system');
-        const base64Data = await FileSystem.readAsStringAsync(finalImageUri, { 
-          encoding: FileSystem.EncodingType.Base64 
-        });
-        
-        // Convert base64 to blob manually using react-native-base64
-        const byteCharacters = base64.decode(base64Data);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        blob = new Blob([byteArray], { type: contentType });
-        console.log('📦 FileSystem blob:', { size: blob.size, type: blob.type });
-      } catch (fsError) {
-        console.error('FileSystem approach failed:', fsError);
-        throw new Error('Failed to create blob from image');
-      }
-    }
-    
-    if (!blob || blob.size === 0) {
-      throw new Error('Image blob is empty (0 bytes)');
-    }
-    
-    console.log(`📤 Uploading ${compress ? 'compressed' : 'original'} image to ${folderPath}/${fileName}`);
+    const blob = await response.blob();
+    console.log('  ✅ Blob fetched. Size:', blob.size, 'bytes');
+
+    console.log(`  📤 Uploading to Storage: ${folderPath}/${fileName}`);
     const imageRef = ref(storage, `${folderPath}/${fileName}`);
-    
-    await uploadBytes(imageRef, blob, { contentType });
-    
+    await uploadBytes(imageRef, blob);
+    console.log('  ✅ Upload complete');
+
+    console.log('  🔗 Getting download URL...');
     const downloadURL = await getDownloadURL(imageRef);
-    console.log('✅ Image uploaded successfully:', downloadURL);
+    console.log('✅ [uploadImageToStorage] Success! URL:', downloadURL);
     return downloadURL;
-  } catch (error) {
-    console.error('Error uploading image:', error);
-    throw error;
+  } catch (error: any) {
+    console.error('❌ [uploadImageToStorage] Error:');
+    console.error('  Message:', error?.message || 'Unknown');
+    console.error('  Code:', error?.code || 'No code');
+    console.error('  Full error:', error);
+    throw new Error(`Image upload failed: ${error?.message || 'Unknown error'}`);
   }
 };
 
@@ -1913,21 +2167,71 @@ export const uploadOptimizedImage = async (
 // Get available time slots for a barber on a specific date
 export const getBarberAvailableSlots = async (barberId: string, date: string): Promise<string[]> => {
   try {
+    // First try to get date-specific availability (for next 14-60 days)
     const docRef = doc(db, 'barberAvailability', barberId);
     const snap = await getDoc(docRef);
     
-    if (!snap.exists()) {
-      return []; // No availability set
+    if (snap.exists()) {
+      const availability = snap.data().availability;
+      const dayData = availability?.find((day: any) => day.date === date);
+      
+      if (dayData) {
+        // Found date-specific availability
+        if (!dayData.isAvailable) {
+          return []; // Day explicitly marked as unavailable
+        }
+        return dayData.timeSlots || [];
+      }
     }
     
-    const availability = snap.data().availability;
-    const dayData = availability.find((day: any) => day.date === date);
+    // If no date-specific availability, fall back to weekly pattern
+    console.log(`📅 No date-specific availability for ${date}, checking weekly pattern...`);
     
-    if (!dayData || !dayData.isAvailable) {
-      return []; // Day not available
+    const weeklyAvailability = await getBarberAvailability(barberId);
+    if (weeklyAvailability.length === 0) {
+      console.log(`❌ No weekly availability found for barber ${barberId}`);
+      return [];
     }
     
-    return dayData.timeSlots || [];
+    // Get the day of week for the requested date
+    const requestedDate = new Date(date);
+    const dayOfWeek = requestedDate.getDay();
+    
+    const dayAvailability = weeklyAvailability.find(a => a.dayOfWeek === dayOfWeek);
+    
+    if (!dayAvailability || !dayAvailability.isAvailable) {
+      console.log(`❌ Day ${dayOfWeek} not available in weekly pattern`);
+      return [];
+    }
+    
+    // Generate time slots from weekly availability
+    console.log(`✅ Using weekly pattern for day ${dayOfWeek}: ${dayAvailability.startTime}-${dayAvailability.endTime}`);
+
+    // Get barber's primary treatment duration for slot interval
+    const barber = await getBarber(barberId);
+    const slotInterval = barber?.primaryTreatmentDuration || 20;
+    console.log(`📏 Using slot interval: ${slotInterval} minutes (from barber primaryTreatmentDuration)`);
+
+    const slots: string[] = [];
+    const [startHour, startMin] = dayAvailability.startTime.split(':').map(Number);
+    const [endHour, endMin] = dayAvailability.endTime.split(':').map(Number);
+
+    let currentHour = startHour;
+    let currentMin = startMin;
+
+    while (currentHour < endHour || (currentHour === endHour && currentMin < endMin)) {
+      const timeString = `${currentHour.toString().padStart(2, '0')}:${currentMin.toString().padStart(2, '0')}`;
+      slots.push(timeString);
+
+      // Move to next slot based on barber's primary treatment duration
+      currentMin += slotInterval;
+      if (currentMin >= 60) {
+        currentMin -= 60;
+        currentHour++;
+      }
+    }
+
+    return slots;
   } catch (error) {
     console.error('Error getting barber available slots:', error);
     return [];
@@ -2612,7 +2916,13 @@ export const updateBarberWeeklyAvailability = async (barberId: string, weeklySch
     });
 
     await batch.commit();
+    console.log('✅ Batch commit completed successfully');
+    
+    // Wait a bit to ensure the data is fully committed
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
   } catch (error) {
+    console.error('❌ Error in updateBarberWeeklyAvailability:', error);
     throw error;
   }
 };
@@ -2683,15 +2993,15 @@ export const initializeBarberAvailability = async (barberId: string): Promise<vo
       return; // Already has availability
     }
     
-    // Create default availability (Monday-Thursday 9:00-18:00)
+    // Create default availability (Monday-Thursday 9:00-18:00, Friday 9:00-14:00, Saturday closed)
     const defaultSchedule = [
-      { dayOfWeek: 0, startTime: '09:00', endTime: '18:00', isAvailable: false }, // Sunday
+      { dayOfWeek: 0, startTime: '09:00', endTime: '18:00', isAvailable: true }, // Sunday
       { dayOfWeek: 1, startTime: '09:00', endTime: '18:00', isAvailable: true },  // Monday
       { dayOfWeek: 2, startTime: '09:00', endTime: '18:00', isAvailable: true },  // Tuesday
       { dayOfWeek: 3, startTime: '09:00', endTime: '18:00', isAvailable: true },  // Wednesday
       { dayOfWeek: 4, startTime: '09:00', endTime: '18:00', isAvailable: true },  // Thursday
-      { dayOfWeek: 5, startTime: '09:00', endTime: '18:00', isAvailable: false }, // Friday
-      { dayOfWeek: 6, startTime: '09:00', endTime: '18:00', isAvailable: false }, // Saturday
+      { dayOfWeek: 5, startTime: '09:00', endTime: '14:00', isAvailable: true }, // Friday - עד 2 בצהריים
+      { dayOfWeek: 6, startTime: '09:00', endTime: '18:00', isAvailable: false }, // Saturday - סגור
     ];
     
     await updateBarberWeeklyAvailability(barberId, defaultSchedule);
@@ -2819,7 +3129,6 @@ export interface AppImages {
   atmosphereImage?: string;
   aboutUsImage?: string;
   galleryImages?: string[];
-  treatmentImages?: string[];
 }
 
 // Get current app images from Firestore
@@ -2833,16 +3142,14 @@ export const getAppImages = async (): Promise<AppImages> => {
       return {
         atmosphereImage: data.atmosphereImage || '',
         aboutUsImage: data.aboutUsImage || '',
-        galleryImages: Array.isArray(data.galleryImages) ? data.galleryImages : [],
-        treatmentImages: Array.isArray(data.treatmentImages) ? data.treatmentImages : []
+        galleryImages: Array.isArray(data.galleryImages) ? data.galleryImages : []
       };
     }
     
     return {
       atmosphereImage: '',
       aboutUsImage: '',
-      galleryImages: [],
-      treatmentImages: []
+      galleryImages: []
     };
   } catch (error) {
     console.error('Error getting app images:', error);
@@ -2894,13 +3201,7 @@ export const deleteImageFromStorage = async (imageUrl: string): Promise<void> =>
     await deleteObject(imageRef);
     
     console.log('Image deleted successfully:', path);
-  } catch (error: any) {
-    // Handle specific Firebase Storage errors
-    if (error.code === 'storage/object-not-found') {
-      console.log('Image already deleted or does not exist:', imageUrl);
-      return; // This is not an error - image was already deleted
-    }
-    
+  } catch (error) {
     console.error('Error deleting image:', error);
     // Don't throw error - deletion failure shouldn't prevent upload
   }
@@ -3213,66 +3514,21 @@ export const sendRemindersToAllUsers = async () => {
 };
 
 // Send notification to admin about new appointment
-export const sendNotificationToAdmin = async (title: string, body: string, data?: any, notificationType?: string) => {
+export const sendNotificationToAdmin = async (title: string, body: string, data?: any) => {
   try {
     const users = await getAllUsers();
     const adminUsers = users.filter(user => user.isAdmin && user.pushToken);
     
-    console.log(`📱 Checking notification settings for ${adminUsers.length} admin users`);
+    console.log(`📱 Sending notification to ${adminUsers.length} admin users`);
     
-    // Check each admin's notification settings
     const results = await Promise.allSettled(
-      adminUsers.map(async (user) => {
-        try {
-          // Get admin's notification settings
-          const settingsDoc = await getDoc(doc(db, 'adminNotifications', user.uid));
-          const settings = settingsDoc.exists() ? settingsDoc.data() : {
-            newAppointment: true,
-            canceledAppointment: true,
-            newUser: true,
-            appointmentReminders: true,
-            upcomingAppointments: true,
-          };
-          
-          // Check if this type of notification is enabled
-          let shouldSend = true;
-          if (notificationType) {
-            switch (notificationType) {
-              case 'new_appointment':
-                shouldSend = settings.newAppointment !== false;
-                break;
-              case 'canceled_appointment':
-                shouldSend = settings.canceledAppointment !== false;
-                break;
-              case 'new_user':
-                shouldSend = settings.newUser !== false;
-                break;
-              case 'appointment_reminder':
-                shouldSend = settings.appointmentReminders !== false;
-                break;
-              case 'upcoming_appointment':
-                shouldSend = settings.upcomingAppointments !== false;
-                break;
-            }
-          }
-          
-          if (shouldSend) {
-            console.log(`📱 Sending notification to admin ${user.email} (settings allow)`);
-            return await sendPushNotification(user.pushToken!, title, body, data);
-          } else {
-            console.log(`📱 Skipping notification to admin ${user.email} (disabled in settings)`);
-            return null;
-          }
-        } catch (userError) {
-          console.error(`Error checking settings for admin ${user.email}:`, userError);
-          // Fallback: send notification if we can't check settings
-          return await sendPushNotification(user.pushToken!, title, body, data);
-        }
-      })
+      adminUsers.map(user => 
+        sendPushNotification(user.pushToken!, title, body, data)
+      )
     );
     
-    const successful = results.filter(result => result.status === 'fulfilled' && result.value !== null).length;
-    console.log(`✅ Successfully sent to ${successful}/${adminUsers.length} admin users (respecting settings)`);
+    const successful = results.filter(result => result.status === 'fulfilled').length;
+    console.log(`✅ Successfully sent to ${successful}/${adminUsers.length} admin users`);
     
     return successful;
   } catch (error) {
@@ -3345,251 +3601,6 @@ export const sendSpecialOfferNotification = async (offerTitle: string, offerDesc
   }
 };
 
-// תזמון תזכורות מתוזמנות לתור
-export const scheduleAppointmentReminders = async (appointmentId: string, appointmentData: any) => {
-  try {
-    const appointmentDate = appointmentData.date.toDate();
-    const now = new Date();
-    const timeDiff = appointmentDate.getTime() - now.getTime();
-    const hoursUntilAppointment = timeDiff / (1000 * 60 * 60);
-
-    console.log(`📅 Scheduling reminders for appointment ${appointmentId}, ${hoursUntilAppointment} hours from now`);
-
-    // תזכורת 24 שעות לפני
-    if (hoursUntilAppointment > 24) {
-      const reminder24hTime = new Date(appointmentDate.getTime() - 24 * 60 * 60 * 1000);
-      await addDoc(collection(db, 'scheduledReminders'), {
-        appointmentId: appointmentId,
-        userId: appointmentData.userId,
-        scheduledTime: Timestamp.fromDate(reminder24hTime),
-        reminderType: '24h',
-        status: 'pending',
-        createdAt: Timestamp.now()
-      });
-      console.log(`⏰ Scheduled 24h reminder for ${reminder24hTime.toISOString()}`);
-    }
-
-    // תזכורת שעה לפני
-    if (hoursUntilAppointment > 1) {
-      const reminder1hTime = new Date(appointmentDate.getTime() - 60 * 60 * 1000);
-      await addDoc(collection(db, 'scheduledReminders'), {
-        appointmentId: appointmentId,
-        userId: appointmentData.userId,
-        scheduledTime: Timestamp.fromDate(reminder1hTime),
-        reminderType: '1h',
-        status: 'pending',
-        createdAt: Timestamp.now()
-      });
-      console.log(`⏰ Scheduled 1h reminder for ${reminder1hTime.toISOString()}`);
-    }
-
-    // תזכורת 15 דקות לפני
-    if (timeDiff > 15 * 60 * 1000) {
-      const reminder15mTime = new Date(appointmentDate.getTime() - 15 * 60 * 1000);
-      await addDoc(collection(db, 'scheduledReminders'), {
-        appointmentId: appointmentId,
-        userId: appointmentData.userId,
-        scheduledTime: Timestamp.fromDate(reminder15mTime),
-        reminderType: '15m',
-        status: 'pending',
-        createdAt: Timestamp.now()
-      });
-      console.log(`⏰ Scheduled 15m reminder for ${reminder15mTime.toISOString()}`);
-    }
-
-    console.log(`✅ All reminders scheduled for appointment ${appointmentId}`);
-  } catch (error) {
-    console.error('Error scheduling appointment reminders:', error);
-    throw error;
-  }
-};
-
-// עיבוד התזכורות המתוזמנות
-export const processScheduledReminders = async () => {
-  try {
-    const now = new Date();
-    console.log(`🔄 Processing scheduled reminders at ${now.toISOString()}`);
-
-    const remindersQuery = query(
-      collection(db, 'scheduledReminders'),
-      where('status', '==', 'pending'),
-      where('scheduledTime', '<=', Timestamp.fromDate(now))
-    );
-
-    const remindersSnapshot = await getDocs(remindersQuery);
-    console.log(`📬 Found ${remindersSnapshot.docs.length} reminders to process`);
-
-    if (remindersSnapshot.empty) {
-      console.log('No reminders to process');
-      return 0;
-    }
-
-    // שליחת כל התזכורות שהגיע זמנן
-    const results = await Promise.allSettled(
-      remindersSnapshot.docs.map(async (reminderDoc) => {
-        try {
-          const reminderData = reminderDoc.data();
-          console.log(`📨 Processing reminder ${reminderDoc.id} for appointment ${reminderData.appointmentId}`);
-
-          // וודא שהתור עדיין קיים ומאושר
-          const appointmentDoc = await getDoc(doc(db, 'appointments', reminderData.appointmentId));
-          if (!appointmentDoc.exists()) {
-            console.log(`❌ Appointment ${reminderData.appointmentId} not found, marking reminder as cancelled`);
-            await updateDoc(doc(db, 'scheduledReminders', reminderDoc.id), {
-              status: 'cancelled',
-              cancelledAt: Timestamp.now(),
-              reason: 'appointment_not_found'
-            });
-            return { success: false, reason: 'appointment_not_found' };
-          }
-
-          const appointmentData = appointmentDoc.data();
-          if (appointmentData.status !== 'confirmed') {
-            console.log(`❌ Appointment ${reminderData.appointmentId} is not confirmed (status: ${appointmentData.status}), marking reminder as cancelled`);
-            await updateDoc(doc(db, 'scheduledReminders', reminderDoc.id), {
-              status: 'cancelled',
-              cancelledAt: Timestamp.now(),
-              reason: 'appointment_not_confirmed'
-            });
-            return { success: false, reason: 'appointment_not_confirmed' };
-          }
-
-          // שליחת התזכורת
-          const success = await sendAppointmentReminderByType(reminderData.appointmentId, reminderData.reminderType);
-
-          // עדכון סטטוס התזכורת
-          if (success) {
-            await updateDoc(doc(db, 'scheduledReminders', reminderDoc.id), {
-              status: 'sent',
-              sentAt: Timestamp.now()
-            });
-            console.log(`✅ Reminder ${reminderDoc.id} sent successfully`);
-            return { success: true };
-          } else {
-            await updateDoc(doc(db, 'scheduledReminders', reminderDoc.id), {
-              status: 'failed',
-              failedAt: Timestamp.now()
-            });
-            console.log(`❌ Failed to send reminder ${reminderDoc.id}`);
-            return { success: false, reason: 'send_failed' };
-          }
-        } catch (error) {
-          console.error(`Error processing reminder ${reminderDoc.id}:`, error);
-          await updateDoc(doc(db, 'scheduledReminders', reminderDoc.id), {
-            status: 'failed',
-            failedAt: Timestamp.now(),
-            error: error.message
-          });
-          return { success: false, reason: 'processing_error' };
-        }
-      })
-    );
-
-    const successful = results.filter(result => result.status === 'fulfilled' && result.value.success).length;
-    console.log(`✅ Successfully processed ${successful}/${results.length} reminders`);
-
-    return successful;
-  } catch (error) {
-    console.error('Error processing scheduled reminders:', error);
-    throw error;
-  }
-};
-
-// שליחת תזכורת לתור לפי סוג
-export const sendAppointmentReminderByType = async (appointmentId: string, reminderType: string) => {
-  try {
-    const appointmentDoc = await getDoc(doc(db, 'appointments', appointmentId));
-    if (!appointmentDoc.exists()) {
-      console.log('Appointment not found');
-      return false;
-    }
-
-    const appointmentData = appointmentDoc.data() as Appointment;
-    const appointmentDate = appointmentData.date.toDate();
-
-    let title = '';
-    let message = '';
-
-    switch (reminderType) {
-      case '24h':
-        title = 'תזכורת לתור מחר! 📅';
-        message = `שלום! יש לך תור מחר ב-${appointmentDate.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}. נשמח לראות אותך!`;
-        break;
-      case '1h':
-        title = 'התור שלך בעוד שעה! ⏰';
-        message = `התור שלך מתחיל בעוד שעה ב-${appointmentDate.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}. זכור להגיע בזמן!`;
-        break;
-      case '15m':
-        title = 'התור שלך בעוד 15 דקות! 🏃‍♂️';
-        message = `התור שלך מתחיל בעוד 15 דקות! אנחנו מחכים לך.`;
-        break;
-      default:
-        title = 'תזכורת לתור! ⏰';
-        message = `יש לך תור ב-${appointmentDate.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`;
-    }
-
-    const success = await sendNotificationToUser(
-      appointmentData.userId,
-      title,
-      message,
-      {
-        appointmentId: appointmentId,
-        reminderType: reminderType,
-        type: 'appointment_reminder'
-      }
-    );
-
-    // יצירת רשומת התראה במסד הנתונים
-    if (success) {
-      await createNotification({
-        userId: appointmentData.userId,
-        title: title,
-        message: message,
-        type: 'reminder',
-        isRead: false,
-        data: { appointmentId: appointmentId, reminderType: reminderType }
-      });
-    }
-
-    return success;
-  } catch (error) {
-    console.error('Error sending appointment reminder by type:', error);
-    return false;
-  }
-};
-
-// ביטול תזכורות לתור שבוטל
-export const cancelAppointmentReminders = async (appointmentId: string) => {
-  try {
-    console.log(`🚫 Cancelling reminders for appointment ${appointmentId}`);
-
-    const remindersQuery = query(
-      collection(db, 'scheduledReminders'),
-      where('appointmentId', '==', appointmentId),
-      where('status', '==', 'pending')
-    );
-
-    const remindersSnapshot = await getDocs(remindersQuery);
-    console.log(`Found ${remindersSnapshot.docs.length} pending reminders to cancel`);
-
-    const cancelPromises = remindersSnapshot.docs.map(reminderDoc =>
-      updateDoc(doc(db, 'scheduledReminders', reminderDoc.id), {
-        status: 'cancelled',
-        cancelledAt: Timestamp.now(),
-        reason: 'appointment_cancelled'
-      })
-    );
-
-    await Promise.all(cancelPromises);
-    console.log(`✅ Cancelled ${cancelPromises.length} reminders for appointment ${appointmentId}`);
-
-    return cancelPromises.length;
-  } catch (error) {
-    console.error('Error cancelling appointment reminders:', error);
-    return 0;
-  }
-};
-
 // Send notification about new barber
 export const sendNewBarberNotification = async (barberName: string) => {
   try {
@@ -3644,8 +3655,7 @@ export const sendAppointmentReminderToAdmin = async (appointmentId: string) => {
     await sendNotificationToAdmin(
       'תזכורת לתור! ⏰',
       `תור מחר ב-${appointmentDate.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`,
-      { appointmentId: appointmentId },
-      'appointment_reminder'
+      { appointmentId: appointmentId }
     );
     
     return true;
@@ -3677,8 +3687,7 @@ export const sendDailySummaryToAdmin = async () => {
     await sendNotificationToAdmin(
       'סיכום יומי 📊',
       summary,
-      { type: 'daily_summary' },
-      'upcoming_appointment'
+      { type: 'daily_summary' }
     );
     
     return true;
@@ -3694,8 +3703,7 @@ export const sendNewUserNotificationToAdmin = async (userName: string, userEmail
     await sendNotificationToAdmin(
       'משתמש חדש! 👤',
       `משתמש חדש נרשם: ${userName} (${userEmail})`,
-      { type: 'new_user', userName: userName, userEmail: userEmail },
-      'new_user'
+      { type: 'new_user', userName: userName, userEmail: userEmail }
     );
   } catch (error) {
     console.error('Error sending new user notification to admin:', error);
@@ -3708,8 +3716,7 @@ export const sendLowSlotsNotificationToAdmin = async (barberName: string, availa
     await sendNotificationToAdmin(
       'פחות מקומות פנויים! ⚠️',
       `לספר ${barberName} נשארו רק ${availableSlots} מקומות פנויים`,
-      { type: 'low_slots', barberName: barberName, availableSlots: availableSlots },
-      'upcoming_appointment'
+      { type: 'low_slots', barberName: barberName, availableSlots: availableSlots }
     );
   } catch (error) {
     console.error('Error sending low slots notification to admin:', error);
@@ -3731,8 +3738,7 @@ export const sendAppointmentConfirmationToAdmin = async (appointmentId: string) 
     await sendNotificationToAdmin(
       'תור אושר! ✅',
       `תור אושר עבור ${appointmentDate.toLocaleDateString('he-IL')} ב-${appointmentDate.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`,
-      { appointmentId: appointmentId },
-      'new_appointment'
+      { appointmentId: appointmentId }
     );
     
     return true;
@@ -3757,8 +3763,7 @@ export const sendAppointmentCompletionToAdmin = async (appointmentId: string) =>
     await sendNotificationToAdmin(
       'תור הושלם! 🎉',
       `תור הושלם עבור ${appointmentDate.toLocaleDateString('he-IL')} ב-${appointmentDate.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`,
-      { appointmentId: appointmentId },
-      'upcoming_appointment'
+      { appointmentId: appointmentId }
     );
     
     return true;
@@ -3783,8 +3788,7 @@ export const sendAppointmentCancellationToAdmin = async (appointmentId: string) 
     await sendNotificationToAdmin(
       'תור בוטל! ❌',
       `תור בוטל עבור ${appointmentDate.toLocaleDateString('he-IL')} ב-${appointmentDate.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`,
-      { appointmentId: appointmentId },
-      'canceled_appointment'
+      { appointmentId: appointmentId }
     );
     
     return true;
@@ -3861,13 +3865,13 @@ export const getAllBusinessConfigs = async (): Promise<BusinessConfig[]> => {
   }
 };
 
-// Initialize the default Test Salon business configuration
+// Initialize the default barbersbar business configuration
 export const initializeBarbersBarConfig = async (): Promise<void> => {
   try {
     const barbersBarConfig: BusinessConfig = {
-      businessId: "Test Salon",
-      businessName: "Test Salon",
-      ownerPhone: "+972523456789", // User's actual phone number
+      businessId: "barbersbar",
+      businessName: "Barbers Bar",
+      ownerPhone: "+972523985505", // User's actual phone number
       cancelPolicy: {
         hoursBeforeAppointment: 2,
         message: "אי אפשר לבטל - תתקשר למספרה"
@@ -3875,15 +3879,15 @@ export const initializeBarbersBarConfig = async (): Promise<void> => {
     };
 
     // Check if config already exists
-    const existingConfig = await getBusinessConfig("Test Salon");
+    const existingConfig = await getBusinessConfig("barbersbar");
     if (!existingConfig) {
       await setBusinessConfig(barbersBarConfig);
-      console.log('✅ Test Salon business config initialized successfully');
+      console.log('✅ BarbersBar business config initialized successfully');
     } else {
-      console.log('ℹ️ Test Salon business config already exists');
+      console.log('ℹ️ BarbersBar business config already exists');
     }
   } catch (error) {
-    console.error('Error initializing Test Salon config:', error);
+    console.error('Error initializing BarbersBar config:', error);
     throw error;
   }
 };
@@ -3891,7 +3895,7 @@ export const initializeBarbersBarConfig = async (): Promise<void> => {
 // Test SMS function with specific phone number
 export const testSMSToOwner = async (): Promise<any> => {
   try {
-    const testPhone = "+972523456789"; // User's number
+    const testPhone = "0523985505"; // User's number
     console.log('🧪 Testing SMS to owner phone:', testPhone);
     
     const result = await sendSMSVerification(testPhone);
@@ -3918,13 +3922,16 @@ export interface WaitlistEntry {
   clientPhone: string;
   barberId: string;
   requestedDate: string; // YYYY-MM-DD format
-  requestedTime: string; // HH:MM format
+  requestedTimeStart: string; // HH:MM format - start of time range
+  requestedTimeEnd: string; // HH:MM format - end of time range
   treatmentId: string;
   treatmentName: string;
   status: 'waiting' | 'notified' | 'assigned' | 'removed';
   notes?: string;
   createdAt: Timestamp;
   priority: number; // Higher number = higher priority (based on wait time)
+  // Legacy field for backwards compatibility
+  requestedTime?: string; // HH:MM format - deprecated, use requestedTimeStart/End
 }
 
 // Add user to waitlist when no slots available
@@ -4141,6 +4148,192 @@ export const listenWaitlistChanges = (callback: (entries: WaitlistEntry[]) => vo
   });
 };
 
+// Notify waitlist users when an appointment is cancelled/deleted
+export const notifyWaitlistOnSlotAvailable = async (
+  barberId: string,
+  appointmentDate: Date,
+  appointmentTime: string
+): Promise<void> => {
+  try {
+    console.log('🔔 Notifying waitlist users about available slot...', {
+      barberId,
+      date: appointmentDate.toISOString(),
+      time: appointmentTime
+    });
+
+    // Get the date string in YYYY-MM-DD format
+    const dateStr = appointmentDate.toISOString().split('T')[0];
+
+    // Query waitlist entries for this barber and date
+    const q = query(
+      collection(db, 'waitlist'),
+      where('barberId', '==', barberId),
+      where('requestedDate', '==', dateStr),
+      where('status', '==', 'waiting')
+    );
+
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+      console.log('ℹ️ No waitlist entries found for this date');
+      return;
+    }
+
+    console.log(`📋 Found ${querySnapshot.size} users in waitlist`);
+
+    // Send push notifications to all users in waitlist for this date
+    const notificationPromises: Promise<void>[] = [];
+
+    querySnapshot.forEach((docSnapshot) => {
+      const entry = docSnapshot.data() as WaitlistEntry;
+      
+      // Get user's push token
+      const sendNotification = async () => {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', entry.clientId));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            const pushToken = userData.pushToken;
+
+            if (pushToken) {
+              // Format date for Hebrew display
+              const hebrewDays = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+              const dayName = hebrewDays[appointmentDate.getDay()];
+              const dateDisplay = `${dayName} ${appointmentDate.getDate()}/${appointmentDate.getMonth() + 1}/${appointmentDate.getFullYear()}`;
+
+              // Send push notification
+              await fetch('https://exp.host/--/api/v2/push/send', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  to: pushToken,
+                  title: '🎉 הזדרז! תור התפנה!',
+                  body: `מישהו ביטל תור לתאריך ${dateDisplay} בשעה ${appointmentTime}.\nמהר להזמין!`,
+                  data: {
+                    type: 'waitlist_slot_available',
+                    barberId: barberId,
+                    date: dateStr,
+                    time: appointmentTime,
+                    screen: 'booking'
+                  },
+                  sound: 'default',
+                  priority: 'high',
+                  badge: 1
+                }),
+              });
+
+              console.log(`✅ Push notification sent to user: ${entry.clientName}`);
+            } else {
+              console.log(`⚠️ No push token for user: ${entry.clientName}`);
+            }
+          }
+        } catch (error) {
+          console.error(`❌ Error sending notification to ${entry.clientName}:`, error);
+        }
+      };
+
+      notificationPromises.push(sendNotification());
+    });
+
+    await Promise.all(notificationPromises);
+    console.log('✅ All waitlist notifications sent');
+
+  } catch (error) {
+    console.error('❌ Error notifying waitlist users:', error);
+  }
+};
+
+// Delete user account completely (Firestore + Auth)
+export const deleteUserAccount = async (userId: string): Promise<{ success: boolean; message: string }> => {
+  try {
+    console.log('🗑️ Starting user account deletion for:', userId);
+    
+    // Check if user is authenticated and owns this account
+    if (!auth.currentUser || auth.currentUser.uid !== userId) {
+      return { success: false, message: 'אין הרשאה למחוק חשבון זה' };
+    }
+    
+    const batch = writeBatch(db);
+    let deletedItems = 0;
+    
+    // 1. Delete all user's appointments
+    console.log('🗑️ Deleting user appointments...');
+    const appointmentsQuery = query(
+      collection(db, 'appointments'),
+      where('userId', '==', userId)
+    );
+    const appointmentsSnapshot = await getDocs(appointmentsQuery);
+    appointmentsSnapshot.forEach((doc) => {
+      batch.delete(doc.ref);
+      deletedItems++;
+    });
+    console.log(`   Deleted ${appointmentsSnapshot.size} appointments`);
+    
+    // 2. Delete all user's waitlist entries
+    console.log('🗑️ Deleting waitlist entries...');
+    const waitlistQuery = query(
+      collection(db, 'waitlist'),
+      where('clientId', '==', userId)
+    );
+    const waitlistSnapshot = await getDocs(waitlistQuery);
+    waitlistSnapshot.forEach((doc) => {
+      batch.delete(doc.ref);
+      deletedItems++;
+    });
+    console.log(`   Deleted ${waitlistSnapshot.size} waitlist entries`);
+    
+    // 3. Delete user's notifications
+    console.log('🗑️ Deleting notifications...');
+    const notificationsQuery = query(
+      collection(db, 'notifications'),
+      where('userId', '==', userId)
+    );
+    const notificationsSnapshot = await getDocs(notificationsQuery);
+    notificationsSnapshot.forEach((doc) => {
+      batch.delete(doc.ref);
+      deletedItems++;
+    });
+    console.log(`   Deleted ${notificationsSnapshot.size} notifications`);
+    
+    // 4. Delete user document
+    console.log('🗑️ Deleting user document...');
+    batch.delete(doc(db, 'users', userId));
+    
+    // Commit all Firestore deletions
+    await batch.commit();
+    console.log(`✅ Deleted ${deletedItems} Firestore documents`);
+    
+    // 5. Delete from Firebase Authentication
+    console.log('🗑️ Deleting from Firebase Auth...');
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      await currentUser.delete();
+      console.log('✅ User deleted from Firebase Auth');
+    }
+    
+    console.log('✅✅✅ Account completely deleted!');
+    return { success: true, message: 'החשבון נמחק בהצלחה' };
+    
+  } catch (error: any) {
+    console.error('❌ Error deleting account:', error);
+    
+    // Handle specific errors
+    if (error.code === 'auth/requires-recent-login') {
+      return { 
+        success: false, 
+        message: 'נדרשת התחברות מחדש. אנא התחבר שוב ונסה למחוק את החשבון.' 
+      };
+    }
+    
+    return { 
+      success: false, 
+      message: 'שגיאה במחיקת החשבון: ' + (error.message || 'נסה שוב מאוחר יותר') 
+    };
+  }
+};
+
 // Listen to specific barber's waitlist
 export const listenBarberWaitlist = (barberId: string, callback: (entries: WaitlistEntry[]) => void) => {
   const q = query(
@@ -4190,20 +4383,6 @@ export const createNotification = async (notificationData: Omit<NotificationData
 
     const docRef = await addDoc(collection(db, 'notifications'), notification);
     console.log('✅ Notification created successfully:', notification.id);
-    
-    // Send push notification if user has push token
-    try {
-      await sendNotificationToUser(notificationData.userId, notificationData.title, notificationData.message, {
-        type: notificationData.type,
-        appointmentId: notificationData.appointmentId,
-        appointmentDate: notificationData.appointmentDate,
-        appointmentTime: notificationData.appointmentTime
-      });
-    } catch (pushError) {
-      console.log('Failed to send push notification:', pushError);
-      // Don't throw error - notification is still saved to database
-    }
-    
     return docRef.id;
   } catch (error) {
     console.error('Error creating notification:', error);
@@ -4298,8 +4477,8 @@ export const sendAppointmentConfirmationNotification = async (
   }
 };
 
-// Schedule reminder notifications (legacy - use scheduleAppointmentReminders instead)
-export const scheduleAppointmentRemindersLegacy = async (
+// Schedule single reminder notification (24 hours before)
+export const scheduleSingleAppointmentReminder = async (
   userId: string,
   appointmentId: string,
   appointmentDate: string,
@@ -4308,15 +4487,74 @@ export const scheduleAppointmentRemindersLegacy = async (
 ): Promise<void> => {
   try {
     const appointmentDateTime = new Date(`${appointmentDate}T${appointmentTime}`);
+    
+    // 24 hours before reminder
+    const twentyFourHoursBefore = new Date(appointmentDateTime.getTime() - 24 * 60 * 60 * 1000);
+    if (twentyFourHoursBefore > new Date()) {
+      await createNotification({
+        userId,
+        title: 'תזכורת לתור - יום לפני',
+        message: `התור שלך עם ${barberName} מחר בשעה ${appointmentTime}. אל תשכח!`,
+        type: 'reminder',
+        appointmentId,
+        appointmentDate,
+        appointmentTime,
+        scheduledFor: twentyFourHoursBefore,
+        isRead: false
+      });
+    }
+    
+    console.log('✅ Single appointment reminder scheduled');
+  } catch (error) {
+    console.error('Error scheduling appointment reminder:', error);
+  }
+};
 
-    // Use the new scheduling system
-    await scheduleAppointmentReminders(appointmentId, {
-      userId,
-      date: Timestamp.fromDate(appointmentDateTime),
-      barberName
-    });
-
-    console.log('✅ Appointment reminders scheduled (legacy method)');
+// Schedule reminder notifications (kept for backward compatibility)
+// DEPRECATED: Use scheduleAppointmentReminders from appointmentReminderManager.ts instead
+export const scheduleAppointmentRemindersOLD = async (
+  userId: string,
+  appointmentId: string,
+  appointmentDate: string,
+  appointmentTime: string,
+  barberName: string
+): Promise<void> => {
+  try {
+    const appointmentDateTime = new Date(`${appointmentDate}T${appointmentTime}`);
+    
+    // 1 hour before reminder
+    const oneHourBefore = new Date(appointmentDateTime.getTime() - 60 * 60 * 1000);
+    if (oneHourBefore > new Date()) {
+      await createNotification({
+        userId,
+        title: 'תזכורת לתור - שעה לפני',
+        message: `התור שלך עם ${barberName} מתחיל בעוד שעה. אל תשכח!`,
+        type: 'reminder',
+        appointmentId,
+        appointmentDate,
+        appointmentTime,
+        scheduledFor: oneHourBefore,
+        isRead: false
+      });
+    }
+    
+    // 10 minutes before reminder
+    const tenMinutesBefore = new Date(appointmentDateTime.getTime() - 10 * 60 * 1000);
+    if (tenMinutesBefore > new Date()) {
+      await createNotification({
+        userId,
+        title: 'תזכורת לתור - 10 דקות לפני',
+        message: `התור שלך עם ${barberName} מתחיל בעוד 10 דקות!`,
+        type: 'reminder',
+        appointmentId,
+        appointmentDate,
+        appointmentTime,
+        scheduledFor: tenMinutesBefore,
+        isRead: false
+      });
+    }
+    
+    console.log('✅ Appointment reminders scheduled');
   } catch (error) {
     console.error('Error scheduling appointment reminders:', error);
   }

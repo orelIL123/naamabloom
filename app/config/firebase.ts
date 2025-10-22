@@ -1,22 +1,18 @@
-// Import polyfills for Firebase Storage base64 support in React Native
-import 'base-64';
-import 'text-encoding';
-
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 import { getApp, getApps, initializeApp } from 'firebase/app';
-import { getAuth, initializeAuth, onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, getFirestore, initializeFirestore, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getAuth, getReactNativePersistence, initializeAuth, onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc, getFirestore, initializeFirestore, setDoc } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
 // Firebase configuration with robust fallbacks for preview mode
 const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || "AIzaSyDeIZ838xiMiS1gxCxnzThAAt533KKRTEs",
-  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || "naama-bloom-88733.firebaseapp.com",
-  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || "naama-bloom-88733",
-  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || "naama-bloom-88733.firebasestorage.app",
-  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "448973562994",
-  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || "1:448973562994:web:2fec9361ce18a7eab1ceeb",
-  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID || 'G-GHWC5553C4'
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || "AIzaSyAKEPu7-naLTdeBGAu5dVyvDuGKsFz2E4c",
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || "barbers-bar-ae31f.firebaseapp.com",
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || "barbers-bar-ae31f",
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || "barbers-bar-ae31f.firebasestorage.app",
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "53851377123",
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || "1:53851377123:android:38a791e8e929e5e66a24d6",
+  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID || ''
 };
 
 // Validate Firebase config
@@ -31,160 +27,134 @@ const validateFirebaseConfig = () => {
   return true;
 };
 
-// Initialize Firebase with enhanced error handling
-let app: any = null;
-let authInstance: any = null;
-let dbInstance: any = null;
-let storageInstance: any = null;
-let initializationPromise: Promise<boolean> | null = null;
+// Initialize Firebase with synchronous approach for better reliability on physical devices
+let app: any;
+let authInstance: any;
+let dbInstance: any;
+let storageInstance: any;
 
-const initializeFirebase = async (): Promise<boolean> => {
-  if (initializationPromise) {
-    return initializationPromise;
+// Synchronous initialization to avoid null reference issues
+try {
+  // Validate configuration first
+  if (!validateFirebaseConfig()) {
+    throw new Error('Firebase config validation failed');
   }
 
-  initializationPromise = (async () => {
-    try {
-      // Validate configuration first
-      if (!validateFirebaseConfig()) {
-        console.error('❌ Firebase config validation failed');
-        return false;
-      }
+  // Initialize Firebase app (synchronous)
+  if (!getApps().length) {
+    app = initializeApp(firebaseConfig);
+    console.log('✅ Firebase app initialized');
+  } else {
+    app = getApp();
+    console.log('✅ Firebase app already initialized');
+  }
 
-      // Initialize Firebase app
-      if (!getApps().length) {
-        app = initializeApp(firebaseConfig);
-        console.log('✅ Firebase app initialized successfully');
-      } else {
-        app = getApp();
-        console.log('✅ Firebase app retrieved from existing instance');
-      }
-
-      // Initialize Auth (Firebase Auth automatically persists in React Native)
-      try {
-        authInstance = getAuth(app);
-        console.log('✅ Firebase Auth initialized (auth state automatically persists in React Native)');
-      } catch (authError) {
-        console.warn('Auth getAuth failed, trying initializeAuth:', authError);
-        try {
-          authInstance = initializeAuth(app);
-          console.log('✅ Firebase Auth initialized with initializeAuth (auth state automatically persists)');
-        } catch (initAuthError) {
-          console.error('❌ Firebase Auth initialization failed:', initAuthError);
-          return false;
-        }
-      }
-
-      // Initialize Firestore with settings for preview mode compatibility
-      try {
-        dbInstance = initializeFirestore(app, {
-          experimentalForceLongPolling: true, // Better for preview/development environments
-        });
-        console.log('✅ Firestore initialized with long polling');
-      } catch (firestoreError) {
-        console.warn('Firestore initializeFirestore failed, trying getFirestore:', firestoreError);
-        try {
-          dbInstance = getFirestore(app);
-          console.log('✅ Firestore initialized with fallback');
-        } catch (fallbackError) {
-          console.error('❌ Firestore initialization failed:', fallbackError);
-          // Don't return false here - app can work without Firestore in some cases
-        }
-      }
-
-      // Initialize Storage
-      try {
-        storageInstance = getStorage(app);
-        console.log('✅ Firebase Storage initialized');
-      } catch (storageError) {
-        console.error('❌ Firebase Storage initialization failed:', storageError);
-        // Don't return false here - app can work without Storage in some cases
-      }
-
-      console.log('✅ Firebase initialization completed successfully');
-      return true;
-    } catch (error) {
-      console.error('❌ Firebase initialization failed:', error);
-      return false;
+  // Initialize Auth with React Native persistence (synchronous)
+  try {
+    authInstance = initializeAuth(app, {
+      persistence: getReactNativePersistence(ReactNativeAsyncStorage),
+    });
+    console.log('✅ Firebase Auth initialized with persistence');
+  } catch (authError: any) {
+    // If already initialized, get existing instance
+    if (authError?.code === 'auth/already-initialized') {
+      authInstance = getAuth(app);
+      console.log('✅ Firebase Auth retrieved (already initialized)');
+    } else {
+      console.error('❌ Auth initialization error:', authError);
+      throw authError;
     }
-  })();
+  }
 
-  return initializationPromise;
-};
+  // Initialize Firestore (synchronous)
+  try {
+    dbInstance = initializeFirestore(app, {
+      experimentalForceLongPolling: true,
+    });
+    console.log('✅ Firestore initialized');
+  } catch (firestoreError: any) {
+    // If already initialized, get existing instance
+    if (firestoreError?.message?.includes('already been called')) {
+      dbInstance = getFirestore(app);
+      console.log('✅ Firestore retrieved (already initialized)');
+    } else {
+      console.error('❌ Firestore initialization error:', firestoreError);
+      throw firestoreError;
+    }
+  }
 
-// Initialize Firebase immediately but safely
-initializeFirebase().catch(error => {
-  console.error('❌ Firebase initialization promise failed:', error);
-});
+  // Initialize Storage (synchronous)
+  try {
+    storageInstance = getStorage(app);
+    console.log('✅ Firebase Storage initialized');
+  } catch (storageError) {
+    console.error('❌ Storage initialization error:', storageError);
+    throw storageError;
+  }
 
-// Firebase readiness checker with enhanced validation
+  console.log('✅ Firebase fully initialized and ready');
+} catch (error) {
+  console.error('❌ Critical Firebase initialization error:', error);
+  // In production, app should still try to continue with limited functionality
+  if (!__DEV__) {
+    console.warn('⚠️ Continuing with limited Firebase functionality');
+  }
+}
+
+// Firebase readiness checker
 export const checkFirebaseReady = (): boolean => {
-  try {
-    return !!(app && authInstance);
-  } catch {
-    return false;
-  }
+  return !!(app && authInstance && dbInstance);
 };
 
-// Check if Firebase is fully ready (including optional services)
+// Check if Firebase is fully ready (including storage)
 export const checkFirebaseFullyReady = (): boolean => {
-  try {
-    return !!(app && authInstance && dbInstance && storageInstance);
-  } catch {
-    return false;
-  }
+  return !!(app && authInstance && dbInstance && storageInstance);
 };
 
-// Wait for Firebase to be ready
-export const waitForFirebaseReady = async (timeout: number = 10000): Promise<boolean> => {
-  const startTime = Date.now();
-  
-  while (Date.now() - startTime < timeout) {
-    if (checkFirebaseReady()) {
-      return true;
-    }
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
-  
-  console.warn('Firebase readiness timeout after', timeout, 'ms');
-  return false;
-};
-
-// Safe Firebase operations with automatic retry
-export const safeFirebaseOperation = async <T>(
-  operation: () => Promise<T>,
-  maxRetries: number = 3,
-  context: string = 'Firebase operation'
-): Promise<T | null> => {
-  // First, wait for Firebase to be ready
-  const isReady = await waitForFirebaseReady(5000);
-  if (!isReady) {
-    console.error(`Firebase not ready for ${context}`);
-    return null;
-  }
-
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      return await operation();
-    } catch (error) {
-      console.error(`${context} failed (attempt ${i + 1}/${maxRetries}):`, error);
-      if (i === maxRetries - 1) {
-        console.error(`${context} failed after ${maxRetries} attempts`);
-        return null;
-      }
-      await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
-    }
-  }
-  return null;
-};
-
-// Safe exports with getters to ensure instances are available
+// Get Firebase instances
+export const getAppInstance = () => app;
 export const getAuthInstance = () => authInstance;
 export const getDbInstance = () => dbInstance;
 export const getStorageInstance = () => storageInstance;
-export const getAppInstance = () => app;
 
-// Legacy exports for compatibility
+// Safe Firebase operation wrapper with retry logic
+export const safeFirebaseOperation = async <T>(
+  operation: () => Promise<T>,
+  maxRetries: number = 3,
+  operationName: string = 'Firebase operation'
+): Promise<T | null> => {
+  let lastError: any;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`🔄 ${operationName} - Attempt ${attempt}/${maxRetries}`);
+      const result = await operation();
+      console.log(`✅ ${operationName} - Success`);
+      return result;
+    } catch (error: any) {
+      lastError = error;
+      console.error(`❌ ${operationName} - Attempt ${attempt} failed:`, error);
+      
+      // Don't retry on certain errors
+      if (error?.code === 'permission-denied' || error?.code === 'unauthenticated') {
+        console.error(`🚫 ${operationName} - Permission error, not retrying`);
+        return null;
+      }
+      
+      // Wait before retry (exponential backoff)
+      if (attempt < maxRetries) {
+        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+        console.log(`⏳ Waiting ${delay}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  
+  console.error(`❌ ${operationName} - All ${maxRetries} attempts failed`);
+  return null;
+};
+
+// Direct exports - instances are initialized synchronously above
 export const auth = authInstance;
 export const db = dbInstance;
 export const storage = storageInstance;
@@ -194,9 +164,6 @@ export const collections = {
   users: 'users',
   appointments: 'appointments',
   barbers: 'barbers',
-  artists: 'artists',
-  artistTreatments: 'artistTreatments',
-  artistAvailability: 'artistAvailability',
   treatments: 'treatments',
   gallery: 'gallery',
   waitlist: 'waitlist',
@@ -274,11 +241,20 @@ export interface GalleryImage {
 export interface WaitlistEntry {
   waitlistId: string;
   clientId: string;
+  clientName: string;
+  clientPhone: string;
+  barberId: string;
   requestedDate: string;
-  requestedTime: string;
+  requestedTimeStart: string; // Start of time range
+  requestedTimeEnd: string; // End of time range
   treatmentId: string;
+  treatmentName: string;
   status: 'waiting' | 'notified' | 'removed';
   createdAt: any;
+  notes?: string;
+  priority?: number;
+  // Legacy field for backwards compatibility
+  requestedTime?: string;
 }
 
 export interface Settings {
@@ -327,13 +303,13 @@ export const setBusinessConfig = async (config: BusinessConfig): Promise<void> =
   }
 };
 
-// Initialize Test Salon business configuration
+// Initialize BarbersBar business configuration
 export const initializeBarbersBarConfig = async (): Promise<void> => {
   try {
     const barbersBarConfig: BusinessConfig = {
-      businessId: "Test Salon",
-      businessName: "Test Salon",
-      ownerPhone: "+972523456789",
+      businessId: "barbersbar",
+      businessName: "Barbers Bar",
+      ownerPhone: "+972523985505",
       cancelPolicy: {
         hoursBeforeAppointment: 2,
         message: "אי אפשר לבטל - תתקשר למספרה"
@@ -341,15 +317,15 @@ export const initializeBarbersBarConfig = async (): Promise<void> => {
     };
 
     // Check if config already exists
-    const existingConfig = await getBusinessConfig("Test Salon");
+    const existingConfig = await getBusinessConfig("barbersbar");
     if (!existingConfig) {
       await setBusinessConfig(barbersBarConfig);
-      console.log('✅ Test Salon business config initialized successfully');
+      console.log('✅ BarbersBar business config initialized successfully');
     } else {
-      console.log('ℹ️ Test Salon business config already exists');
+      console.log('ℹ️ BarbersBar business config already exists');
     }
   } catch (error) {
-    console.error('Error initializing Test Salon config:', error);
+    console.error('Error initializing BarbersBar config:', error);
     throw error;
   }
 };

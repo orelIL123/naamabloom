@@ -1,8 +1,6 @@
-import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Timestamp } from 'firebase/firestore';
-import React, { useEffect, useState, useCallback } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Alert,
@@ -22,16 +20,19 @@ import {
   BarberTreatment,
   createAppointment,
   getBarberAppointmentsForDay,
+  getBarberAvailableSlots,
   getBarberByUserId,
   getBarbers,
   getBarberTreatments,
   getCurrentUser,
   getTreatments,
   listenBarberAvailability,
+  listenBarbers,
   Treatment,
   type BarberAvailability
 } from '../../services/firebase';
 import ConfirmationModal from '../components/ConfirmationModal';
+import { MirroredIcon } from '../components/MirroredIcon';
 import TopNav from '../components/TopNav';
 
 const { width, height } = Dimensions.get('window');
@@ -68,6 +69,9 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ onNavigate, onBack, onClo
   const [detailsBarber, setDetailsBarber] = useState<Barber | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [showWaitlistModal, setShowWaitlistModal] = useState(false);
+  const [waitlistStartTime, setWaitlistStartTime] = useState('09:00');
+  const [waitlistEndTime, setWaitlistEndTime] = useState('18:00');
   // Calendar month state for proper month view and navigation
   const [currentMonth, setCurrentMonth] = useState<Date>(() => {
     const today = new Date();
@@ -90,38 +94,163 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ onNavigate, onBack, onClo
     return days;
   };
 
+
   const preSelectedBarberId = route?.params?.barberId;
+
+  // helpers
+  const MS_DAY = 1000 * 60 * 60 * 24;
+  const utcDay = (d: Date) => Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+  const startOfDay = (d: Date) => {
+    const x = new Date(d);
+    x.setHours(0, 0, 0, 0);
+    return x;
+  };
+
+  type Availability = { dayOfWeek: number; isAvailable: boolean };
+
+  type DayState = {
+    disabled: boolean;     // true = לא ניתן לבחור
+    isWithin14Days: boolean; // backwards compat (actually window-based)
+    isWithinWindow?: boolean; // clearer name
+    isPast: boolean;
+    isAvailable: boolean;  // זמינות ספר ביום השבוע
+    color: 'grey' | 'red' | 'black';  // לתצוגה בלבד
+    daysFromToday: number;
+    // debug fields optional
+    debugReason?: string;
+  };
+
+  // Cache for date-specific availability
+  const [dateSpecificAvailability, setDateSpecificAvailability] = useState<{[dateStr: string]: boolean}>({});
+
+  // date = היום שמצויר בתא של הלוח
+  const getDayState = (
+    date: Date,
+    barberAvailability: Availability[],
+    windowDays = 30, // booking window in days (1 month)
+    now: Date = new Date()
+  ): DayState => {
+    // >>> שינוי כאן: חישוב הבדל ימים ב-UTC <<<
+    const daysFromToday = Math.floor((utcDay(date) - utcDay(now)) / MS_DAY);
+
+    const isPast = daysFromToday < 0;
+    const withinWindow = daysFromToday >= 0 && daysFromToday < windowDays;
+
+    const dayOfWeek = date.getDay();
+    const weeklyAvailable = !!barberAvailability.find(a => a.dayOfWeek === dayOfWeek && a.isAvailable);
+
+    const dateStr = new Date(utcDay(date)).toISOString().slice(0,10); // YYYY-MM-DD
+    const dateSpecificAvailable = dateSpecificAvailability?.[dateStr];
+
+    const isAvailable = (dateSpecificAvailable ?? weeklyAvailable);
+
+    let debugReason = '';
+    const disabled = (() => {
+      if (isPast) { debugReason = 'past'; return true; }
+      if (!withinWindow) { debugReason = 'outside-window'; return true; }
+      if (!isAvailable) { debugReason = 'not-available'; return true; }
+      return false;
+    })();
+    const color: DayState['color'] =
+      !withinWindow || isPast ? 'grey' : (!isAvailable ? 'red' : 'black');
+
+    // Diagnostic log for early next-month days (small date) if inside window but disabled
+    if (date.getDate() <= 7 && daysFromToday > 0 && daysFromToday < windowDays) {
+      console.log('[DAY_STATE]', dateStr, { daysFromToday, withinWindow, weeklyAvailable, dateSpecificAvailable, isAvailable, disabled, debugReason });
+    }
+
+    return { disabled, isWithin14Days: withinWindow, isWithinWindow: withinWindow, isPast, isAvailable, color, daysFromToday, debugReason };
+  };
 
   useEffect(() => {
     loadData();
+    
+    // Set up real-time listener for barbers - sync changes from admin
+    console.log('🔊 Setting up barbers listener in BookingScreen');
+    const unsubscribe = listenBarbers((updatedBarbers) => {
+      console.log('📡 Barbers updated in real-time (BookingScreen):', updatedBarbers.length);
+      setBarbers(updatedBarbers);
+      
+      // Update selected barber if it was edited
+      if (selectedBarber) {
+        const updatedSelected = updatedBarbers.find(b => b.id === selectedBarber.id);
+        if (updatedSelected) {
+          setSelectedBarber(updatedSelected);
+        }
+      }
+    });
+    
+    return () => {
+      console.log('🔇 Cleaning up barbers listener (BookingScreen)');
+      unsubscribe();
+    };
   }, []);
-
-  // Refresh data when screen comes into focus (e.g., returning from admin screen)
-  useFocusEffect(
-    useCallback(() => {
-      console.log('🔄 Booking screen focused, refreshing treatments data...');
-      loadData(true); // Force refresh to get latest treatments
-    }, [])
-  );
 
   // Listen to barber availability in real-time when a barber is selected
   useEffect(() => {
     if (!selectedBarber) {
       console.log('🔇 No barber selected, clearing availability listener');
       setBarberAvailability([]);
+      setDateSpecificAvailability({});
       return;
     }
-    
+
     console.log(`🔊 Setting up real-time availability listener for barber: ${selectedBarber.id}`);
     const unsubscribe = listenBarberAvailability(selectedBarber.id, (newAvailability) => {
       console.log(`📡 Received availability update for ${selectedBarber.id}:`, newAvailability);
       setBarberAvailability(newAvailability);
     });
-    
+
     return () => {
       console.log(`🔇 Cleaning up availability listener for barber: ${selectedBarber.id}`);
       unsubscribe && unsubscribe();
     };
+  }, [selectedBarber?.id]);
+
+  // Load date-specific availability for next 30 days when barber is selected
+  useEffect(() => {
+    if (!selectedBarber) {
+      setDateSpecificAvailability({});
+      return;
+    }
+
+    const loadDateSpecificAvailability = async () => {
+      console.log(`📅 Loading date-specific availability for barber: ${selectedBarber.id}`);
+      const availability: {[dateStr: string]: boolean} = {};
+
+      const today = new Date();
+      for (let i = 0; i < 30; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() + i);
+        const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD
+        try {
+          const slots = await getBarberAvailableSlots(selectedBarber.id, dateStr);
+          if (slots.length > 0) {
+            availability[dateStr] = true; // mark explicit available day
+            if (i < 5 || i >= 25) { // Log only first and last few days
+              console.log(`📅 Date ${dateStr}: available (${slots.length} slots)`);
+            }
+          } else {
+            // Explicitly mark as unavailable if no slots - prevents fallback to weekly availability
+            availability[dateStr] = false;
+            if (i < 5 || i >= 25) {
+              console.log(`📅 Date ${dateStr}: NOT available (0 slots)`);
+            }
+          }
+        } catch (error) {
+          console.error(`❌ Error loading availability for ${dateStr}:`, error);
+          // Mark as unavailable on error to be safe
+          availability[dateStr] = false;
+        }
+      }
+
+      setDateSpecificAvailability(availability);
+      const availableDays = Object.keys(availability).filter(k => availability[k]).length;
+      const totalDays = Object.keys(availability).length;
+      console.log(`✅ Loaded date-specific availability for ${selectedBarber.id}: ${availableDays}/${totalDays} days available`);
+    };
+
+    loadDateSpecificAvailability();
   }, [selectedBarber?.id]);
 
   // Load barber-specific treatments when a barber is selected
@@ -143,14 +272,13 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ onNavigate, onBack, onClo
     })();
   }, [barberAvailability]);
 
-  const loadData = async (forceRefresh: boolean = false) => {
+  const loadData = async () => {
     try {
       const [barbersData, treatmentsData] = await Promise.all([
         getBarbers(),
-        getTreatments(!forceRefresh) // Disable cache if force refresh
+        getTreatments()
       ]);
       
-      console.log('📋 Loaded treatments in booking screen:', treatmentsData.map(t => ({ id: t.id, name: t.name })));
       setBarbers(barbersData);
       setTreatments(treatmentsData);
       
@@ -165,46 +293,13 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ onNavigate, onBack, onClo
         console.log('User is not a barber or not logged in');
       }
       
-      // Auto select barber logic
-      // 1) If barberId provided via route → select it
-      // 2) Else select Naama (by id 'naama' or name contains 'naama') if exists
-      // 3) Else if only one barber → select it
-      // 4) Else if none → create fallback Naama and select
+      // If barber is pre-selected, set it and skip to next step
       if (preSelectedBarberId) {
         const preSelectedBarber = barbersData.find(b => b.id === preSelectedBarberId);
         if (preSelectedBarber) {
           setSelectedBarber(preSelectedBarber);
           setCurrentStep(2);
-          return;
         }
-      }
-
-      const desiredNaama = barbersData.find(b =>
-        b.id?.toLowerCase?.() === 'naama' || (b.name || '').toLowerCase().includes('naama')
-      );
-      if (desiredNaama) {
-        setSelectedBarber(desiredNaama);
-        setCurrentStep(2);
-        return;
-      }
-
-      if (barbersData.length === 1) {
-        setSelectedBarber(barbersData[0]);
-        setCurrentStep(2);
-        return;
-      }
-
-      if (barbersData.length === 0) {
-        const fallback = {
-          id: 'naama',
-          name: 'Naama Bloom',
-          isMainBarber: true,
-          available: true
-        } as unknown as Barber;
-        setBarbers([fallback]);
-        setSelectedBarber(fallback);
-        setCurrentStep(2);
-        return;
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -265,7 +360,7 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ onNavigate, onBack, onClo
           continue;
         }
         
-        const apptDuration = appt.duration || 30; // Default 30min
+        const apptDuration = appt.duration || 20; // Default 20min
         const apptEnd = new Date(apptStart.getTime() + apptDuration * 60000);
         
         // Check for overlap - if any part of the slot overlaps with appointment
@@ -372,23 +467,39 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ onNavigate, onBack, onClo
       
       const currentSlot = new Date(startTime);
       
+      // CRITICAL FIX: Generate slots based on treatment duration, not fixed 30-minute intervals
+      console.log(`🔧 Generating slots with treatment duration: ${treatmentDuration} minutes`);
+
       while (currentSlot < endTime) {
         const slotEnd = new Date(currentSlot.getTime() + treatmentDuration * 60000);
         if (slotEnd > endTime) {
+          console.log(`⏭️ Slot ${currentSlot.toLocaleTimeString()} would end after working hours, skipping`);
           break;
         }
-        
+
         // Skip past times if it's today
         const now = new Date();
         if (date.toDateString() === now.toDateString() && currentSlot <= now) {
+          console.log(`⏭️ Slot ${currentSlot.toLocaleTimeString()} is in the past, skipping`);
           currentSlot.setMinutes(currentSlot.getMinutes() + treatmentDuration);
           continue;
         }
-        
-        if (isSlotAvailable(currentSlot, treatmentDuration, appointments)) {
-          slots.push(new Date(currentSlot));
+
+        // Skip slots during break time
+        if (isSlotDuringBreak(currentSlot, treatmentDuration, dayAvailability)) {
+          console.log(`⏭️ Slot ${currentSlot.toLocaleTimeString()} overlaps with break, skipping`);
+          currentSlot.setMinutes(currentSlot.getMinutes() + treatmentDuration);
+          continue;
         }
-        
+
+        if (isSlotAvailable(currentSlot, treatmentDuration, appointments)) {
+          console.log(`✅ Slot ${currentSlot.toLocaleTimeString()} is available`);
+          slots.push(new Date(currentSlot));
+        } else {
+          console.log(`❌ Slot ${currentSlot.toLocaleTimeString()} is blocked by appointment`);
+        }
+
+        // Move to next slot based on treatment duration (not fixed 30 minutes)
         currentSlot.setMinutes(currentSlot.getMinutes() + treatmentDuration);
       }
       
@@ -412,7 +523,7 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ onNavigate, onBack, onClo
     const dates = [];
     const today = new Date();
     
-    for (let i = 1; i <= 14; i++) {
+    for (let i = 1; i <= 30; i++) {
       const date = new Date(today);
       date.setDate(today.getDate() + i);
       
@@ -630,7 +741,7 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ onNavigate, onBack, onClo
     }
   };
 
-  const handleWaitlistJoin = async () => {
+  const handleWaitlistJoin = () => {
     const user = getCurrentUser();
     if (!user) {
       Alert.alert('כניסה נדרשת', 'יש להתחבר כדי להצטרף לרשימת ההמתנה');
@@ -638,57 +749,53 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ onNavigate, onBack, onClo
       return;
     }
 
-    if (!selectedBarber || !selectedTreatment) {
-      Alert.alert('פרטים חסרים', 'יש לבחור ספר וטיפול כדי להצטרף לרשימת ההמתנה');
+    if (!selectedBarber || !selectedTreatment || !selectedDate) {
+      Alert.alert('פרטים חסרים', 'יש לבחור ספר, טיפול ותאריך כדי להצטרף לרשימת ההמתנה');
       return;
     }
 
-    // Show time picker for preferred time
-    Alert.prompt(
-      'שעה רצויה',
-      'באיזו שעה היית רוצה את התור? (למשל: 09:00, 14:30)',
-      [
-        { text: 'ביטול', style: 'cancel' },
-        {
-          text: 'אישור',
-          onPress: async (preferredTime) => {
-            if (!preferredTime || preferredTime.trim() === '') {
-              preferredTime = '09:00'; // Default time
-            }
-            
-            try {
-              // Use current date if no specific date is selected
-              const currentDate = selectedDate || new Date();
-              const dateStr = currentDate.toISOString().split('T')[0];
-              
-              await addToWaitlist({
-                clientId: user.uid,
-                clientName: user.displayName || 'לקוח',
-                clientPhone: user.phoneNumber || '',
-                barberId: selectedBarber.id,
-                requestedDate: dateStr,
-                requestedTime: preferredTime.trim(),
-                treatmentId: selectedTreatment.id,
-                treatmentName: selectedTreatment.name,
-                status: 'waiting',
-                notes: `לקוח מעוניין ב${selectedTreatment.name} אצל ${selectedBarber.name} בשעה ${preferredTime.trim()}`
-              });
+    setShowWaitlistModal(true);
+  };
 
-              Alert.alert(
-                'נעדכן אותך שתור יתפנה!',
-                `הוספנו אותך לרשימת ההמתנה של ${selectedBarber.name} בשעה ${preferredTime.trim()}.\nהספר יקבל התראה וידע אם יש תור פנוי.`,
-                [{ text: 'הבנתי', onPress: () => onNavigate('profile') }]
-              );
-            } catch (error) {
-              console.error('Error adding to waitlist:', error);
-              Alert.alert('שגיאה', 'שגיאה בהצטרפות לרשימת ההמתנה');
-            }
-          }
-        }
-      ],
-      'plain-text',
-      '09:00'
-    );
+  const handleWaitlistSubmit = async () => {
+    const user = getCurrentUser();
+    if (!user || !selectedBarber || !selectedTreatment || !selectedDate) {
+      return;
+    }
+
+    try {
+      const dateStr = selectedDate.toISOString().split('T')[0];
+      
+      await addToWaitlist({
+        clientId: user.uid,
+        clientName: user.displayName || 'לקוח',
+        clientPhone: user.phoneNumber || '',
+        barberId: selectedBarber.id,
+        requestedDate: dateStr,
+        requestedTimeStart: waitlistStartTime,
+        requestedTimeEnd: waitlistEndTime,
+        treatmentId: selectedTreatment.id,
+        treatmentName: selectedTreatment.name,
+        status: 'waiting',
+        notes: `לקוח מעוניין ב${selectedTreatment.name} אצל ${selectedBarber.name} בין השעות ${waitlistStartTime}-${waitlistEndTime}`
+      });
+
+      setShowWaitlistModal(false);
+      Alert.alert(
+        '✅ נרשמת בהצלחה!',
+        `נרשמת לרשימת המתנה ליום ${formatHebrewDate(selectedDate)}\nבין השעות ${waitlistStartTime}-${waitlistEndTime}.\nנודיע לך ברגע שיתפנה תור!`,
+        [{ text: 'אישור' }]
+      );
+    } catch (error) {
+      console.error('Error adding to waitlist:', error);
+      Alert.alert('שגיאה', 'שגיאה בהצטרפות לרשימת ההמתנה');
+    }
+  };
+
+  const formatHebrewDate = (date: Date) => {
+    const hebrewDays = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+    const dayName = hebrewDays[date.getDay()];
+    return `${dayName} ${date.getDate()}/${date.getMonth() + 1}`;
   };
 
   const resetBooking = () => {
@@ -733,7 +840,7 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ onNavigate, onBack, onClo
 
   const getStepTitle = () => {
     switch (currentStep) {
-      case 1: return 'בחר צוות';
+      case 1: return 'בחר ספר';
       case 2: return 'בחר טיפול';
       case 3: return 'בחר תאריך';
       case 4: return 'בחר שעה';
@@ -843,7 +950,7 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ onNavigate, onBack, onClo
               {displayTreatments.length === 0 ? (
                 <View style={styles.emptyTreatments}>
                   <Text style={styles.emptyTreatmentsText}>
-                    אין טיפולים זמינים עבור העובד הזה
+                    אין טיפולים זמינים עבור הספר הזה
                   </Text>
                 </View>
               ) : (
@@ -863,15 +970,7 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ onNavigate, onBack, onClo
                     end={{ x: 1, y: 1 }}
                   >
                     <View style={styles.treatmentImage}>
-                      {treatment.image ? (
-                        <Image
-                          source={{ uri: treatment.image }}
-                          style={styles.treatmentPhoto}
-                          resizeMode="cover"
-                        />
-                      ) : (
-                        <Text style={styles.treatmentPlaceholder}>💇</Text>
-                      )}
+                      <Text style={styles.treatmentPlaceholder}>💇</Text>
                     </View>
                     <View style={styles.treatmentInfo}>
                       <Text style={styles.treatmentName}>{treatment.name}</Text>
@@ -918,9 +1017,11 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ onNavigate, onBack, onClo
         )}
 
         {/* Step 3: Select Date */}
-        {currentStep === 3 && (
-          <View style={styles.stepContent}>
-            <View style={styles.calendarContainer}>
+        {currentStep === 3 && (() => {
+          console.log('🗓️ ENTERING DATE SELECTION - Current barberAvailability:', barberAvailability);
+          return (
+            <View style={styles.stepContent}>
+              <View style={styles.calendarContainer}>
               {/* Calendar Top Header (black) */}
               <View style={styles.calendarTopBar}>
                 <TouchableOpacity
@@ -928,15 +1029,18 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ onNavigate, onBack, onClo
                   onPress={() => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
                   style={styles.topBarArrowLeft}
                 >
-                  <Ionicons name="chevron-forward" size={22} color="#fff" />
+                  <MirroredIcon name="chevron-back" size={22} color="#fff" type="ionicons" />
                 </TouchableOpacity>
                 <Text style={styles.topBarTitle}>בחירת תאריך</Text>
                 <TouchableOpacity
                   accessibilityLabel="Next Month"
-                  onPress={() => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+                  onPress={() => {
+                    console.log('📅 NAVIGATING TO NEXT MONTH');
+                    setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+                  }}
                   style={styles.topBarArrowRight}
                 >
-                  <Ionicons name="chevron-back" size={22} color="#fff" />
+                  <MirroredIcon name="chevron-back" size={22} color="#fff" type="ionicons" />
                 </TouchableOpacity>
               </View>
 
@@ -949,76 +1053,73 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ onNavigate, onBack, onClo
                 ))}
               </View>
 
-              {/* Calendar Grid */}
-              <View style={styles.calendarGrid}>
-                {(() => {
-                  const monthDays = getMonthDays(currentMonth); // מחזיר מערך Date לכל ימי החודש
-                  const firstWeekday = new Date(
-                    currentMonth.getFullYear(),
-                    currentMonth.getMonth(),
-                    1
-                  ).getDay(); // 0=ראשון
+              {/* Calendar Grid (improved grid lines) */}
+              <View style={styles.calendarGridWrapper}>
+                <View style={styles.calendarGrid}>
+                  {(() => {
+                    const monthDays = getMonthDays(currentMonth);
+                    const firstWeekday = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay(); // 0=ראשון
+                    const daysInMonth = monthDays.length;
+                    const totalSlotsNeeded = firstWeekday + daysInMonth; // leading blanks + actual days
+                    const weeks = Math.ceil(totalSlotsNeeded / 7); // number of rows actually needed
+                    const totalSlots = weeks * 7; // ONLY required slots (no always-42 grid)
 
-                  // ריקים בתחילת החודש (RTL עם row-reverse – זה הערך הנכון)
-                  const leadingBlanks = Array.from({ length: firstWeekday }).map((_, i) => (
-                    <View key={`lb-${i}`} style={styles.calendarDayBlank} />
-                  ));
+                    const cells: React.ReactNode[] = [];
 
-                  // קבועים להשוואה ללא שינוי האובייקט:
-                  const now = new Date();
-                  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+                    for (let slot = 0; slot < totalSlots; slot++) {
+                      const dayIndex = slot - firstWeekday; // index into monthDays
+                      const isInsideMonth = dayIndex >= 0 && dayIndex < daysInMonth;
 
-                  const dayCells = monthDays.map((date) => {
-                    const dateStart = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-                    const key = date.toISOString();
+                      if (!isInsideMonth) {
+                        cells.push(
+                          <View
+                            key={`blank-${slot}`}
+                            style={[styles.calendarDayBlank, styles.calendarDayGridCell]}
+                          />
+                        );
+                        continue;
+                      }
 
-                    const isPast = dateStart < todayStart;
-                    const isToday = dateStart === todayStart;
-                    const isSelected = selectedDate?.getTime?.() === dateStart;
+                      const date = monthDays[dayIndex];
+                      const dateStart = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+                      const now = new Date();
+                      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+                      const isToday = dateStart === todayStart;
+                      const isSelected = selectedDate?.getTime?.() === dateStart;
+                      const dayState = getDayState(date, barberAvailability);
+                      const { disabled, color } = dayState;
 
-                    // זמינות ספר
-                    const dayOfWeek = date.getDay();
-                    const dayAvailability = barberAvailability.find(a => a.dayOfWeek === dayOfWeek);
-                    const isAvailable = Boolean(dayAvailability && dayAvailability.isAvailable);
+                      const dayStyles = [
+                        styles.calendarDay,
+                        styles.calendarDayGridCell,
+                        isSelected && styles.calendarDaySelected,
+                        isToday && !isSelected && styles.calendarDayToday,
+                        color === 'red' && styles.calendarDayUnavailable,
+                        color === 'grey' && styles.calendarDayOutOfRange,
+                      ];
+                      const textStyles = [
+                        styles.calendarDayText,
+                        isSelected && styles.calendarDayTextSelected,
+                        isToday && !isSelected && styles.calendarDayTextToday,
+                        color === 'red' && styles.calendarDayTextUnavailable,
+                        color === 'grey' && styles.calendarDayTextOutOfRange,
+                      ];
 
-                    const disabled = isPast || !isAvailable;
+                      cells.push(
+                        <TouchableOpacity
+                          key={date.toISOString()}
+                          style={dayStyles}
+                          onPress={() => !disabled && handleDateSelect(date)}
+                          disabled={disabled}
+                        >
+                          <Text style={textStyles}>{date.getDate()}</Text>
+                        </TouchableOpacity>
+                      );
+                    }
 
-                    const dayStyles = [
-                      styles.calendarDay,
-                      isSelected && styles.calendarDaySelected,
-                      !isPast && !isAvailable && styles.calendarDayUnavailable,
-                      isPast && styles.calendarDayPast,
-                      isToday && !isSelected && styles.calendarDayToday,
-                    ];
-                    const textStyles = [
-                      styles.calendarDayText,
-                      isSelected && styles.calendarDayTextSelected,
-                      !isPast && !isAvailable && styles.calendarDayTextUnavailable,
-                      isPast && styles.calendarDayTextPast,
-                      isToday && !isSelected && styles.calendarDayTextToday,
-                    ];
-
-                    return (
-                      <TouchableOpacity
-                        key={key}
-                        style={dayStyles}
-                        onPress={() => !disabled && handleDateSelect(date)}
-                        disabled={disabled}
-                      >
-                        <Text style={textStyles}>{date.getDate()}</Text>
-                      </TouchableOpacity>
-                    );
-                  });
-
-                  // ריקים בסוף כדי להשלים שורה
-                  const total = firstWeekday + monthDays.length;
-                  const trailingCount = (7 - (total % 7)) % 7;
-                  const trailingBlanks = Array.from({ length: trailingCount }).map((_, i) => (
-                    <View key={`tb-${i}`} style={styles.calendarDayBlank} />
-                  ));
-
-                  return [...leadingBlanks, ...dayCells, ...trailingBlanks];
-                })()}
+                    return cells;
+                  })()}
+                </View>
               </View>
 
               {/* Legend */}
@@ -1052,32 +1153,48 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ onNavigate, onBack, onClo
               </View>
             </View>
           </View>
-        )}
+          );
+        })()}
 
         {/* Step 4: Select Time */}
         {currentStep === 4 && (
           <View style={styles.stepContent}>
-            <View style={styles.timesContainer}>
-              {availableTimes.map((time, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.timeCard,
-                    selectedTime === time && styles.selectedCard
-                  ]}
-                  onPress={() => handleTimeSelect(time)}
-                >
-                  <LinearGradient
-                    colors={['#1a1a1a', '#000000', '#1a1a1a']}
-                    style={styles.timeGradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
+            {/* Show message when no times available */}
+            {availableTimes.length === 0 && (
+              <View style={styles.noTimesContainer}>
+                <View style={styles.noTimesBox}>
+                  <Text style={styles.noTimesEmoji}>😔</Text>
+                  <Text style={styles.noTimesTitle}>נתפסו כל התורים!</Text>
+                  <Text style={styles.noTimesMessage}>אין שעות פנויות ביום זה</Text>
+                  <Text style={styles.noTimesSubtext}>נסה לבחור תאריך אחר</Text>
+                </View>
+              </View>
+            )}
+
+            {/* Time selection grid */}
+            {availableTimes.length > 0 && (
+              <View style={styles.timesContainer}>
+                {availableTimes.map((time, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      styles.timeCard,
+                      selectedTime === time && styles.selectedCard
+                    ]}
+                    onPress={() => handleTimeSelect(time)}
                   >
-                    <Text style={styles.timeText}>{time}</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              ))}
-            </View>
+                    <LinearGradient
+                      colors={['#1a1a1a', '#000000', '#1a1a1a']}
+                      style={styles.timeGradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                    >
+                      <Text style={styles.timeText}>{time}</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
         )}
 
@@ -1191,7 +1308,7 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ onNavigate, onBack, onClo
             <Text style={{ fontSize: 22, fontWeight: 'bold', marginBottom: 6 }}>{detailsBarber?.name}</Text>
             <Text style={{ fontSize: 16, color: '#666', marginBottom: 8 }}>{detailsBarber?.experience}</Text>
             {detailsBarber?.phone && (
-              <Text style={{ fontSize: 16, color: '#FF00AA', marginBottom: 8 }}>{t('profile.phone')} {detailsBarber.phone}</Text>
+              <Text style={{ fontSize: 16, color: '#3b82f6', marginBottom: 8 }}>{t('profile.phone')} {detailsBarber.phone}</Text>
             )}
             <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
               {/* אייקון וואטסאפ */}
@@ -1200,7 +1317,7 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ onNavigate, onBack, onClo
               </View>
             </View>
             <TouchableOpacity onPress={() => setDetailsBarber(null)} style={{ marginTop: 18 }}>
-              <Text style={{ color: '#FF00AA', fontWeight: 'bold' }}>{t('common.close')}</Text>
+              <Text style={{ color: '#3b82f6', fontWeight: 'bold' }}>{t('common.close')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1225,6 +1342,103 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ onNavigate, onBack, onClo
           onNavigate('profile');
         }}
       />
+
+      {/* Waitlist Modal */}
+      <Modal
+        visible={showWaitlistModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowWaitlistModal(false)}
+      >
+        <View style={styles.waitlistModalOverlay}>
+          <View style={styles.waitlistModalContent}>
+            <View style={styles.waitlistModalHeader}>
+              <Text style={styles.waitlistModalTitle}>📋 רשימת המתנה</Text>
+              <TouchableOpacity onPress={() => setShowWaitlistModal(false)} style={styles.closeButton}>
+                <MirroredIcon name="close" size={24} color="#333" type="ionicons" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.waitlistModalSubtitle}>
+              רשימת המתנה ליום {selectedDate && formatHebrewDate(selectedDate)}
+            </Text>
+
+            <View style={styles.waitlistTimeSection}>
+              <Text style={styles.waitlistTimeLabel}>לאיזה שעה תעדיף?</Text>
+              <Text style={styles.waitlistTimeSubtext}>אנא כתוב טווח שעות רצוי</Text>
+
+              <View style={styles.timeRangeContainer}>
+                <View style={styles.timePickerContainer}>
+                  <Text style={styles.timePickerLabel}>שעת התחלה</Text>
+                  <ScrollView style={styles.timePickerScroll} showsVerticalScrollIndicator={false}>
+                    {['06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'].map((time) => (
+                      <TouchableOpacity
+                        key={time}
+                        style={[
+                          styles.timeOption,
+                          waitlistStartTime === time && styles.timeOptionSelected
+                        ]}
+                        onPress={() => setWaitlistStartTime(time)}
+                      >
+                        <Text style={[
+                          styles.timeOptionText,
+                          waitlistStartTime === time && styles.timeOptionTextSelected
+                        ]}>
+                          {time}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+
+                <View style={styles.timePickerContainer}>
+                  <Text style={styles.timePickerLabel}>שעת סיום</Text>
+                  <ScrollView style={styles.timePickerScroll} showsVerticalScrollIndicator={false}>
+                    {['10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00'].map((time) => (
+                      <TouchableOpacity
+                        key={time}
+                        style={[
+                          styles.timeOption,
+                          waitlistEndTime === time && styles.timeOptionSelected
+                        ]}
+                        onPress={() => setWaitlistEndTime(time)}
+                      >
+                        <Text style={[
+                          styles.timeOptionText,
+                          waitlistEndTime === time && styles.timeOptionTextSelected
+                        ]}>
+                          {time}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              </View>
+
+              <View style={styles.selectedRangeDisplay}>
+                <Text style={styles.selectedRangeText}>
+                  טווח שעות מבוקש: {waitlistStartTime} - {waitlistEndTime}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.waitlistModalActions}>
+              <TouchableOpacity
+                style={styles.waitlistSubmitButton}
+                onPress={handleWaitlistSubmit}
+              >
+                <Text style={styles.waitlistSubmitButtonText}>הירשם לרשימת המתנה</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.waitlistCancelButton}
+                onPress={() => setShowWaitlistModal(false)}
+              >
+                <Text style={styles.waitlistCancelButtonText}>ביטול</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -1412,11 +1626,6 @@ const styles = StyleSheet.create({
     fontSize: 30,
     color: '#fff',
   },
-  treatmentPhoto: {
-    width: 80,
-    height: 80,
-    borderRadius: 16,
-  },
   treatmentInfo: {
     flex: 1,
   },
@@ -1478,6 +1687,46 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#fff',
+  },
+  noTimesContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  noTimesBox: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 32,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 2,
+    borderColor: '#f8f9fa',
+  },
+  noTimesEmoji: {
+    fontSize: 64,
+    marginBottom: 16,
+  },
+  noTimesTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#dc3545',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  noTimesMessage: {
+    fontSize: 18,
+    color: '#333',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  noTimesSubtext: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
   },
   timesContainer: {
     flexDirection: 'row',
@@ -1608,7 +1857,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   detailsButton: {
-    backgroundColor: '#FF00AA',
+    backgroundColor: '#3b82f6',
     borderRadius: 8,
     paddingVertical: 6,
     paddingHorizontal: 16,
@@ -1630,15 +1879,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   calendarContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 40,
+    backgroundColor: '#fdfdfd',
+    borderRadius: 24,
+    paddingTop: 12,
+    paddingBottom: 4, // even smaller
+    paddingHorizontal: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
-    marginBottom: 16,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    elevation: 10,
+    marginBottom: 12, // closer to next content
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
   },
   calendarHeader: {
     flexDirection: 'row',
@@ -1657,7 +1910,7 @@ const styles = StyleSheet.create({
   daysOfWeekContainer: {
     flexDirection: 'row-reverse',
     justifyContent: 'flex-start',
-    marginBottom: 16,
+    marginBottom: 4, // tighter
   },
   dayOfWeekCell: {
     width: '14.2857%',   // 100/7
@@ -1669,69 +1922,91 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     writingDirection: 'rtl',
   },
+  calendarGridWrapper: {
+    borderWidth: 1,
+    borderColor: '#d6dae1',
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 0, // remove internal bottom gap
+    backgroundColor: '#ffffff',
+    shadowColor: '#0a2540',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 6,
+  },
   calendarGrid: {
     flexDirection: 'row-reverse',
     flexWrap: 'wrap',
-    justifyContent: 'flex-start',
-    marginBottom: 24,
   },
   calendarDay: {
     width: '14.2857%',
     aspectRatio: 1,
-    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    borderWidth: 1,
-    borderColor: '#000',
+    backgroundColor: '#fff',
+  },
+  calendarDayGridCell: {
+    borderLeftWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#eef1f4',
   },
   calendarDayBlank: {
     width: '14.2857%',
     aspectRatio: 1,
+    backgroundColor: '#f7f9fb',
+    borderLeftWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#eef1f4',
   },
   calendarDaySelected: {
-    backgroundColor: '#007bff',
-    borderColor: '#007bff',
-    shadowColor: '#007bff',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
+    backgroundColor: '#2563eb',
+    borderLeftWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#1d4ed8',
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
     shadowRadius: 6,
+    elevation: 4,
+    transform: [{ scale: 1.04 }],
   },
   calendarDayToday: {
-    borderColor: '#007bff',
-    borderWidth: 2,
-    backgroundColor: '#eef5ff',
+    backgroundColor: '#e8f1ff',
+    borderLeftWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#93c5fd',
   },
   calendarDayUnavailable: {
-    backgroundColor: '#dc3545',
-    borderColor: '#dc3545',
+    backgroundColor: '#fecaca',
   },
-  calendarDayPast: {
-    backgroundColor: '#f1f3f5',
-    borderColor: '#e9ecef',
+  calendarDayOutOfRange: {
+    backgroundColor: '#f1f5f9',
   },
-  
   calendarDayText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#334155',
   },
   calendarDayTextSelected: {
-    color: '#222',
+    color: '#fff',
+    fontWeight: '700',
   },
   calendarDayTextToday: {
-    color: '#0b62d6',
+    color: '#1d4ed8',
+    fontWeight: '700',
   },
   calendarDayTextUnavailable: {
-    color: '#fff',
+    color: '#dc2626',
   },
-  calendarDayTextPast: {
-    color: '#adb5bd',
+  calendarDayTextOutOfRange: {
+    color: '#94a3b8',
   },
   calendarLegend: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginBottom: 16,
+    marginBottom: 4, // reduced
+    paddingTop: 4,
   },
   legendItem: {
     flexDirection: 'row',
@@ -1752,7 +2027,7 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   calendarActions: {
-    marginTop: 20,
+    marginTop: 8, // reduced
   },
   actionSection: {
     marginBottom: 15,
@@ -1811,16 +2086,151 @@ const styles = StyleSheet.create({
   },
   topBarArrowRight: {
     position: 'absolute',
-    right: 10,
+    left: 10,
     top: '50%',
     transform: [{ translateY: -11 }],
   },
   topBarArrowLeft: {
     position: 'absolute',
-    left: 10,
+    right: 10,
     top: '50%',
     transform: [{ translateY: -11 }],
   },
+  // Waitlist Modal Styles
+  waitlistModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  waitlistModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    margin: 20,
+    width: width * 0.95,
+    maxHeight: height * 0.85,
+  },
+  waitlistModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  waitlistModalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#222',
+    flex: 1,
+    textAlign: 'right',
+  },
+  waitlistModalSubtitle: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 24,
+    fontWeight: '500',
+  },
+  waitlistTimeSection: {
+    marginBottom: 24,
+  },
+  waitlistTimeLabel: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#222',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  waitlistTimeSubtext: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  timeRangeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  timePickerContainer: {
+    flex: 1,
+    marginHorizontal: 8,
+  },
+  timePickerLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  timePickerScroll: {
+    maxHeight: 200,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 12,
+    backgroundColor: '#f8f9fa',
+  },
+  timeOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    alignItems: 'center',
+  },
+  timeOptionSelected: {
+    backgroundColor: '#007bff',
+  },
+  timeOptionText: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
+  },
+  timeOptionTextSelected: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  selectedRangeDisplay: {
+    backgroundColor: '#e8f4f8',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#007bff',
+  },
+  selectedRangeText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#007bff',
+    textAlign: 'center',
+  },
+  waitlistModalActions: {
+    flexDirection: 'column',
+    gap: 12,
+  },
+  waitlistSubmitButton: {
+    backgroundColor: '#dc3545',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  waitlistSubmitButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  waitlistCancelButton: {
+    backgroundColor: '#6c757d',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  waitlistCancelButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  closeButton: {
+    padding: 8,
+  },
 });
 
-export default BookingScreen; 
+export default BookingScreen;

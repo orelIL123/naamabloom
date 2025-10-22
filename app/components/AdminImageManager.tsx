@@ -23,6 +23,7 @@ import {
     updateAtmosphereImage
 } from '../../services/firebase';
 import ConfirmationModal from './ConfirmationModal';
+import { MirroredIcon } from './MirroredIcon';
 
 const { width } = Dimensions.get('window');
 
@@ -180,7 +181,7 @@ const AdminImageManager: React.FC<AdminImageManagerProps> = ({ onClose }) => {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={onClose} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+          <MirroredIcon name="arrow-back" size={24} color="#fff" type="ionicons" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('admin.image_management')}</Text>
         <View style={styles.placeholder} />

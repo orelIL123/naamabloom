@@ -1,0 +1,25 @@
+{
+  "name": "push-notification-template",
+  "version": "1.0.0",
+  "description": "Complete push notification system template for React Native/Expo apps",
+  "dependencies": {
+    "expo-notifications": "^0.31.4",
+    "expo-device": "^7.1.4",
+    "firebase": "^11.10.0",
+    "@react-native-async-storage/async-storage": "2.1.2"
+  },
+  "devDependencies": {
+    "@types/react": "~19.0.10",
+    "typescript": "~5.8.3"
+  },
+  "keywords": [
+    "expo",
+    "react-native",
+    "push-notifications",
+    "sms",
+    "firebase",
+    "notifications"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}

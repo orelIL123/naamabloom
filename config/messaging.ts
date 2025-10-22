@@ -4,15 +4,10 @@ export const messagingConfig: MessagingConfig = {
   providers: {
     sms4free: {
       apiKey: process.env.SMS4FREE_API_KEY || 'mgfwkoRBI',
-      user: process.env.SMS4FREE_USER || '0523985505',
+      user: process.env.SMS4FREE_USER || '0523985505',  // Connection number
       pass: process.env.SMS4FREE_PASS || '73960779',
-      sender: process.env.SMS4FREE_SENDER || 'ToriX', // Brand name
+      sender: process.env.SMS4FREE_SENDER || 'ToriX',  // Brand name instead of number
       enabled: true,
-    },
-    vonage: {
-      apiKey: process.env.VONAGE_API_KEY || '',
-      apiSecret: process.env.VONAGE_API_SECRET || '',
-      enabled: !!process.env.VONAGE_API_KEY
     },
     whatsapp: {
       phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || '',
@@ -21,7 +16,7 @@ export const messagingConfig: MessagingConfig = {
     }
   },
   defaultProvider: 'sms4free',
-  fallbackEnabled: true,
+  fallbackEnabled: false,
 };
 
 export const updateMessagingProvider = (provider: 'sms4free' | 'whatsapp') => {

@@ -3,23 +3,23 @@ import { Feather, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    Dimensions,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  Dimensions,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import {
-    checkIsAdmin,
-    getAllUsers,
-    onAuthStateChange
+  checkIsAdmin,
+  getAllUsers,
+  onAuthStateChange
 } from '../../services/firebase';
 import TopNav from '../components/TopNav';
 
@@ -91,34 +91,19 @@ const AdminNotificationsScreen: React.FC<AdminNotificationsScreenProps> = ({ onN
     try {
       setLoading(true);
       
-      // Import the notification functions
-      const { sendNotificationToAllUsers, sendNotificationToUser } = await import('../../services/firebase');
-      
-      let successCount = 0;
-      
       if (selectedUser === 'all') {
         // Send to all users
-        successCount = await sendNotificationToAllUsers(notificationTitle, notificationBody, {
-          type: 'admin_message',
-          timestamp: new Date().toISOString()
-        });
-      } else if (selectedUser === 'with-tokens') {
-        // Send only to users with push tokens
-        const usersWithTokens = getUsersWithTokens();
-        const results = await Promise.allSettled(
-          usersWithTokens.map(user => 
-            sendNotificationToUser(user.uid, notificationTitle, notificationBody, {
-              type: 'admin_message',
-              timestamp: new Date().toISOString()
-            })
-          )
-        );
-        successCount = results.filter(result => result.status === 'fulfilled' && result.value).length;
+        const { sendNotificationToAllUsers } = await import('../../services/firebase');
+        await sendNotificationToAllUsers(notificationTitle, notificationBody);
+      } else {
+        // Send to specific user
+        const { sendNotificationToUser } = await import('../../services/firebase');
+        await sendNotificationToUser(selectedUser, notificationTitle, notificationBody);
       }
       
       Alert.alert(
         'התראה נשלחה',
-        `ההודעה "${notificationTitle}" נשלחה בהצלחה ל-${successCount} משתמשים!`,
+        `ההודעה "${notificationTitle}" נשלחה בהצלחה!`,
         [
           {
             text: 'אישור',
@@ -437,7 +422,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   statsGrid: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse', // Fixed: Changed to row-reverse for RTL
     justifyContent: 'space-between',
     gap: 12,
   },
@@ -467,7 +452,7 @@ const styles = StyleSheet.create({
   },
   sendButton: {
     backgroundColor: '#6c757d',
-    flexDirection: 'row',
+    flexDirection: 'row-reverse', // Fixed: Changed to row-reverse for RTL
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
@@ -484,7 +469,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 16,
     marginBottom: 8,
-    flexDirection: 'row',
+    flexDirection: 'row-reverse', // Fixed: Changed to row-reverse for RTL
     justifyContent: 'space-between',
     alignItems: 'center',
     shadowColor: '#000',

@@ -14,7 +14,6 @@ export {
   getAppInstance,
   checkFirebaseReady,
   checkFirebaseFullyReady,
-  waitForFirebaseReady,
   safeFirebaseOperation,
   collections,
   User,

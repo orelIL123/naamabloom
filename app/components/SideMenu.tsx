@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { checkIsAdmin, getCurrentUser } from '../../services/firebase';
 import { changeLanguage } from '../i18n';
+import { MirroredIcon } from './MirroredIcon';
 
 const { width } = Dimensions.get('window');
 
@@ -30,20 +31,31 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, onNavigate, onNot
   const router = useRouter();
   const [showLanguageOptions, setShowLanguageOptions] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isBarber, setIsBarber] = useState(false);
 
   useEffect(() => {
-    const checkAdminStatus = async () => {
+    const checkUserStatus = async () => {
       const user = getCurrentUser();
       if (user) {
         const adminStatus = await checkIsAdmin(user.uid);
         setIsAdmin(adminStatus);
+
+        // Check if user is barber
+        const { getFirestore, getDoc, doc } = await import('firebase/firestore');
+        const db = getFirestore();
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setIsBarber(userData?.role === 'barber');
+        }
       } else {
         setIsAdmin(false);
+        setIsBarber(false);
       }
     };
-    
+
     if (visible) {
-      checkAdminStatus();
+      checkUserStatus();
     }
   }, [visible]);
   
@@ -54,6 +66,9 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, onNavigate, onNot
       switch (screen) {
         case 'admin-home':
           router.navigate('/admin-home');
+          break;
+        case 'barber-home':
+          router.navigate('/barber-home');
           break;
         case 'settings':
           router.navigate('/(tabs)/settings');
@@ -97,6 +112,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, onNavigate, onNot
     { id: 'appointments', title: t('profile.my_appointments'), icon: 'calendar-today', screen: 'profile' },
     { id: 'settings', title: t('nav.settings'), icon: 'settings', screen: 'settings' },
     ...(isAdmin ? [{ id: 'admin', title: t('nav.admin'), icon: 'admin-panel-settings', screen: 'admin-home' }] : []),
+    ...(isBarber && !isAdmin ? [{ id: 'barber', title: 'ניהול', icon: 'cut', screen: 'barber-home' }] : []),
     { id: 'about', title: t('nav.about') || 'אודות', icon: 'info', screen: null },
   ];
 
@@ -111,7 +127,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, onNavigate, onNot
         <TouchableOpacity style={styles.overlayTouch} onPress={onClose} />
         <SafeAreaView style={styles.menuContainer}>
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>{t('home.title')}</Text>
+            <Text style={styles.headerTitle}>RAN ALGRISI</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <Ionicons name="close" size={24} color="#fff" />
             </TouchableOpacity>
@@ -137,13 +153,18 @@ const SideMenu: React.FC<SideMenuProps> = ({ visible, onClose, onNavigate, onNot
                     }
                   }}
                 >
-                  <MaterialIcons name={item.icon as any} size={24} color="#fff" />
-                  <Text style={styles.menuItemText}>{item.title}</Text>
                   {item.id === 'language' ? (
-                    <Ionicons name={showLanguageOptions ? "chevron-down" : "chevron-forward"} size={20} color="#666" />
+                    <MirroredIcon 
+                      name={showLanguageOptions ? "chevron-down" : "chevron-back"} 
+                      size={20} 
+                      color="#666" 
+                      type="ionicons"
+                    />
                   ) : (
-                    <Ionicons name="chevron-forward" size={20} color="#666" />
+                    <MirroredIcon name="chevron-back" size={20} color="#666" type="ionicons" />
                   )}
+                  <Text style={styles.menuItemText}>{item.title}</Text>
+                  <MaterialIcons name={item.icon as any} size={24} color="#fff" />
                 </TouchableOpacity>
                 
                 {/* Language Options Submenu */}
@@ -189,6 +210,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     flexDirection: 'row',
+    justifyContent: 'flex-end',
   },
   overlayTouch: {
     flex: 1,
@@ -196,8 +218,8 @@ const styles = StyleSheet.create({
   menuContainer: {
     width: width * 0.8,
     backgroundColor: '#1a1a1a',
-    borderTopRightRadius: 20,
-    borderBottomRightRadius: 20,
+    borderTopLeftRadius: 20,
+    borderBottomLeftRadius: 20,
   },
   header: {
     flexDirection: 'row',

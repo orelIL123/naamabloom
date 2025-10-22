@@ -1,7 +1,9 @@
 import { Tabs, useRouter, useSegments } from 'expo-router';
 import React from 'react';
-import { useColorScheme } from 'react-native';
+import { View, useColorScheme } from 'react-native';
 import BottomNav from '../components/BottomNav';
+import { UpdateBanner } from '../../src/components/UpdateBanner';
+import { getUpdateUrl, areUpdatesEnabled } from '../../src/lib/config';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -52,7 +54,17 @@ export default function TabLayout() {
   };
 
   return (
-    <>
+    <View style={{ flex: 1 }}>
+      {/* Update Banner - only show on Android and when updates are enabled */}
+      {areUpdatesEnabled() && (
+        <UpdateBanner 
+          updateUrl={getUpdateUrl()}
+          onUpdateCheck={(updateInfo) => {
+            console.log('Update check result:', updateInfo);
+          }}
+        />
+      )}
+      
       <Tabs
         screenOptions={{
           tabBarStyle: { display: 'none' },
@@ -70,6 +82,6 @@ export default function TabLayout() {
         onTabPress={handleTabPress}
         activeTab={activeTab}
       />
-    </>
+    </View>
   );
 }

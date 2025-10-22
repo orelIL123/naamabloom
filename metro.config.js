@@ -1,36 +1,37 @@
-// metro.config.js
 const { getDefaultConfig } = require('expo/metro-config');
 
-const config = getDefaultConfig(__dirname);
+const config = getDefaultConfig(__dirname, {
+  // Enable CSS support
+  isCSSEnabled: true,
+});
 
-// הוסף 'cjs' אם לא קיים (בלי לדרוס את הרשימה)
-if (!config.resolver.sourceExts.includes('cjs')) {
-  config.resolver.sourceExts = [...config.resolver.sourceExts, 'cjs'];
-}
+// Ensure these extensions are resolved properly
+config.resolver.sourceExts.push('cjs');
 
-// אל תדרוס assetExts; הדיפולט כבר כולל png/jpg/jpeg וכו'
-// אם ממש חייבים, עשה כך:
-// config.resolver.assetExts = Array.from(
-//   new Set([...config.resolver.assetExts, 'png', 'jpg', 'jpeg'])
-// );
+// Enable symlinks for better development
+config.resolver.symlinks = true;
 
-// אל תדרוס את הפלטפורמות; רק ודא שהן כוללות native
-const defaultPlatforms = config.resolver.platforms || [];
-config.resolver.platforms = Array.from(
-  new Set([...defaultPlatforms, 'ios', 'android', 'native', 'web'])
-);
+// Optimize for production builds
+config.resolver.platforms = ['ios', 'android', 'native'];
 
-// הפעלת סמלינקים במטרו החדש (לא symlinks=true) - מושבת לעת עתה
-// config.resolver.unstable_enableSymlinks = true;
-
-// (אופציונלי) שיפור יציבות / ביצועים ב-CI
-// config.resolver.unstable_disableWatches = true;
-
-// ⚠️ חשוב: אל תשים כאן Node polyfills לנייטיב
-// אם אתה צריך polyfills ל-web, עשה זאת ב-webpack (app.plugin.js / next/webpack וכו'),
-// או הסר את התלות הדורשת crypto/http וכו' בנייד.
-
-// נקה כל alias של node:*
-delete config.resolver.alias;
+// Simplified Node.js polyfills for Android compatibility
+config.resolver.alias = {
+  'node:util/types': 'util',
+  'node:assert': 'assert',
+  'node:buffer': 'buffer',
+  'node:crypto': 'crypto-browserify',
+  'node:events': 'events',
+  'node:http': 'http-browserify',
+  'node:https': 'https-browserify',
+  'node:net': 'net',
+  'node:os': 'os-browserify',
+  'node:path': 'path-browserify',
+  'node:querystring': 'querystring-es3',
+  'node:stream': 'stream-browserify',
+  'node:string_decoder': 'string_decoder',
+  'node:url': 'url',
+  'node:util': 'util',
+  'node:zlib': 'browserify-zlib'
+};
 
 module.exports = config;

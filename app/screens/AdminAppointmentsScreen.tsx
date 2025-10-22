@@ -1,34 +1,34 @@
 import { Ionicons } from '@expo/vector-icons';
+import { doc, getDoc, getFirestore, Timestamp } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  Dimensions,
-  Linking,
-  Modal,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    Linking,
+    Modal,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
-import { 
-  Appointment, 
-  getAllAppointments,
-  getCurrentMonthAppointments,
-  getRecentAppointments, 
-  getBarbers, 
-  updateAppointment, 
-  deleteAppointment,
-  Barber,
-  getAllUsers,
-  getTreatments,
-  createAppointment,
-  UserProfile,
-  Treatment
+import {
+    Appointment,
+    Barber,
+    BarberAvailability,
+    createAppointment,
+    deleteAppointment,
+    getAllUsers,
+    getBarberAvailability,
+    getBarbers,
+    getCurrentMonthAppointments,
+    getTreatments,
+    Treatment,
+    updateAppointment,
+    UserProfile
 } from '../../services/firebase';
-import { Timestamp } from 'firebase/firestore';
+import { auth } from '../config/firebase';
 import ToastMessage from '../components/ToastMessage';
 import TopNav from '../components/TopNav';
 
@@ -46,7 +46,7 @@ const AdminAppointmentsScreen: React.FC<AdminAppointmentsScreenProps> = ({ onNav
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [addModalVisible, setAddModalVisible] = useState(false);
-  const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
+  const [filter, setFilter] = useState<'all' | 'pending' | 'confirmed' | 'completed'>('all');
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
 
   // Add appointment form state
@@ -59,60 +59,84 @@ const AdminAppointmentsScreen: React.FC<AdminAppointmentsScreenProps> = ({ onNav
   const [inputMethod, setInputMethod] = useState<'existing' | 'manual'>('manual');
   const [manualClientName, setManualClientName] = useState<string>('');
   const [manualClientPhone, setManualClientPhone] = useState<string>('');
+  const [barberAvailability, setBarberAvailability] = useState<BarberAvailability[]>([]);
 
   useEffect(() => {
     loadData();
   }, []);
 
+  // Load barber availability when a barber is selected
+  useEffect(() => {
+    if (selectedBarber) {
+      loadBarberAvailability(selectedBarber);
+    } else {
+      setBarberAvailability([]);
+    }
+  }, [selectedBarber]);
+
+  const loadBarberAvailability = async (barberId: string) => {
+    try {
+      console.log('📅 Loading availability for barber:', barberId);
+      const availability = await getBarberAvailability(barberId);
+      console.log('✅ Barber availability loaded:', availability);
+      setBarberAvailability(availability);
+    } catch (error) {
+      console.error('❌ Error loading barber availability:', error);
+      setBarberAvailability([]);
+    }
+  };
+
   const loadData = async () => {
     try {
       setLoading(true);
       console.log('🔄 Loading admin appointments data...');
-      
+
+      // Check if current user is a barber first
+      const currentUser = auth.currentUser;
+      let userBarberId: string | undefined;
+
+      if (currentUser) {
+        const db = getFirestore();
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          const userRole = userData?.role;
+          if (userRole === 'barber') {
+            userBarberId = userData?.barberId;
+          }
+        }
+      }
+
+      // Load data with barberId filter if user is a barber
       const [appointmentsData, barbersData, usersData, treatmentsData] = await Promise.all([
-        getCurrentMonthAppointments(), // Only load current month for better performance
+        getCurrentMonthAppointments(userBarberId), // Pass barberId to filter at query level
         getBarbers(),
         getAllUsers(),
         getTreatments()
       ]);
-      
+
+      let filteredBarbers = barbersData;
+
+      if (userBarberId) {
+        // Filter barbers list to show only current barber
+        filteredBarbers = barbersData.filter(b => b.id === userBarberId);
+        // Auto-select the barber
+        setSelectedBarber(userBarberId);
+        console.log('✅ Barber data loaded:', {
+          appointments: appointmentsData.length,
+          barber: userBarberId
+        });
+      }
+
       console.log('✅ Data loaded successfully:', {
         appointments: appointmentsData.length,
-        barbers: barbersData.length,
+        barbers: filteredBarbers.length,
         users: usersData.length,
         treatments: treatmentsData.length
       });
-      
-      // Auto-complete past appointments
-      const now = new Date();
-      console.log('🔍 Checking appointments for auto-completion...', {
-        totalAppointments: appointmentsData.length,
-        currentTime: now.toISOString()
-      });
-      
-      const updatedAppointments = await Promise.all(
-        appointmentsData.map(async (appointment) => {
-          const aptTime = appointment.date.toMillis ? appointment.date.toMillis() : new Date(appointment.date).getTime();
-          const isPast = aptTime < now.getTime();
-          
-          console.log(`🔍 Appointment ${appointment.id}:`, {
-            status: appointment.status,
-            date: new Date(aptTime).toISOString(),
-            isPast,
-            willAutoComplete: isPast && appointment.status === 'pending'
-          });
-          
-          if (isPast && (appointment.status === 'pending' || appointment.status === 'confirmed')) {
-            console.log(`🔄 Auto-completing past appointment: ${appointment.id}`);
-            await updateAppointment(appointment.id, { status: 'completed' });
-            return { ...appointment, status: 'completed' as const };
-          }
-          return appointment;
-        })
-      );
-      
-      setAppointments(updatedAppointments);
-      setBarbers(barbersData);
+
+      setAppointments(appointmentsData);
+      setBarbers(filteredBarbers);
       setUsers(usersData);
       setTreatments(treatmentsData);
       
@@ -226,11 +250,83 @@ const AdminAppointmentsScreen: React.FC<AdminAppointmentsScreenProps> = ({ onNav
   // Generate time slots (9:00 AM to 8:00 PM)
   const generateTimeSlots = () => {
     const slots = [];
+    const slotInterval = selectedBarber?.primaryTreatmentDuration || 20;
+    
     for (let hour = 9; hour < 20; hour++) {
-      slots.push(`${hour.toString().padStart(2, '0')}:00`);
-      slots.push(`${hour.toString().padStart(2, '0')}:30`);
+      for (let min = 0; min < 60; min += slotInterval) {
+        slots.push(`${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`);
+      }
     }
     return slots;
+  };
+
+  // Check if a time slot falls during barber's break time
+  const isTimeSlotDuringBreak = (slotTime: string, selectedDate: Date, duration: number): boolean => {
+    if (!selectedBarber || barberAvailability.length === 0) {
+      return false;
+    }
+
+    const dayOfWeek = selectedDate.getDay();
+    const dayAvailability = barberAvailability.find(a => a.dayOfWeek === dayOfWeek);
+
+    if (!dayAvailability || !dayAvailability.hasBreak || !dayAvailability.breakStartTime || !dayAvailability.breakEndTime) {
+      return false;
+    }
+
+    // Parse the slot time
+    const [slotHour, slotMin] = slotTime.split(':').map(Number);
+    const slotStart = new Date(selectedDate);
+    slotStart.setHours(slotHour, slotMin, 0, 0);
+    const slotEnd = new Date(slotStart.getTime() + duration * 60000);
+
+    // Parse break times
+    const [breakStartHour, breakStartMin] = dayAvailability.breakStartTime.split(':').map(Number);
+    const [breakEndHour, breakEndMin] = dayAvailability.breakEndTime.split(':').map(Number);
+    
+    const breakStart = new Date(selectedDate);
+    breakStart.setHours(breakStartHour, breakStartMin, 0, 0);
+    
+    const breakEnd = new Date(selectedDate);
+    breakEnd.setHours(breakEndHour, breakEndMin, 0, 0);
+
+    // Check if any part of the slot overlaps with break time
+    const hasOverlap = slotStart < breakEnd && slotEnd > breakStart;
+    
+    if (hasOverlap) {
+      console.log('⏸️ Time slot during break:', {
+        slot: slotTime,
+        breakTime: `${dayAvailability.breakStartTime}-${dayAvailability.breakEndTime}`
+      });
+    }
+
+    return hasOverlap;
+  };
+
+  // Check if time slot is within barber's working hours
+  const isTimeSlotWithinWorkingHours = (slotTime: string, selectedDate: Date): boolean => {
+    if (!selectedBarber || barberAvailability.length === 0) {
+      return true; // If no availability data, allow all times (backward compatibility)
+    }
+
+    const dayOfWeek = selectedDate.getDay();
+    const dayAvailability = barberAvailability.find(a => a.dayOfWeek === dayOfWeek);
+
+    if (!dayAvailability || !dayAvailability.isAvailable) {
+      console.log('❌ Barber not available on this day:', dayOfWeek);
+      return false; // Barber not working this day
+    }
+
+    // Parse the slot time
+    const [slotHour, slotMin] = slotTime.split(':').map(Number);
+    const slotMinutes = slotHour * 60 + slotMin;
+
+    // Parse working hours
+    const [startHour, startMin] = dayAvailability.startTime.split(':').map(Number);
+    const [endHour, endMin] = dayAvailability.endTime.split(':').map(Number);
+    const startMinutes = startHour * 60 + startMin;
+    const endMinutes = endHour * 60 + endMin;
+
+    return slotMinutes >= startMinutes && slotMinutes < endMinutes;
   };
 
   const resetForm = () => {
@@ -245,10 +341,23 @@ const AdminAppointmentsScreen: React.FC<AdminAppointmentsScreenProps> = ({ onNav
     setManualClientPhone('');
   };
 
-  // Check if a time slot is available (not conflicting with existing appointments)
+  // Check if a time slot is available (not conflicting with existing appointments, breaks, or working hours)
   const isTimeSlotAvailable = (appointmentDateTime: Date, duration: number, existingAppointments: any[]) => {
     const slotEnd = new Date(appointmentDateTime.getTime() + duration * 60000);
+    const timeString = `${appointmentDateTime.getHours().toString().padStart(2, '0')}:${appointmentDateTime.getMinutes().toString().padStart(2, '0')}`;
     
+    // Check if time is within working hours
+    if (!isTimeSlotWithinWorkingHours(timeString, appointmentDateTime)) {
+      console.log('❌ Time slot outside working hours:', timeString);
+      return false;
+    }
+    
+    // Check if time is during break
+    if (isTimeSlotDuringBreak(timeString, appointmentDateTime, duration)) {
+      return false;
+    }
+    
+    // Check for appointment conflicts
     for (const appt of existingAppointments) {
       try {
         // Handle Firestore Timestamp objects
@@ -330,7 +439,7 @@ const AdminAppointmentsScreen: React.FC<AdminAppointmentsScreenProps> = ({ onNav
         barberId: selectedBarber,
         treatmentId: selectedTreatment,
         date: Timestamp.fromDate(appointmentDateTime),
-        status: 'pending' as const, // Default to pending
+        status: 'confirmed' as const, // Changed from 'pending' to 'confirmed'
         notes: appointmentNotes,
         duration: duration,
         // Add manual client info if using manual input
@@ -397,21 +506,6 @@ const AdminAppointmentsScreen: React.FC<AdminAppointmentsScreenProps> = ({ onNav
   const filteredAppointments = appointments
     .filter(apt => {
       if (filter === 'all') return true;
-
-      const now = new Date();
-      const aptTime = apt.date.toMillis ? apt.date.toMillis() : new Date(apt.date).getTime();
-      const isFuture = aptTime > now.getTime();
-
-      if (filter === 'pending') {
-        // Show future appointments that are pending or confirmed
-        return isFuture && (apt.status === 'pending' || apt.status === 'confirmed');
-      }
-
-      if (filter === 'completed') {
-        // Show completed appointments or cancelled ones
-        return apt.status === 'completed' || apt.status === 'cancelled';
-      }
-
       return apt.status === filter;
     })
     .sort((a, b) => {
@@ -421,10 +515,25 @@ const AdminAppointmentsScreen: React.FC<AdminAppointmentsScreenProps> = ({ onNav
       return aTime - bTime;
     });
 
+  // Get the nearest upcoming appointment for highlighting
+  const getNearestUpcomingAppointment = () => {
+    const now = new Date();
+    const upcomingAppointments = filteredAppointments
+      .filter(apt => apt.status === 'confirmed')
+      .filter(apt => {
+        const aptTime = apt.date.toMillis ? apt.date.toMillis() : new Date(apt.date).getTime();
+        return aptTime > now.getTime();
+      });
+    
+    return upcomingAppointments.length > 0 ? upcomingAppointments[0] : null;
+  };
+
+  const nearestUpcomingAppointment = getNearestUpcomingAppointment();
+
   const getNextClient = () => {
     const now = new Date();
     const upcomingAppointments = appointments
-      .filter(apt => apt.status === 'pending')
+      .filter(apt => apt.status === 'confirmed')
       .filter(apt => {
         const aptTime = apt.date.toMillis ? apt.date.toMillis() : new Date(apt.date).getTime();
         return aptTime > now.getTime();
@@ -438,65 +547,13 @@ const AdminAppointmentsScreen: React.FC<AdminAppointmentsScreenProps> = ({ onNav
     return upcomingAppointments[0] || null;
   };
 
-  // Find the next upcoming appointment to highlight (only future appointments)
-  const getNextUpcomingAppointment = () => {
-    const now = new Date();
-    const upcomingAppointments = appointments
-      .filter(apt => apt.status === 'pending' || apt.status === 'confirmed')
-      .filter(apt => {
-        const aptTime = apt.date.toMillis ? apt.date.toMillis() : new Date(apt.date).getTime();
-        return aptTime > now.getTime(); // Only future appointments
-      })
-      .sort((a, b) => {
-        const aTime = a.date.toMillis ? a.date.toMillis() : new Date(a.date).getTime();
-        const bTime = b.date.toMillis ? b.date.toMillis() : new Date(b.date).getTime();
-        return aTime - bTime; // Sort by earliest first
-      });
-
-    return upcomingAppointments[0] || null;
-  };
-
-  // Check if appointment is the next upcoming one (green frame)
-  const isCurrentAppointment = (appointment: Appointment) => {
-    const nextAppointment = getNextUpcomingAppointment();
-    const isCurrent = nextAppointment && nextAppointment.id === appointment.id;
-    
-    console.log(`🔍 Checking appointment ${appointment.id}:`, {
-      appointmentTime: new Date(appointment.date.toMillis ? appointment.date.toMillis() : new Date(appointment.date).getTime()).toISOString(),
-      status: appointment.status,
-      isClosest: isCurrent,
-      closestAppointmentId: closestAppointment?.id
-    });
-    
-    if (isCurrent) {
-      console.log(`✨ Closest appointment highlighted: ${appointment.id}`, {
-        appointmentTime: new Date(appointment.date.toMillis ? appointment.date.toMillis() : new Date(appointment.date).getTime()).toISOString(),
-        status: appointment.status
-      });
-    }
-    
-    return isCurrent;
-  };
-
   const nextClient = getNextClient();
 
   const filterButtons = [
     { key: 'all', label: 'הכל', count: appointments.length },
-    {
-      key: 'pending',
-      label: 'ממתין',
-      count: appointments.filter(a => {
-        const now = new Date();
-        const aptTime = a.date.toMillis ? a.date.toMillis() : new Date(a.date).getTime();
-        const isFuture = aptTime > now.getTime();
-        return isFuture && (a.status === 'pending' || a.status === 'confirmed');
-      }).length
-    },
-    {
-      key: 'completed',
-      label: 'הושלם',
-      count: appointments.filter(a => a.status === 'completed' || a.status === 'cancelled').length
-    },
+    { key: 'pending', label: 'ממתין', count: appointments.filter(a => a.status === 'pending').length },
+    { key: 'confirmed', label: 'מאושר', count: appointments.filter(a => a.status === 'confirmed').length },
+    { key: 'completed', label: 'הושלם', count: appointments.filter(a => a.status === 'completed').length },
   ];
 
   return (
@@ -557,38 +614,63 @@ const AdminAppointmentsScreen: React.FC<AdminAppointmentsScreenProps> = ({ onNav
             <Text style={styles.loadingText}>טוען תורים...</Text>
           </View>
         ) : (
-          <ScrollView style={styles.appointmentsList}>
+          <ScrollView 
+            style={styles.appointmentsList}
+            ref={(ref) => {
+              // Auto-scroll to nearest appointment when component loads
+              if (ref && nearestUpcomingAppointment && filteredAppointments.length > 0) {
+                setTimeout(() => {
+                  const nearestIndex = filteredAppointments.findIndex(apt => apt.id === nearestUpcomingAppointment.id);
+                  if (nearestIndex > 0) {
+                    // Calculate approximate position to center the nearest appointment
+                    const cardHeight = 120; // Approximate height of appointment card
+                    const scrollPosition = nearestIndex * cardHeight - 100;
+                    ref.scrollTo({ y: Math.max(0, scrollPosition), animated: true });
+                  }
+                }, 500);
+              }
+            }}
+          >
             {filteredAppointments.length === 0 ? (
               <View style={styles.emptyState}>
                 <Ionicons name="calendar-outline" size={64} color="#ccc" />
                 <Text style={styles.emptyStateText}>אין תורים למצב זה</Text>
               </View>
             ) : (
-              filteredAppointments.map((appointment, index) => (
-                <TouchableOpacity
-                  key={appointment.id}
-                  style={[
-                    styles.appointmentCard,
-                    isCurrentAppointment(appointment) && styles.currentAppointmentCard
-                  ]}
-                  onPress={() => {
-                    setSelectedAppointment(appointment);
-                    setModalVisible(true);
-                  }}
-                >
-                  <View style={styles.appointmentHeader}>
-                    <View style={[
-                      styles.statusBadge,
-                      { backgroundColor: getStatusColor(appointment.status) }
-                    ]}>
-                      <Text style={styles.statusText}>
-                        {getStatusText(appointment.status)}
+              filteredAppointments.map((appointment) => {
+                const isNearestUpcoming = nearestUpcomingAppointment && appointment.id === nearestUpcomingAppointment.id;
+                
+                return (
+                  <TouchableOpacity
+                    key={appointment.id}
+                    style={[
+                      styles.appointmentCard,
+                      isNearestUpcoming && styles.nearestAppointmentCard
+                    ]}
+                    onPress={() => {
+                      setSelectedAppointment(appointment);
+                      setModalVisible(true);
+                    }}
+                  >
+                    {isNearestUpcoming && (
+                      <View style={styles.nearestAppointmentBadge}>
+                        <Ionicons name="time" size={12} color="#fff" />
+                        <Text style={styles.nearestAppointmentText}>הבא בתור</Text>
+                      </View>
+                    )}
+                    <View style={styles.appointmentHeader}>
+                      <View style={[
+                        styles.statusBadge,
+                        { backgroundColor: getStatusColor(appointment.status) }
+                      ]}>
+                        <Text style={styles.statusText}>
+                          {getStatusText(appointment.status)}
+                        </Text>
+                      </View>
+                      <Text style={styles.appointmentDate}>
+                        {formatDate(appointment.date)}
                       </Text>
                     </View>
-                    <Text style={styles.appointmentDate}>
-                      {formatDate(appointment.date)}
-                    </Text>
-                  </View>
                   
                   <View style={styles.appointmentDetails}>
                     <View style={styles.appointmentRow}>
@@ -628,7 +710,8 @@ const AdminAppointmentsScreen: React.FC<AdminAppointmentsScreenProps> = ({ onNav
                     </View>
                   </View>
                 </TouchableOpacity>
-              ))
+              );
+            })
             )}
           </ScrollView>
         )}
@@ -637,7 +720,12 @@ const AdminAppointmentsScreen: React.FC<AdminAppointmentsScreenProps> = ({ onNav
       {/* Floating Action Button */}
       <TouchableOpacity 
         style={styles.fab} 
-        onPress={() => setAddModalVisible(true)}
+        onPress={() => {
+          console.log('➕ Add appointment button pressed');
+          console.log('📱 Current addModalVisible state:', addModalVisible);
+          setAddModalVisible(true);
+          console.log('📱 Set addModalVisible to true');
+        }}
       >
         <Ionicons name="add" size={28} color="#fff" />
       </TouchableOpacity>
@@ -740,7 +828,10 @@ const AdminAppointmentsScreen: React.FC<AdminAppointmentsScreenProps> = ({ onNav
         animationType="slide"
         transparent={true}
         visible={addModalVisible}
-        onRequestClose={() => setAddModalVisible(false)}
+        onRequestClose={() => {
+          console.log('❌ Add modal closed');
+          setAddModalVisible(false);
+        }}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.addModalContent}>
@@ -779,25 +870,46 @@ const AdminAppointmentsScreen: React.FC<AdminAppointmentsScreenProps> = ({ onNav
               </ScrollView>
 
               {/* Time Selection */}
-              <Text style={styles.formLabel}>בחר שעה *</Text>
+              <Text style={styles.formLabel}>בחר שעה * {selectedBarber && barberAvailability.length > 0 && '(אדום = מחוץ לשעות עבודה או הפסקה)'}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.timeContainer}>
-                {generateTimeSlots().map((time, index) => (
-                  <TouchableOpacity
-                    key={`time-${time}`}
-                    style={[
-                      styles.timeButton,
-                      selectedTime === time && styles.selectedTimeButton
-                    ]}
-                    onPress={() => setSelectedTime(time)}
-                  >
-                    <Text style={[
-                      styles.timeButtonText,
-                      selectedTime === time && styles.selectedTimeButtonText
-                    ]}>
-                      {time}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                {generateTimeSlots().map((time, index) => {
+                  const isWithinHours = isTimeSlotWithinWorkingHours(time, selectedDate);
+                  const isDuringBreak = selectedTreatment && isTimeSlotDuringBreak(
+                    time, 
+                    selectedDate, 
+                    treatments.find(t => t.id === selectedTreatment)?.duration || 60
+                  );
+                  const isUnavailable = !isWithinHours || isDuringBreak;
+                  
+                  return (
+                    <TouchableOpacity
+                      key={`time-${time}`}
+                      style={[
+                        styles.timeButton,
+                        selectedTime === time && styles.selectedTimeButton,
+                        isUnavailable && styles.unavailableTimeButton
+                      ]}
+                      onPress={() => {
+                        if (isUnavailable) {
+                          showToast(
+                            isDuringBreak ? 'שעה זו בזמן הפסקה של הספר' : 'שעה זו מחוץ לשעות העבודה של הספר',
+                            'error'
+                          );
+                        } else {
+                          setSelectedTime(time);
+                        }
+                      }}
+                    >
+                      <Text style={[
+                        styles.timeButtonText,
+                        selectedTime === time && styles.selectedTimeButtonText,
+                        isUnavailable && styles.unavailableTimeButtonText
+                      ]}>
+                        {time}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </ScrollView>
 
               {/* Client Input Method Toggle */}
@@ -1050,15 +1162,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  currentAppointmentCard: {
-    borderWidth: 3,
-    borderColor: '#4CAF50',
-    backgroundColor: '#f8fff8',
-    shadowColor: '#4CAF50',
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 6,
-  },
   appointmentHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1180,6 +1283,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+    zIndex: 1000,
   },
   addModalContent: {
     backgroundColor: '#fff',
@@ -1237,6 +1341,12 @@ const styles = StyleSheet.create({
   selectedTimeButton: {
     backgroundColor: '#007bff',
   },
+  unavailableTimeButton: {
+    backgroundColor: '#ffe6e6',
+    borderWidth: 1,
+    borderColor: '#ff6b6b',
+    opacity: 0.7,
+  },
   timeButtonText: {
     fontSize: 14,
     color: '#666',
@@ -1244,6 +1354,10 @@ const styles = StyleSheet.create({
   },
   selectedTimeButtonText: {
     color: '#fff',
+  },
+  unavailableTimeButtonText: {
+    color: '#ff6b6b',
+    textDecorationLine: 'line-through',
   },
   selectionContainer: {
     maxHeight: 150,
@@ -1463,6 +1577,40 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  // Nearest appointment styles
+  nearestAppointmentCard: {
+    borderWidth: 3,
+    borderColor: '#28a745',
+    backgroundColor: '#f8fff9',
+    shadowColor: '#28a745',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  nearestAppointmentBadge: {
+    position: 'absolute',
+    top: -8,
+    right: 12,
+    backgroundColor: '#28a745',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  nearestAppointmentText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginLeft: 4,
   },
 });
 

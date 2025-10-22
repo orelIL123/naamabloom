@@ -1,11 +1,11 @@
 export const colors = {
   // Primary colors
-  primary: '#FF00AA',
+  primary: '#1a1a2e',
   secondary: '#16213e',
   accent: '#0f3460',
   
   // Neon colors for buttons
-  neonBlue: '#FF00AA', // Changed to bright blue
+  neonBlue: '#3b82f6', // Changed to bright blue
   neonGreen: '#00ff88',
   neonPurple: '#8b5cf6',
   neonPink: '#ec4899',
@@ -25,11 +25,11 @@ export const colors = {
   success: '#10b981',
   warning: '#f59e0b',
   error: '#ef4444',
-  info: '#FF00AA',
+  info: '#3b82f6',
   
   // Gradient colors
-  gradientStart: '#FF00AA', // Changed to bright blue
-  gradientEnd: '#FF00AA', // Changed to lighter blue
+  gradientStart: '#3b82f6', // Changed to bright blue
+  gradientEnd: '#60a5fa', // Changed to lighter blue
   
   // Border colors
   border: '#2d2d2d',
@@ -39,7 +39,7 @@ export const colors = {
   overlay: 'rgba(0, 0, 0, 0.5)',
   overlayDark: 'rgba(0, 0, 0, 0.8)',
   
-  // Test Salon specific colors
+  // Barber shop specific colors
   barberGold: '#ffd700',
   barberSilver: '#c0c0c0',
   barberBronze: '#cd7f32',

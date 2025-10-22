@@ -19,10 +19,10 @@ export default function WelcomeAuthScreen() {
         <View style={styles.logoContainer}>
           <View style={[styles.logo, { backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center' }]}>
             <Ionicons name="cut" size={64} color="#dc2626" />
-            <Text style={{ color: '#dc2626', marginTop: 8, fontSize: 16, fontWeight: 'bold' }}>Test Salon</Text>
+            <Text style={{ color: '#dc2626', marginTop: 8, fontSize: 16, fontWeight: 'bold' }}>Barbers Bar</Text>
           </View>
         </View>
-        <Text style={styles.title}>ברוך הבא ל-Test Salon</Text>
+        <Text style={styles.title}>ברוך הבא ל-Barbers Bar</Text>
         <Text style={styles.subtitle}>
           הירשם בקלות עכשיו!
         </Text>

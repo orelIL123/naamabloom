@@ -1,20 +1,18 @@
 {
   "expo": {
-    "name": "Naama Bloom",
-    "slug": "naama-bloom-barbershop",
-    "version": "1.0.1",
-    "runtimeVersion": "1.0.1",
-    "updates": {
-      "url": "https://u.expo.dev/a25844b7-40a6-4320-98e3-878ea7f072e4"
+    "name": "Barbersbar",
+    "slug": "barbers-bar",
+    "version": "1.1.1",
+    "runtimeVersion": {
+      "policy": "appVersion"
     },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "nbeyebrows",
+    "scheme": "barbersbar",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.naama.bloom",
-      "buildNumber": "2",
+      "bundleIdentifier": "com.barbersbar.app",
       "googleServicesFile": "./app/GoogleService-Info.plist",
       "config": {
         "usesNonExemptEncryption": false
@@ -26,10 +24,7 @@
         "NSLocationWhenInUseUsageDescription": "האפליקציה צריכה גישה למיקום כדי להראות לך כיוונים למספרה ולספק שירות טוב יותר",
         "NSUserNotificationsUsageDescription": "האפליקציה צריכה גישה להתראות כדי לעדכן אותך על התורים שלך ולשלוח התראות חשובות מהמספרה",
         "NSCalendarsUsageDescription": "האפליקציה צריכה גישה ליומן כדי להוסיף ולנהל את התורים שלך.",
-        "LSApplicationQueriesSchemes": [
-          "waze",
-          "whatsapp"
-        ]
+        "LSApplicationQueriesSchemes": ["waze", "whatsapp"]
       }
     },
     "android": {
@@ -37,8 +32,9 @@
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#ffffff"
       },
-      "versionCode": 2,
-      "package": "com.naama.bloom",
+      "versionCode": 14,
+      "package": "com.barbersbar.app",
+      "minSdkVersion": 23,
       "googleServicesFile": "./app/google-services.json",
       "permissions": [
         "CAMERA",
@@ -46,9 +42,11 @@
         "WRITE_EXTERNAL_STORAGE",
         "ACCESS_NETWORK_STATE",
         "INTERNET",
+        "REQUEST_INSTALL_PACKAGES",
         "RECEIVE_BOOT_COMPLETED",
         "WAKE_LOCK",
-        "VIBRATE"
+        "VIBRATE",
+        "POST_NOTIFICATIONS"
       ]
     },
     "web": {
@@ -76,20 +74,16 @@
             "useFrameworks": "static",
             "modularHeaders": true,
             "ccacheEnabled": true,
-            "deploymentTarget": "15.1",
-            "newArchEnabled": false,
-            "swiftVersion": "5.0",
-            "buildConfiguration": "Release",
-            "preprocessorFlags": {
-              "TARGET_OS_SIMULATOR": "1"
-            },
-            "clangCxxLanguageStandard": "c++17",
-            "clangCxxLibrary": "libc++"
+            "deploymentTarget": "13.4"
           },
           "android": {
             "targetSdkVersion": 34,
             "compileSdkVersion": 34,
-            "enableLargeHeap": true
+            "enableLargeHeap": true,
+            "buildType": "app-bundle",
+            "gradleProperties": {
+              "android.suppressUnsupportedCompileSdk": "35"
+            }
           }
         }
       ]
@@ -98,13 +92,14 @@
       "typedRoutes": true
     },
     "extra": {
-      "router": {
-        "origin": false
-      },
+      "router": {},
       "eas": {
-        "projectId": "a25844b7-40a6-4320-98e3-878ea7f072e4"
+        "projectId": "3db35a0e-d2db-4dbd-9138-7647c42f9fae"
       }
     },
-    "owner": "orel895"
+    "owner": "orel895",
+    "updates": {
+      "url": "https://u.expo.dev/3db35a0e-d2db-4dbd-9138-7647c42f9fae"
+    }
   }
 }

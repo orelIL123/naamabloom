@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { colors } from '../constants/colors';
+import { MirroredIcon } from './MirroredIcon';
 
 interface TopNavProps {
   title: string;
@@ -29,7 +30,7 @@ const TopNav: React.FC<TopNavProps> = ({
   });
   if (!fontsLoaded) return null;
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, styles.containerRTL]}>
       {/* White gradient overlay on top */}
       <LinearGradient
         colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.1)', 'transparent']}
@@ -44,7 +45,7 @@ const TopNav: React.FC<TopNavProps> = ({
         colors={[colors.neonBlue, colors.gradientEnd]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.gradientAccent}
+        style={[styles.gradientAccent, styles.gradientAccentRTL]}
         pointerEvents="none"
       />
       {/* Right edge red accent */}
@@ -52,23 +53,23 @@ const TopNav: React.FC<TopNavProps> = ({
         colors={[colors.neonBlue, colors.gradientEnd]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={styles.rightAccent}
+        style={[styles.rightAccent, styles.rightAccentRTL]}
         pointerEvents="none"
       />
       
       {/* Left icon - shows back button, menu, or empty space */}
-      <TouchableOpacity style={styles.iconLeft} onPress={showBackButton ? onBackPress : onMenuPress}>
+      <TouchableOpacity style={[styles.iconLeft, styles.iconLeftRTL]} onPress={showBackButton ? onBackPress : onMenuPress}>
         {showBackButton ? (
-          <Ionicons name="arrow-back" size={28} color="#fff" />
+          <MirroredIcon name="arrow-back" size={28} color="#fff" type="ionicons" />
         ) : (
           <Feather name="menu" size={28} color="#fff" />
         )}
       </TouchableOpacity>
       
-      <Text style={[styles.title, { fontFamily: 'PlayfairDisplay_700Bold', textTransform: 'uppercase' }]}>{title}</Text>
+      <Text style={[styles.title, { fontFamily: 'PlayfairDisplay_700Bold', textTransform: 'uppercase' }, styles.titleRTL]}>{title}</Text>
       
       {/* Right icon - shows close button, notification, or empty space */}
-      <TouchableOpacity style={styles.iconRight} onPress={showCloseButton ? onClosePress : onBellPress}>
+      <TouchableOpacity style={[styles.iconRight, styles.iconRightRTL]} onPress={showCloseButton ? onClosePress : onBellPress}>
         {showCloseButton ? (
           <Ionicons name="close" size={28} color="#fff" />
         ) : (
@@ -148,6 +149,27 @@ const styles = StyleSheet.create({
     right: 0,
     height: '100%',
     zIndex: 2,
+  },
+  // RTL styles
+  containerRTL: {
+    flexDirection: 'row-reverse',
+  },
+  gradientAccentRTL: {
+    left: 'auto',
+    right: -20,
+  },
+  rightAccentRTL: {
+    right: 'auto',
+    left: -20,
+  },
+  iconLeftRTL: {
+    // In RTL, left icon becomes right icon
+  },
+  iconRightRTL: {
+    // In RTL, right icon becomes left icon
+  },
+  titleRTL: {
+    textAlign: 'center',
   },
 });
 

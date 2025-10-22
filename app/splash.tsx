@@ -1,6 +1,9 @@
 import { useRouter } from 'expo-router';
+import { onAuthStateChanged } from 'firebase/auth';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
+import { checkIsAdmin, getAuthInstance, checkFirebaseReady } from '../config/firebase';
+import { attemptAutoLogin, authManager } from '../services/authManager';
 
 export default function SplashScreen() {
   const router = useRouter();
@@ -17,7 +20,7 @@ export default function SplashScreen() {
     let authUnsubscribe: (() => void) | null = null;
     let navigationTimeout: NodeJS.Timeout;
 
-    const handleNavigation = () => {
+    const handleNavigation = async (user: any = null) => {
       if (hasNavigated) {
         console.log('Navigation already handled, skipping...');
         return;
@@ -31,11 +34,30 @@ export default function SplashScreen() {
         authUnsubscribe();
       }
       
-      // Navigate to main app
+      // Navigate based on user type
       try {
         // Add small delay to ensure app is ready
-        setTimeout(() => {
-          router.replace('/(tabs)');
+        setTimeout(async () => {
+          if (user) {
+            // Check if user is admin
+            try {
+              const isAdmin = await checkIsAdmin(user.uid);
+              if (isAdmin) {
+                console.log('Admin user detected, navigating to admin panel');
+                router.replace('/admin-home');
+              } else {
+                console.log('Regular user, navigating to tabs');
+                router.replace('/(tabs)');
+              }
+            } catch (error) {
+              console.error('Error checking admin status:', error);
+              // Fallback to normal navigation
+              router.replace('/(tabs)');
+            }
+          } else {
+            console.log('No user, navigating to tabs');
+            router.replace('/(tabs)');
+          }
           console.log('Navigation successful');
         }, 100);
       } catch (error) {
@@ -46,16 +68,21 @@ export default function SplashScreen() {
     // Set up auth state listener with enhanced error handling
     const initializeAuth = async () => {
       try {
-        // Dynamically import Firebase to avoid startup crashes
-        const firebaseModule = await import('../config/firebase');
-        const { onAuthStateChanged } = await import('firebase/auth');
-
-        const { waitForFirebaseReady, getAuthInstance } = firebaseModule;
+        // Initialize auth manager
+        await authManager.initialize();
         
         // Wait for Firebase to be ready before setting up auth listener
-        const isReady = await waitForFirebaseReady(4000); // 4 second timeout for this splash
+        const isReady = checkFirebaseReady(); // 4 second timeout for this splash
         
         if (isReady) {
+          // Try auto login first
+          const autoLoginResult = await attemptAutoLogin();
+          if (autoLoginResult.success && autoLoginResult.user) {
+            console.log('✅ Auto login successful');
+            await handleNavigation(autoLoginResult.user);
+            return;
+          }
+
           const auth = getAuthInstance();
           if (auth) {
             // Set up the listener.
@@ -64,7 +91,7 @@ export default function SplashScreen() {
               // It will be called with a user object if signed in, or null if not.
               // In either case, we are ready to navigate away from the splash.
               console.log('✅ Auth state determined, navigating.');
-              handleNavigation();
+              handleNavigation(user);
             }, (error) => {
               // This is an error handler for the listener itself.
               console.error('❌ Auth state listener error:', error);

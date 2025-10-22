@@ -1,21 +1,26 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    Alert,
-    Linking,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TouchableOpacity,
-    View
+  Alert,
+  Linking,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
+import { checkIsAdmin, checkIsBarber, deleteUserAccount, onAuthStateChange } from '../../services/firebase';
+import { UpdateCheckButton } from '../../src/components/UpdateBanner';
+import { getCurrentAppInfo } from '../../src/lib/appInfo';
+import { areUpdatesEnabled, getUpdateUrl } from '../../src/lib/config';
+import { MirroredIcon } from '../components/MirroredIcon';
 import TermsModal from '../components/TermsModal';
 import TopNav from '../components/TopNav';
+import { auth } from '../config/firebase';
 import { changeLanguage } from '../i18n';
-import { getCurrentUser, checkIsBarber, checkIsAdmin, onAuthStateChange } from '../../services/firebase';
 
 interface SettingsScreenProps {
   onNavigate: (screen: string) => void;
@@ -32,6 +37,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onNavigate, onBack }) =
   const [isBarber, setIsBarber] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [appInfo] = useState(() => getCurrentAppInfo());
 
   useEffect(() => {
     const unsubscribe = onAuthStateChange(async (user) => {
@@ -76,14 +82,40 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onNavigate, onBack }) =
   const handleDeleteAccount = () => {
     Alert.alert(
       'מחיקת חשבון',
-      'האם אתה בטוח שברצונך למחוק את החשבון? פעולה זו לא ניתנת לביטול.',
+      '⚠️ פעולה זו תמחק:\n\n• את כל התורים שלך\n• את הפרופיל שלך\n• את כל ההתראות\n• את החשבון מהמערכת\n\nפעולה זו לא ניתנת לביטול!',
       [
         { text: 'ביטול', style: 'cancel' },
         { 
           text: 'מחק חשבון', 
           style: 'destructive',
-          onPress: () => {
-            Alert.alert('מחיקת חשבון', 'החשבון יימחק בקרוב...');
+          onPress: async () => {
+            const currentUserId = auth.currentUser?.uid;
+            if (!currentUserId) {
+              Alert.alert('שגיאה', 'לא ניתן לזהות את המשתמש');
+              return;
+            }
+            
+            try {
+              const result = await deleteUserAccount(currentUserId);
+              
+              if (result.success) {
+                Alert.alert(
+                  'החשבון נמחק',
+                  'החשבון שלך נמחק בהצלחה מהמערכת',
+                  [{ 
+                    text: 'אישור',
+                    onPress: () => {
+                      // Navigate to auth screen
+                      onNavigate('auth');
+                    }
+                  }]
+                );
+              } else {
+                Alert.alert('שגיאה', result.message);
+              }
+            } catch (error: any) {
+              Alert.alert('שגיאה', error.message || 'שגיאה במחיקת החשבון');
+            }
           }
         }
       ]
@@ -107,7 +139,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onNavigate, onBack }) =
   };
 
   const handleSupport = () => {
-    Linking.openURL('mailto:support@Test Salon.com?subject=תמיכה באפליקציה').catch(() => {
+    Linking.openURL('mailto:support@barbersbar.com?subject=תמיכה באפליקציה').catch(() => {
       Alert.alert('שגיאה', 'לא ניתן לפתוח את אפליקציית המייל');
     });
   };
@@ -141,7 +173,18 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onNavigate, onBack }) =
                   <Ionicons name="business" size={20} color="#667eea" style={styles.settingIcon} />
                   <Text style={[styles.settingText, { fontSize }]}>לוח הבקרה שלי</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color="#999" />
+                <MirroredIcon name="chevron-back" size={20} color="#999" type="ionicons" />
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.settingItem}
+                onPress={() => onNavigate('barber-notification-settings')}
+              >
+                <View style={styles.settingLeft}>
+                  <Ionicons name="notifications-outline" size={20} color="#9c27b0" style={styles.settingIcon} />
+                  <Text style={[styles.settingText, { fontSize }]}>הגדרות התראות</Text>
+                </View>
+                <MirroredIcon name="chevron-back" size={20} color="#999" type="ionicons" />
               </TouchableOpacity>
             </View>
           )}
@@ -158,7 +201,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onNavigate, onBack }) =
                   <Ionicons name="settings" size={20} color="#dc3545" style={styles.settingIcon} />
                   <Text style={[styles.settingText, { fontSize }]}>פאנל ניהול</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color="#999" />
+                <MirroredIcon name="chevron-back" size={20} color="#999" type="ionicons" />
               </TouchableOpacity>
             </View>
           )}
@@ -194,7 +237,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onNavigate, onBack }) =
                 <Ionicons name="eye" size={20} color="#666" style={styles.settingIcon} />
                 <Text style={[styles.settingText, { fontSize }]}>{t('settings.large_font') || 'הגדל גופן'}</Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#999" />
+              <MirroredIcon name="chevron-back" size={20} color="#999" type="ionicons" />
             </TouchableOpacity>
           </View>
 
@@ -251,7 +294,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onNavigate, onBack }) =
                 <Ionicons name="shield-checkmark" size={20} color="#666" style={styles.settingIcon} />
                 <Text style={[styles.settingText, { fontSize }]}>{t('settings.privacy_policy')}</Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#999" />
+              <MirroredIcon name="chevron-back" size={20} color="#999" type="ionicons" />
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => setShowTerms(true)}>
@@ -260,7 +303,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onNavigate, onBack }) =
                   <Ionicons name="document-text" size={20} color="#666" style={styles.settingIcon} />
                   <Text style={[styles.settingText, { fontSize }]}>{t('settings.terms_of_service')}</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color="#999" />
+                <MirroredIcon name="chevron-back" size={20} color="#999" type="ionicons" />
               </View>
             </TouchableOpacity>
             <TermsModal visible={showTerms} onClose={() => setShowTerms(false)} />
@@ -270,7 +313,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onNavigate, onBack }) =
                 <Ionicons name="help-circle" size={20} color="#666" style={styles.settingIcon} />
                 <Text style={[styles.settingText, { fontSize }]}>{t('settings.support') || 'תמיכה'}</Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#999" />
+              <MirroredIcon name="chevron-back" size={20} color="#999" type="ionicons" />
             </TouchableOpacity>
           </View>
 
@@ -283,14 +326,37 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onNavigate, onBack }) =
                 <Ionicons name="trash" size={20} color="#F44336" style={styles.settingIcon} />
                 <Text style={[styles.dangerText, { fontSize }]}>{t('settings.delete_account')}</Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#F44336" />
+              <MirroredIcon name="chevron-back" size={20} color="#F44336" type="ionicons" />
             </TouchableOpacity>
           </View>
 
+          {/* App Updates - Only show on Android */}
+          {areUpdatesEnabled() && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>🔄 עדכוני אפליקציה</Text>
+              
+              <View style={styles.settingItem}>
+                <View style={styles.settingLeft}>
+                  <Ionicons name="information-circle" size={20} color="#666" style={styles.settingIcon} />
+                  <Text style={[styles.settingText, { fontSize }]}>גרסה נוכחית: v{appInfo.displayVersion} (build {appInfo.buildVersion})</Text>
+                </View>
+              </View>
+
+              <View style={styles.settingItem} />
+              <UpdateCheckButton 
+                updateUrl={getUpdateUrl()}
+                style={styles.updateCheckButton}
+                onResult={(result) => {
+                  console.log('Manual update check result:', result);
+                }}
+              />
+            </View>
+          )}
+
           {/* App Info */}
           <View style={styles.appInfo}>
-            <Text style={styles.appInfoText}>Test Salon App</Text>
-            <Text style={styles.appVersionText}>{t('common.version') || 'גרסה'} 1.0.0</Text>
+            <Text style={styles.appInfoText}>Barbers Bar App</Text>
+            <Text style={styles.appVersionText}>{t('common.version') || 'גרסה'} v{appInfo.displayVersion}</Text>
             <Text style={styles.appCreditText}>{t('home.powered_by')}</Text>
           </View>
         </View>
@@ -398,6 +464,10 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     textAlign: 'right',
     textDecorationLine: 'underline',
+  },
+  updateCheckButton: {
+    marginTop: 8,
+    borderRadius: 8,
   },
 });
 

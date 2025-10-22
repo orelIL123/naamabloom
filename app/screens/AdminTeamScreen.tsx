@@ -27,7 +27,8 @@ import {
     getTreatments,
     Treatment,
     updateBarberProfile,
-    uploadImageToStorage
+    uploadImageToStorage,
+    listenBarbers
 } from '../../services/firebase';
 import ToastMessage from '../components/ToastMessage';
 import TopNav from '../components/TopNav';
@@ -58,12 +59,25 @@ const AdminTeamScreen: React.FC<AdminTeamScreenProps> = ({ onNavigate, onBack })
     image: '',
     available: true,
     pricing: {} as { [treatmentId: string]: number },
-    phone: ''
+    phone: '',
+    primaryTreatmentDuration: '20' // Default 20 minutes
   });
 
   useEffect(() => {
     checkAdminStatus();
     loadBarbers();
+    
+    // Set up real-time listener for barbers
+    console.log('🔊 Setting up barbers listener in AdminTeamScreen');
+    const unsubscribe = listenBarbers((updatedBarbers) => {
+      console.log('📡 Barbers updated in real-time:', updatedBarbers.length);
+      setBarbers(updatedBarbers);
+    });
+    
+    return () => {
+      console.log('🔇 Cleaning up barbers listener');
+      unsubscribe();
+    };
   }, []);
 
   const checkAdminStatus = async () => {
@@ -89,29 +103,6 @@ const AdminTeamScreen: React.FC<AdminTeamScreenProps> = ({ onNavigate, onBack })
       ]);
       console.log('Loaded barbers:', barbersData);
       console.log('Loaded worker images:', imagesData);
-      
-      // Check if Naama's image exists, if not upload it
-      const naamaImages = imagesData.filter(img => img.toLowerCase().includes('naama') || img.toLowerCase().includes('ourteam-naama'));
-      console.log('🔍 Naama images found in admin:', naamaImages);
-      
-      if (naamaImages.length === 0) {
-        console.log('🔍 No Naama images found in admin, uploading local image...');
-        try {
-          const { Image } = require('react-native');
-          const naamaImageUri = Image.resolveAssetSource(require('../../assets/images/naama_bloom.png')).uri;
-          console.log('🔍 Naama image URI for admin:', naamaImageUri);
-          
-          const naamaImageUrl = await uploadImageToStorage(
-            naamaImageUri,
-            'ourteam',
-            'ourteam-naama_bloom.png'
-          );
-          console.log('✅ Naama image uploaded successfully in admin:', naamaImageUrl);
-          imagesData.push(naamaImageUrl);
-        } catch (uploadError) {
-          console.error('❌ Failed to upload Naama image in admin:', uploadError);
-        }
-      }
       
       // Sort barbers: main barber (רן) first, then others
       const sortedBarbers = barbersData.sort((a, b) => {
@@ -184,7 +175,8 @@ const AdminTeamScreen: React.FC<AdminTeamScreenProps> = ({ onNavigate, onBack })
       image: '',
       available: true,
       pricing: defaultPricing,
-      phone: ''
+      phone: '',
+      primaryTreatmentDuration: '30'
     });
     setModalVisible(true);
   };
@@ -209,7 +201,8 @@ const AdminTeamScreen: React.FC<AdminTeamScreenProps> = ({ onNavigate, onBack })
       image: (barber as any).image || (barber as any).photo || (barber as any).photoUrl || '',
       available: (barber as any).available !== undefined ? (barber as any).available : true,
       pricing: defaultPricing,
-      phone: barber.phone || ''
+      phone: barber.phone || '',
+      primaryTreatmentDuration: ((barber as any).primaryTreatmentDuration || 30).toString()
     });
     setModalVisible(true);
   };
@@ -274,20 +267,22 @@ const AdminTeamScreen: React.FC<AdminTeamScreenProps> = ({ onNavigate, onBack })
         image: imageUrl,
         available: formData.available,
         pricing: formData.pricing,
-        phone: formData.phone.trim()
+        phone: formData.phone.trim(),
+        primaryTreatmentDuration: parseInt(formData.primaryTreatmentDuration) || 30
       };
 
+      console.log('💾 Saving barber:', barberData.name);
+      console.log('   📏 primaryTreatmentDuration:', barberData.primaryTreatmentDuration);
+      console.log('   📋 Full barberData:', JSON.stringify(barberData, null, 2));
+
       if (editingBarber) {
+        console.log('   ✏️  Updating existing barber:', editingBarber.id);
         await updateBarberProfile(editingBarber.id, barberData);
-        setBarbers(prev => 
-          prev.map(b => 
-            b.id === editingBarber.id ? { ...b, ...barberData } : b
-          )
-        );
+        // Real-time listener will update the UI automatically
         showToast('הספר עודכן בהצלחה');
       } else {
         const newBarberId = await addBarberProfile(barberData);
-        setBarbers(prev => [...prev, { id: newBarberId, ...barberData }]);
+        // Real-time listener will update the UI automatically
         showToast('הספר נוסף בהצלחה');
       }
 
@@ -314,7 +309,7 @@ const AdminTeamScreen: React.FC<AdminTeamScreenProps> = ({ onNavigate, onBack })
           onPress: async () => {
             try {
               await deleteBarberProfile(barberId);
-              setBarbers(prev => prev.filter(b => b.id !== barberId));
+              // Real-time listener will update the UI automatically
               showToast('הספר נמחק בהצלחה');
             } catch (error) {
               console.error('Error deleting barber:', error);
@@ -329,11 +324,7 @@ const AdminTeamScreen: React.FC<AdminTeamScreenProps> = ({ onNavigate, onBack })
   const toggleAvailability = async (barberId: string, currentAvailability: boolean) => {
     try {
       await updateBarberProfile(barberId, { available: !currentAvailability });
-      setBarbers(prev => 
-        prev.map(b => 
-          b.id === barberId ? { ...b, available: !currentAvailability } : b
-        )
-      );
+      // Real-time listener will update the UI automatically
       showToast(!currentAvailability ? 'הספר הוגדר כזמין' : 'הספר הוגדר כלא זמין');
     } catch (error) {
       console.error('Error toggling availability:', error);
@@ -409,25 +400,7 @@ const AdminTeamScreen: React.FC<AdminTeamScreenProps> = ({ onNavigate, onBack })
       
       const fileName = `${formData.name.trim()}_${Date.now()}.jpg`;
       
-      // Upload to ourteam folder
       const downloadURL = await uploadImageToStorage(imageUri, 'ourteam', fileName);
-      
-      // Also upload to aboutus folder with English name for future projects
-      try {
-        const englishName = formData.name.trim().toLowerCase()
-          .replace(/[\u0590-\u05FF]/g, '') // Remove Hebrew characters
-          .replace(/[^a-z0-9]/g, '_') // Replace non-alphanumeric with underscore
-          .replace(/_+/g, '_') // Replace multiple underscores with single
-          .replace(/^_|_$/g, ''); // Remove leading/trailing underscores
-        
-        if (englishName) {
-          const aboutusFileName = `${englishName}_${Date.now()}.jpg`;
-          await uploadImageToStorage(imageUri, 'aboutus', aboutusFileName);
-          console.log(`✅ Image also uploaded to aboutus folder as: ${aboutusFileName}`);
-        }
-      } catch (aboutusError) {
-        console.log('⚠️ Failed to upload to aboutus folder (non-critical):', aboutusError);
-      }
       
       // Update form data with the new image URL
       setFormData(prev => ({
@@ -652,6 +625,19 @@ const AdminTeamScreen: React.FC<AdminTeamScreenProps> = ({ onNavigate, onBack })
                   keyboardType="phone-pad"
                   textAlign="right"
                 />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>משך טיפול ראשי (דקות)</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={formData.primaryTreatmentDuration}
+                  onChangeText={(text) => setFormData({ ...formData, primaryTreatmentDuration: text })}
+                  placeholder="20, 30, 40, או 45"
+                  keyboardType="numeric"
+                  textAlign="right"
+                />
+                <Text style={styles.inputHint}>קובע את גודל ה-Slot בלוח הזמנים (לדוגמה: 20 דקות = slots כל 20 דקות)</Text>
               </View>
 
               <View style={styles.inputGroup}>
@@ -904,7 +890,7 @@ const styles = StyleSheet.create({
   },
   barberImageContainer: {
     position: 'relative',
-    marginRight: 16,
+    marginLeft: 16, // Changed from marginRight to marginLeft for RTL
   },
   barberImage: {
     width: 80,
@@ -957,7 +943,7 @@ const styles = StyleSheet.create({
   },
   stars: {
     flexDirection: 'row',
-    marginLeft: 8,
+    marginRight: 8, // Changed from marginLeft to marginRight for RTL
   },
   star: {
     fontSize: 16,
@@ -984,7 +970,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
-    marginLeft: 4,
+    marginRight: 4, // Changed from marginLeft to marginRight for RTL
     marginBottom: 4,
   },
   specialtyText: {
@@ -1063,7 +1049,7 @@ const styles = StyleSheet.create({
   },
   specialtyTextInput: {
     flex: 1,
-    marginRight: 8,
+    marginLeft: 8, // Changed from marginRight to marginLeft for RTL
   },
   removeSpecialtyButton: {
     padding: 4,
@@ -1078,7 +1064,7 @@ const styles = StyleSheet.create({
   addSpecialtyText: {
     color: '#007bff',
     fontSize: 14,
-    marginLeft: 4,
+    marginRight: 4, // Changed from marginLeft to marginRight for RTL
   },
   availabilityToggle: {
     flexDirection: 'row',
@@ -1283,6 +1269,13 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 50,
     backgroundColor: '#f0f0f0',
+  },
+  inputHint: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+    textAlign: 'right',
+    lineHeight: 16,
   },
 });
 

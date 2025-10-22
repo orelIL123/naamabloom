@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Fix Barbers Primary Duration</title>
+  <script type="module">
+    // Import Firebase
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getFirestore, collection, getDocs, doc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+    // Your Firebase config (copy from app/config/firebase.ts)
+    const firebaseConfig = {
+      apiKey: "AIzaSyCtZqt0k61Bn9-g2I5T-Nt10TwN6L7NI0A",
+      authDomain: "barberapp-bd0bb.firebaseapp.com",
+      projectId: "barberapp-bd0bb",
+      storageBucket: "barberapp-bd0bb.firebasestorage.app",
+      messagingSenderId: "394670334766",
+      appId: "1:394670334766:web:3913c83c3f1b99a56f5f6f"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    async function fixBarbers() {
+      const log = document.getElementById('log');
+      log.innerHTML = '🔧 Starting fix...<br><br>';
+
+      try {
+        const barbersSnapshot = await getDocs(collection(db, 'barbers'));
+        log.innerHTML += `📊 Found ${barbersSnapshot.size} barbers<br><br>`;
+
+        let updated = 0;
+        let skipped = 0;
+
+        for (const barberDoc of barbersSnapshot.docs) {
+          const barberData = barberDoc.data();
+          const barberId = barberDoc.id;
+          const barberName = barberData.name || 'Unknown';
+
+          if (!barberData.primaryTreatmentDuration) {
+            log.innerHTML += `✏️  Updating ${barberName} (${barberId})<br>`;
+            log.innerHTML += `   Setting primaryTreatmentDuration: 30 minutes (default)<br>`;
+
+            await updateDoc(doc(db, 'barbers', barberId), {
+              primaryTreatmentDuration: 30
+            });
+
+            updated++;
+          } else {
+            log.innerHTML += `✅ ${barberName} already has primaryTreatmentDuration: ${barberData.primaryTreatmentDuration} minutes<br>`;
+            skipped++;
+          }
+        }
+
+        log.innerHTML += '<br>==================================================<br>';
+        log.innerHTML += `✅ Migration complete!<br>`;
+        log.innerHTML += `   Updated: ${updated} barbers<br>`;
+        log.innerHTML += `   Skipped: ${skipped} barbers (already had the field)<br>`;
+        log.innerHTML += '==================================================<br>';
+
+      } catch (error) {
+        log.innerHTML += `<br>❌ Error: ${error.message}<br>`;
+        console.error('Error:', error);
+      }
+    }
+
+    // Auto-run when page loads
+    window.addEventListener('load', () => {
+      fixBarbers();
+    });
+  </script>
+  <style>
+    body {
+      font-family: monospace;
+      padding: 20px;
+      background: #1e1e1e;
+      color: #d4d4d4;
+    }
+    #log {
+      background: #252526;
+      padding: 20px;
+      border-radius: 8px;
+      white-space: pre-wrap;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔧 Fix Barbers Primary Duration</h1>
+  <div id="log">Loading...</div>
+</body>
+</html>

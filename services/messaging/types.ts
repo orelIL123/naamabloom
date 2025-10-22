@@ -9,6 +9,8 @@ export interface SendMessageParams {
   message: string;
   type?: 'sms' | 'whatsapp';
   metadata?: Record<string, any>;
+  pushToken?: string;
+  displayName?: string;
 }
 
 export interface SendMessageResult {

@@ -8,27 +8,14 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "env": {
-        "EXPO_USE_COMMUNITY_AUTOLINKING": "0",
-        "EXPO_USE_SWIFT_MACROS": "1"
-      },
       "android": {
-        "buildType": "apk",
-        "gradleCommand": ":app:assembleDebug"
+        "buildType": "app-bundle",
+        "gradleCommand": ":app:bundleDebug"
       }
     },
     "preview": {
       "channel": "production",
       "distribution": "internal",
-      "env": {
-        "EXPO_USE_COMMUNITY_AUTOLINKING": "0"
-      },
-      "ios": {
-        "image": "macos-sequoia-15.4-xcode-16.3",
-        "env": {
-          "EXPO_USE_SWIFT_MACROS": "1"
-        }
-      },
       "android": {
         "buildType": "apk"
       }
@@ -36,25 +23,23 @@
     "production": {
       "channel": "production",
       "env": {
-        "EXPO_USE_COMMUNITY_AUTOLINKING": "0",
-        "EXPO_USE_SWIFT_MACROS": "1",
-        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "naama-bloom-88733",
-        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyApnBzRb7EIepMiXWiLplMdqX26BQ0s_Lc",
-        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "naama-bloom-88733.firebasestorage.app",
-        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "448973562994",
-        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:448973562994:android:0a1bbe41bb6acc2eb1ceeb",
-        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "naama-bloom-88733.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "barbers-bar-ae31f",
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyAKEPu7-naLTdeBGAu5dVyvDuGKsFz2E4c",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "barbers-bar-ae31f.firebasestorage.app",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "53851377123",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:53851377123:android:38a791e8e929e5e66a24d6",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "barbers-bar-ae31f.firebaseapp.com",
         "EXPO_PUBLIC_ENV": "production",
-        "EXPO_PUBLIC_APP_NAME": "Test Salon",
-        "EXPO_PUBLIC_APP_VERSION": "1.0.0",
-        "EXPO_PUBLIC_APP_STORE_URL": "https://play.google.com/store/apps/details?id=com.Test Salon.app",
-        "EXPO_PUBLIC_API_URL": "https://naama-bloom-88733.web.app",
-        "EXPO_PUBLIC_FIREBASE_FUNCTIONS_URL": "https://us-central1-naama-bloom-88733.cloudfunctions.net"
+        "EXPO_PUBLIC_APP_NAME": "Barbersbar",
+        "EXPO_PUBLIC_APP_VERSION": "1.1.1",
+        "EXPO_PUBLIC_APP_STORE_URL": "https://play.google.com/store/apps/details?id=com.barbersbar.app",
+        "EXPO_PUBLIC_API_URL": "https://barbers-bar-ae31f.web.app",
+        "EXPO_PUBLIC_FIREBASE_FUNCTIONS_URL": "https://us-central1-barbers-bar-ae31f.cloudfunctions.net"
       },
       "android": {
         "buildType": "app-bundle",
         "credentialsSource": "remote",
-        "gradleCommand": ":app:assembleRelease",
+        "gradleCommand": ":app:bundleRelease",
         "env": {
           "ANDROID_NDK_HOME": "/opt/android-ndk"
         }
@@ -65,8 +50,19 @@
         "cache": {
           "key": "ios-production-{{ platform }}"
         },
-        "image": "macos-sequoia-15.4-xcode-16.3",
-        "buildConfiguration": "Release"
+        "image": "latest",
+        "buildConfiguration": "Release",
+        "env": {
+          "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "barbers-bar-ae31f",
+          "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyD7p1xfunf3eiUIbP1KtcSQZ_GwBu4KnTc",
+          "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "barbers-bar-ae31f.firebasestorage.app",
+          "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "53851377123",
+          "EXPO_PUBLIC_FIREBASE_APP_ID": "1:53851377123:ios:02bace959447ce8e6a24d6",
+          "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "barbers-bar-ae31f.firebaseapp.com",
+          "EXPO_PUBLIC_ENV": "production",
+          "EXPO_PUBLIC_APP_NAME": "Barbersbar",
+          "EXPO_PUBLIC_APP_VERSION": "1.1.1"
+        }
       }
     }
   },

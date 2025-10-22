@@ -2,37 +2,10 @@ import { useRouter } from 'expo-router';
 import * as Updates from 'expo-updates';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Platform, StyleSheet, View } from 'react-native';
+import { auth } from './config/firebase';
 
 // Preview mode detection
 const isPreviewMode = Platform.OS === 'web' && __DEV__;
-
-// Function to check for updates
-const checkForUpdates = async () => {
-  try {
-    console.log('🔄 Checking for updates...');
-    
-    if (!Updates.isEnabled) {
-      console.log('❌ Updates not enabled');
-      return;
-    }
-
-    const update = await Updates.checkForUpdateAsync();
-    
-    if (update.isAvailable) {
-      console.log('✅ Update available! Downloading...');
-      const downloadResult = await Updates.fetchUpdateAsync();
-      
-      if (downloadResult.isNew) {
-        console.log('🎉 New update downloaded! Restarting app...');
-        await Updates.reloadAsync();
-      }
-    } else {
-      console.log('ℹ️ No updates available');
-    }
-  } catch (error) {
-    console.error('❌ Error checking for updates:', error);
-  }
-};
 
 export default function Index() {
   const router = useRouter();
@@ -46,10 +19,7 @@ export default function Index() {
     console.log("Update Runtime Version:", Updates.runtimeVersion);
     
     // TEST: This will prove OTA update worked! Look for this in console
-    console.log("🎯 OTA TEST - UPDATE WORKING! v1.0.1-FINAL-TEST");
-    
-    // Check for updates automatically
-    checkForUpdates();
+    console.log("🎯 OTA TEST - UPDATE WORKING! v1.0.6-VERIFIED");
     
     // Simple splash animation
     Animated.timing(fadeAnim, {
@@ -58,7 +28,6 @@ export default function Index() {
       useNativeDriver: true,
     }).start();
 
-    let authUnsubscribe: (() => void) | null = null;
     let navigationTimeout: NodeJS.Timeout;
 
     const handleNavigation = () => {
@@ -70,15 +39,10 @@ export default function Index() {
       console.log('Handling navigation...');
       setHasNavigated(true);
       
-      // Clean up auth listener
-      if (authUnsubscribe) {
-        authUnsubscribe();
-      }
-      
-      // Navigate to main app
+      // Navigate to auth choice - auth will be handled by _layout.tsx
       try {
         setTimeout(() => {
-          router.replace('/(tabs)');
+          router.replace('/screens/AuthChoiceScreen');
           console.log('Navigation successful');
         }, 100);
       } catch (error) {
@@ -96,43 +60,19 @@ export default function Index() {
       return () => clearTimeout(simplifiedTimer);
     }
 
-    // Set up Firebase auth in background (optional, with enhanced error handling)
+    // Check if user is already logged in
     const initializeAuth = async () => {
-      try {
-        const firebaseModule = await import('./config/firebase');
-        const { onAuthStateChanged } = await import('firebase/auth');
-        
-        const { waitForFirebaseReady, getAuthInstance } = firebaseModule;
-        
-        // Wait for Firebase to be ready before setting up auth listener
-        const isReady = await waitForFirebaseReady(3000); // 3 second timeout for splash
-        
-        if (isReady) {
-          const auth = getAuthInstance();
-          if (auth) {
-            authUnsubscribe = onAuthStateChanged(auth, 
-              (user) => {
-                console.log('✅ Auth state determined:', user ? 'authenticated' : 'not authenticated');
-                handleNavigation();
-              },
-              (error) => {
-                console.error('❌ Auth state error:', error);
-                handleNavigation(); // Still navigate on error
-              }
-            );
-            console.log('✅ Auth listener set up successfully');
-          } else {
-            console.warn('⚠️ Auth instance not available, navigating anyway');
-            handleNavigation();
-          }
-        } else {
-          console.warn('⚠️ Firebase not ready within timeout, navigating anyway');
-          handleNavigation();
-        }
-      } catch (error) {
-        console.error('❌ Firebase auth setup failed:', error);
-        handleNavigation(); // Always navigate, even on error
+      console.log('🔐 Checking if user is already logged in...');
+      
+      // Check if user is already authenticated
+      if (auth.currentUser) {
+        console.log('✅ User is already logged in, navigating to home');
+        router.replace('/(tabs)');
+        return;
       }
+      
+      console.log('❌ No user logged in, proceeding to auth choice');
+      handleNavigation();
     };
 
     // Start auth check after splash animation
@@ -151,9 +91,6 @@ export default function Index() {
     return () => {
       clearTimeout(splashTimer);
       clearTimeout(navigationTimeout);
-      if (authUnsubscribe) {
-        authUnsubscribe();
-      }
     };
   }, [router, hasNavigated]);
 

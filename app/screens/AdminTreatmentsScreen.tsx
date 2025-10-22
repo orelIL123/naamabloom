@@ -1,35 +1,36 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { doc, getDoc, getFirestore } from 'firebase/firestore';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import {
-    Treatment,
-    BarberTreatment,
-    Barber,
-    addTreatment,
-    deleteTreatment,
-    getTreatments,
-    updateTreatment,
-    uploadImageToStorage,
-    addBarberTreatment,
-    updateBarberTreatment,
-    deleteBarberTreatment,
-    getAllBarberTreatments,
-    getBarbers
+  Barber,
+  BarberTreatment,
+  Treatment,
+  addBarberTreatment,
+  deleteTreatment,
+  getAllBarberTreatments,
+  getBarbers,
+  getTreatments,
+  updateBarberTreatment,
+  uploadImageToStorage,
+  updateBarberProfile
 } from '../../services/firebase';
+import { auth } from '../config/firebase';
+import { MirroredIcon } from '../components/MirroredIcon';
 import ToastMessage from '../components/ToastMessage';
 import TopNav from '../components/TopNav';
 
@@ -56,7 +57,8 @@ const AdminTreatmentsScreen: React.FC<AdminTreatmentsScreenProps> = ({ onNavigat
     price: '',
     description: '',
     image: '',
-    barberId: '' // New field for barber selection
+    barberId: '', // New field for barber selection
+    isPrimary: false // Mark as primary treatment for this barber
   });
 
   // Refs for keyboard navigation
@@ -79,29 +81,37 @@ const AdminTreatmentsScreen: React.FC<AdminTreatmentsScreenProps> = ({ onNavigat
         getAllBarberTreatments(),
         getBarbers()
       ]);
-      
-      // Load treatment images from Storage
-      const { getStorageImages } = await import('../../services/firebase');
-      const treatmentImages = await getStorageImages('treatments');
-      console.log('🖼️ Treatment images from Storage:', treatmentImages);
-      
-      // Update treatments with images from Storage if they don't have images
-      const updatedTreatments = treatmentsData.map(treatment => {
-        if (!treatment.image && treatmentImages.length > 0) {
-          // Try to find matching image by treatment name
-          const matchingImage = treatmentImages.find(img => 
-            img.toLowerCase().includes(treatment.name.toLowerCase().replace(/\s+/g, '_'))
-          );
-          if (matchingImage) {
-            console.log(`🖼️ Found matching image for ${treatment.name}:`, matchingImage);
-            return { ...treatment, image: matchingImage };
+
+      // Check if current user is a barber
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        const db = getFirestore();
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          const userRole = userData?.role;
+          const userBarberId = userData?.barberId;
+
+          // If user is a barber, filter to show only their own data
+          if (userRole === 'barber' && userBarberId) {
+            const filteredBarbers = barbersData.filter(b => b.id === userBarberId);
+            const filteredTreatments = barberTreatmentsData.filter(bt => bt.barberId === userBarberId);
+
+            setBarbers(filteredBarbers);
+            setBarberTreatments(filteredTreatments);
+            setTreatments(treatmentsData);
+
+            // Auto-select the barber in form
+            setFormData(prev => ({ ...prev, barberId: userBarberId }));
+
+            setLoading(false);
+            return;
           }
         }
-        return treatment;
-      });
-      
-      console.log('📋 Setting treatments data:', updatedTreatments.map(t => ({ id: t.id, name: t.name, hasImage: !!t.image })));
-      setTreatments(updatedTreatments);
+      }
+
+      // Admin or regular user - show all data
+      setTreatments(treatmentsData);
       setBarberTreatments(barberTreatmentsData);
       setBarbers(barbersData);
     } catch (error) {
@@ -225,7 +235,8 @@ const AdminTreatmentsScreen: React.FC<AdminTreatmentsScreenProps> = ({ onNavigat
       price: '',
       description: '',
       image: '',
-      barberId: ''
+      barberId: '',
+      isPrimary: false
     };
     console.log('📝 Initial form data:', initialFormData);
     setFormData(initialFormData);
@@ -234,21 +245,18 @@ const AdminTreatmentsScreen: React.FC<AdminTreatmentsScreenProps> = ({ onNavigat
   };
 
   const openEditModal = (treatment: Treatment) => {
-    console.log('🔧 Opening edit treatment modal for:', treatment);
     setEditingTreatment(treatment);
     setEditingBarberTreatment(null);
-    const editFormData = {
-      name: treatment.name || '',
-      duration: treatment.duration?.toString() || '',
-      price: treatment.price?.toString() || '',
-      description: treatment.description || '',
-      image: treatment.image || '',
-      barberId: ''
-    };
-    console.log('📝 Setting form data for edit:', editFormData);
-    setFormData(editFormData);
+    setFormData({
+      name: treatment.name,
+      duration: treatment.duration.toString(),
+      price: treatment.price.toString(),
+      description: treatment.description,
+      image: treatment.image,
+      barberId: '',
+      isPrimary: false
+    });
     setModalVisible(true);
-    console.log('✅ Edit modal should be visible now');
   };
 
   const openEditBarberTreatmentModal = (barberTreatment: BarberTreatment) => {
@@ -260,25 +268,26 @@ const AdminTreatmentsScreen: React.FC<AdminTreatmentsScreenProps> = ({ onNavigat
       price: barberTreatment.price.toString(),
       description: barberTreatment.description,
       image: barberTreatment.image,
-      barberId: barberTreatment.barberId
+      barberId: barberTreatment.barberId,
+      isPrimary: barberTreatment.isPrimary || false
     });
     setModalVisible(true);
   };
 
   const validateForm = () => {
-    if (!(formData.name || '').trim()) {
+    if (!formData.name.trim()) {
       showToast('נא למלא שם טיפול', 'error');
       return false;
     }
-    if (!(formData.duration || '').trim() || isNaN(Number(formData.duration))) {
+    if (!formData.duration.trim() || isNaN(Number(formData.duration))) {
       showToast('נא למלא זמן טיפול תקין', 'error');
       return false;
     }
-    if (!(formData.price || '').trim() || isNaN(Number(formData.price))) {
+    if (!formData.price.trim() || isNaN(Number(formData.price))) {
       showToast('נא למלא מחיר תקין', 'error');
       return false;
     }
-    if (!(formData.description || '').trim()) {
+    if (!formData.description.trim()) {
       showToast('נא למלא תיאור טיפול', 'error');
       return false;
     }
@@ -288,42 +297,94 @@ const AdminTreatmentsScreen: React.FC<AdminTreatmentsScreenProps> = ({ onNavigat
   const handleSave = async () => {
     if (!validateForm()) return;
 
-    try {
-      console.log('💾 Saving treatment with formData:', formData);
-      
-      const treatmentData = {
-        name: (formData.name || '').trim(),
-        duration: parseInt((formData.duration || '0')),
-        price: parseFloat((formData.price || '0')),
-        description: (formData.description || '').trim(),
-        image: ((formData.image || '').trim()) || 'https://via.placeholder.com/200x150'
-      };
-      
-      console.log('📦 Processed treatment data:', treatmentData);
+    // בדוק אם בחרו ספר
+    if (!formData.barberId) {
+      showToast('נא לבחור ספר', 'error');
+      return;
+    }
 
-      if (editingTreatment) {
-        console.log('✏️ Updating existing treatment:', editingTreatment.id);
-        await updateTreatment(editingTreatment.id, treatmentData);
-        setTreatments(prev => 
-          prev.map(t => 
-            t.id === editingTreatment.id ? { ...t, ...treatmentData } : t
-          )
-        );
+    try {
+      const treatmentData = {
+        name: formData.name.trim(),
+        duration: parseInt(formData.duration),
+        price: parseFloat(formData.price),
+        description: formData.description.trim(),
+        image: formData.image.trim() || 'https://via.placeholder.com/200x150',
+        barberId: formData.barberId,
+        treatmentId: editingTreatment?.id || `treatment_${Date.now()}`,
+        isActive: true,
+        isPrimary: formData.isPrimary
+      };
+
+      if (editingBarberTreatment) {
+        // עדכון טיפול קיים של ספר
+        await updateBarberTreatment(editingBarberTreatment.id, treatmentData);
+
+        // אם סומן כראשי - עדכן את ה-primaryTreatmentDuration של הספר והסר סימון מהטיפולים האחרים
+        if (formData.isPrimary) {
+          // עדכן את הספר
+          await updateBarberProfile(formData.barberId, {
+            primaryTreatmentDuration: parseInt(formData.duration)
+          });
+
+          // הסר סימון ראשי מכל הטיפולים האחרים של הספר
+          const allBarberTreatments = await getAllBarberTreatments();
+          const otherPrimaryTreatments = allBarberTreatments.filter(
+            bt => bt.barberId === formData.barberId && bt.id !== editingBarberTreatment.id && bt.isPrimary
+          );
+          for (const treatment of otherPrimaryTreatments) {
+            await updateBarberTreatment(treatment.id, { isPrimary: false });
+          }
+        }
+
         showToast('הטיפול עודכן בהצלחה');
-        console.log('✅ Treatment updated successfully');
+      } else if (editingTreatment) {
+        // אם עורכים טיפול גלובלי - המר אותו לטיפול לפי ספר
+        await addBarberTreatment(treatmentData);
+
+        // אם סומן כראשי - עדכן את הספר
+        if (formData.isPrimary) {
+          await updateBarberProfile(formData.barberId, {
+            primaryTreatmentDuration: parseInt(formData.duration)
+          });
+
+          // הסר סימון ראשי מכל הטיפולים האחרים של הספר
+          const allBarberTreatments = await getAllBarberTreatments();
+          const otherPrimaryTreatments = allBarberTreatments.filter(
+            bt => bt.barberId === formData.barberId && bt.isPrimary
+          );
+          for (const treatment of otherPrimaryTreatments) {
+            await updateBarberTreatment(treatment.id, { isPrimary: false });
+          }
+        }
+
+        showToast('הטיפול עודכן והוקצה לספר');
       } else {
-        console.log('➕ Adding new treatment');
-        const newTreatmentId = await addTreatment(treatmentData);
-        setTreatments(prev => [...prev, { id: newTreatmentId, ...treatmentData }]);
-        showToast('הטיפול נוסף בהצלחה');
-        console.log('✅ Treatment added successfully:', newTreatmentId);
+        // יצירת טיפול חדש לספר
+        await addBarberTreatment(treatmentData);
+
+        // אם סומן כראשי - עדכן את הספר
+        if (formData.isPrimary) {
+          await updateBarberProfile(formData.barberId, {
+            primaryTreatmentDuration: parseInt(formData.duration)
+          });
+
+          // הסר סימון ראשי מכל הטיפולים האחרים של הספר
+          const allBarberTreatments = await getAllBarberTreatments();
+          const otherPrimaryTreatments = allBarberTreatments.filter(
+            bt => bt.barberId === formData.barberId && bt.isPrimary
+          );
+          for (const treatment of otherPrimaryTreatments) {
+            await updateBarberTreatment(treatment.id, { isPrimary: false });
+          }
+        }
+
+        showToast('הטיפול נוסף לספר בהצלחה');
       }
 
-      setModalVisible(false);
-      
-      // Reload data to ensure sync with Firestore
-      console.log('🔄 Reloading treatments from Firestore...');
+      // Reload data from Firebase to ensure consistency
       await loadData();
+      setModalVisible(false);
     } catch (error) {
       console.error('Error saving treatment:', error);
       showToast('שגיאה בשמירת הטיפול', 'error');
@@ -341,24 +402,12 @@ const AdminTreatmentsScreen: React.FC<AdminTreatmentsScreenProps> = ({ onNavigat
           style: 'destructive',
           onPress: async () => {
             try {
-              console.log('🗑️ Attempting to delete treatment:', treatmentId);
               await deleteTreatment(treatmentId);
-              console.log('✅ Treatment deleted successfully from Firestore');
-              setTreatments(prev => prev.filter(t => t.id !== treatmentId));
               showToast('הטיפול נמחק בהצלחה');
-              
-              // Refresh the treatments list to make sure it's updated
-              setTimeout(async () => {
-                try {
-                  const updatedTreatments = await getTreatments();
-                  setTreatments(updatedTreatments);
-                  console.log('🔄 Treatments list refreshed');
-                } catch (refreshError) {
-                  console.error('Error refreshing treatments:', refreshError);
-                }
-              }, 1000);
+              // Reload data from Firebase to ensure consistency
+              await loadData();
             } catch (error) {
-              console.error('❌ Error deleting treatment:', error);
+              console.error('Error deleting treatment:', error);
               showToast('שגיאה במחיקת הטיפול', 'error');
             }
           }
@@ -409,10 +458,7 @@ const AdminTreatmentsScreen: React.FC<AdminTreatmentsScreenProps> = ({ onNavigat
                     <View style={styles.treatmentActions}>
                       <TouchableOpacity
                         style={styles.editButton}
-                        onPress={() => {
-                          console.log('🔍 Edit button pressed for treatment:', treatment.id, treatment.name);
-                          openEditModal(treatment);
-                        }}
+                        onPress={() => openEditModal(treatment)}
                       >
                         <Ionicons name="create" size={20} color="#007bff" />
                       </TouchableOpacity>
@@ -467,13 +513,6 @@ const AdminTreatmentsScreen: React.FC<AdminTreatmentsScreenProps> = ({ onNavigat
         visible={modalVisible}
         onRequestClose={() => setModalVisible(false)}
       >
-        {(() => {
-          if (modalVisible) {
-            console.log('🎯 Modal is visible. Current form data:', formData);
-            console.log('🔍 Editing treatment:', editingTreatment?.id, editingTreatment?.name);
-          }
-          return null;
-        })()}
         <KeyboardAvoidingView 
           style={styles.modalOverlay}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -529,6 +568,64 @@ const AdminTreatmentsScreen: React.FC<AdminTreatmentsScreenProps> = ({ onNavigat
                     onSubmitEditing={focusNextField}
                   />
                 </View>
+              </View>
+
+              {/* בחירת ספר */}
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>ספר מבצע</Text>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>בחר ספר *</Text>
+                  <View style={styles.pickerContainer}>
+                    {barbers.map((barber) => (
+                      <TouchableOpacity
+                        key={barber.id}
+                        style={[
+                          styles.barberOption,
+                          formData.barberId === barber.id && styles.barberOptionSelected
+                        ]}
+                        onPress={() => setFormData({ ...formData, barberId: barber.id })}
+                      >
+                        <View style={styles.barberOptionContent}>
+                          <Text style={[
+                            styles.barberOptionText,
+                            formData.barberId === barber.id && styles.barberOptionTextSelected
+                          ]}>
+                            {barber.name}
+                          </Text>
+                          {formData.barberId === barber.id && (
+                            <Ionicons name="checkmark-circle" size={20} color="#007bff" />
+                          )}
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <Text style={styles.inputHint}>בחר את הספר שמבצע את הטיפול הזה</Text>
+                </View>
+
+                {/* טיפול ראשי */}
+                {formData.barberId && (
+                  <View style={styles.inputGroup}>
+                    <TouchableOpacity
+                      style={styles.primaryCheckbox}
+                      onPress={() => setFormData({ ...formData, isPrimary: !formData.isPrimary })}
+                    >
+                      <View style={styles.checkboxContainer}>
+                        <View style={[styles.checkbox, formData.isPrimary && styles.checkboxChecked]}>
+                          {formData.isPrimary && (
+                            <Ionicons name="checkmark" size={18} color="#fff" />
+                          )}
+                        </View>
+                        <View style={styles.primaryLabelContainer}>
+                          <Text style={styles.primaryLabel}>טיפול ראשי</Text>
+                          <Text style={styles.primaryHint}>
+                            הטיפול הראשי קובע את גודל ה-Slot של הספר בלוח הזמנים
+                          </Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
 
               {/* מחיר וזמן */}
@@ -591,15 +688,6 @@ const AdminTreatmentsScreen: React.FC<AdminTreatmentsScreenProps> = ({ onNavigat
                     onSubmitEditing={handleSave}
                   />
                   <Text style={styles.inputHint}>השאר ריק אם אין תמונה</Text>
-                  
-                  {/* כפתור להעלאת תמונה */}
-                  <TouchableOpacity
-                    style={styles.uploadImageButton}
-                    onPress={uploadTreatmentImage}
-                  >
-                    <Ionicons name="camera" size={24} color="#007bff" />
-                    <Text style={styles.uploadImageText}>העלה תמונה מהמכשיר</Text>
-                  </TouchableOpacity>
                 </View>
               </View>
             </ScrollView>
@@ -611,7 +699,7 @@ const AdminTreatmentsScreen: React.FC<AdminTreatmentsScreenProps> = ({ onNavigat
                 onPress={focusPreviousField}
                 disabled={currentField === 'name'}
               >
-                <Ionicons name="chevron-up" size={20} color={currentField === 'name' ? '#ccc' : '#007bff'} />
+                <MirroredIcon name="chevron-up" size={20} color={currentField === 'name' ? '#ccc' : '#007bff'} type="ionicons" />
                 <Text style={[styles.navButtonText, { color: currentField === 'name' ? '#ccc' : '#007bff' }]}>קודם</Text>
               </TouchableOpacity>
               
@@ -620,7 +708,7 @@ const AdminTreatmentsScreen: React.FC<AdminTreatmentsScreenProps> = ({ onNavigat
                 onPress={focusNextField}
               >
                 <Text style={styles.navButtonText}>הבא</Text>
-                <Ionicons name="chevron-down" size={20} color="#007bff" />
+                <MirroredIcon name="chevron-down" size={20} color="#007bff" type="ionicons" />
               </TouchableOpacity>
             </View>
 
@@ -731,7 +819,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   treatmentHeader: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse', // Fixed: Changed to row-reverse for RTL
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
@@ -777,7 +865,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   treatmentDetails: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse', // Fixed: Changed to row-reverse for RTL
     justifyContent: 'space-around',
   },
   detailItem: {
@@ -847,7 +935,7 @@ const styles = StyleSheet.create({
     minHeight: 100,
   },
   modalActions: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse', // Fixed: Changed to row-reverse for RTL
     gap: 12,
     paddingTop: 16,
     borderTopWidth: 1,
@@ -983,6 +1071,78 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#007bff',
     fontWeight: 'bold',
+  },
+  pickerContainer: {
+    gap: 8,
+    marginBottom: 8,
+  },
+  barberOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    backgroundColor: '#f8f9fa',
+  },
+  barberOptionSelected: {
+    backgroundColor: '#e3f2fd',
+    borderColor: '#007bff',
+    borderWidth: 2,
+  },
+  barberOptionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flex: 1,
+  },
+  barberOptionText: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
+    textAlign: 'right',
+  },
+  barberOptionTextSelected: {
+    color: '#007bff',
+    fontWeight: '600',
+  },
+  primaryCheckbox: {
+    marginTop: 12,
+  },
+  checkboxContainer: {
+    flexDirection: 'row-reverse',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#ddd',
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: '#007bff',
+    borderColor: '#007bff',
+  },
+  primaryLabelContainer: {
+    flex: 1,
+  },
+  primaryLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    textAlign: 'right',
+    marginBottom: 4,
+  },
+  primaryHint: {
+    fontSize: 13,
+    color: '#666',
+    textAlign: 'right',
+    lineHeight: 18,
   },
 });
 

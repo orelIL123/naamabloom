@@ -11,8 +11,11 @@ export default function ProfileTab() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
+      
+      // If user is authenticated, don't auto-redirect admins from profile tab
+      
       setLoading(false);
     });
 

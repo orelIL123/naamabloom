@@ -2,14 +2,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { db } from '../../services/firebase';
 import ToastMessage from '../components/ToastMessage';
@@ -25,9 +25,9 @@ const AdminSettingsScreen: React.FC<AdminSettingsScreenProps> = ({ onNavigate, o
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
   
   // Settings states
-  const [welcomeMessage, setWelcomeMessage] = useState('שלום, ברוכים הבאים ל-naama bloom ל-Test Salon');
-  const [subtitleMessage, setSubtitleMessage] = useState('ל-Test Salon');
-  const [aboutUsText, setAboutUsText] = useState('ברוכים הבאים למספרה של Test Salon! כאן תיהנו מחוויה אישית, מקצועית ומפנקת, עם יחס חם לכל לקוח. רן, בעל ניסיון של שנים בתחום, מזמין אתכם להתרווח, להתחדש ולהרגיש בבית.');
+  const [welcomeMessage, setWelcomeMessage] = useState('שלום, ברוכים הבאים');
+  const [subtitleMessage, setSubtitleMessage] = useState('ל-Barbers Bar');
+  const [aboutUsText, setAboutUsText] = useState('ברוכים הבאים למספרה של רן אלגריסי! כאן תיהנו מחוויה אישית, מקצועית ומפנקת, עם יחס חם לכל לקוח. רן, בעל ניסיון של שנים בתחום, מזמין אתכם להתרווח, להתחדש ולהרגיש בבית.');
   const [popupMessage, setPopupMessage] = useState('');
 
   useEffect(() => {
@@ -50,13 +50,13 @@ const AdminSettingsScreen: React.FC<AdminSettingsScreenProps> = ({ onNavigate, o
       const welcomeDoc = await getDoc(doc(db, 'settings', 'homeMessages'));
       if (welcomeDoc.exists()) {
         const data = welcomeDoc.data();
-        setWelcomeMessage(data.welcome || 'שלום, ברוכים הבאים ל-naama bloom ל-Test Salon');
-        setSubtitleMessage(data.subtitle || 'ל-Test Salon');
+        setWelcomeMessage(data.welcome || 'שלום, ברוכים הבאים');
+        setSubtitleMessage(data.subtitle || 'ל-Barbers Bar');
       } else {
         // Create default if doesn't exist
         await setDoc(doc(db, 'settings', 'homeMessages'), {
-          welcome: 'שלום, ברוכים הבאים ל-naama bloom ל-NB EYEBROWS',
-          subtitle: 'ל-NB EYEBROWS',
+          welcome: 'שלום, ברוכים הבאים',
+          subtitle: 'ל-Barbers Bar',
           createdAt: new Date()
         });
       }
@@ -68,7 +68,7 @@ const AdminSettingsScreen: React.FC<AdminSettingsScreenProps> = ({ onNavigate, o
         setAboutUsText(data.text || '');
       } else {
         // Create default if doesn't exist
-        const defaultAboutText = 'ברוכים הבאים ל NB EYEBROWS! ';
+        const defaultAboutText = 'ברוכים הבאים למספרה של רן אלגריסי! כאן תיהנו מחוויה אישית, מקצועית ומפנקת, עם יחס חם לכל לקוח. רן, בעל ניסיון של שנים בתחום, מזמין אתכם להתרווח, להתחדש ולהרגיש בבית.';
         await setDoc(doc(db, 'settings', 'aboutUsText'), {
           text: defaultAboutText,
           createdAt: new Date()
@@ -179,7 +179,7 @@ const AdminSettingsScreen: React.FC<AdminSettingsScreenProps> = ({ onNavigate, o
               style={styles.textInput}
               value={welcomeMessage}
               onChangeText={setWelcomeMessage}
-              placeholder="שלום, ברוכים הבאים ל-naama bloom ל-Test Salon"
+              placeholder="שלום, ברוכים הבאים"
               textAlign="right"
               multiline
             />
@@ -191,7 +191,7 @@ const AdminSettingsScreen: React.FC<AdminSettingsScreenProps> = ({ onNavigate, o
               style={styles.textInput}
               value={subtitleMessage}
               onChangeText={setSubtitleMessage}
-              placeholder="ל-Test Salon"
+              placeholder="ל-Barbers Bar"
               textAlign="right"
               multiline
             />
@@ -349,7 +349,7 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     backgroundColor: '#4CAF50',
-    flexDirection: 'row',
+    flexDirection: 'row-reverse', // Fixed: Changed to row-reverse for RTL
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
@@ -363,13 +363,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   buttonRow: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse', // Fixed: Changed to row-reverse for RTL
     gap: 12,
   },
   sendButton: {
     backgroundColor: '#007bff',
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: 'row-reverse', // Fixed: Changed to row-reverse for RTL
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,

@@ -13,6 +13,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { clearStoredAuthData } from '../../services/authManager';
 import {
     Appointment,
     Barber,
@@ -26,12 +27,9 @@ import {
     logoutUser,
     onAuthStateChange,
     registerUser,
-    registerUserWithPhone,
     sendSMSVerification,
     setPasswordForPhoneUser,
-    updateBarberProfile,
     updateUserProfile,
-    uploadImageToStorage,
     UserProfile,
     verifySMSCode
 } from '../../services/firebase';
@@ -182,7 +180,6 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onNavigate, onBack }) => 
       const userCheck = await checkPhoneUserExists(phoneNumber);
       setPhoneUserExists(userCheck.exists);
       setPhoneUserHasPassword(userCheck.hasPassword);
-      console.log(`🔍 ProfileScreen checkPhoneUser result: exists=${userCheck.exists}, hasPassword=${userCheck.hasPassword}`);
       return userCheck;
     } catch (error) {
       console.error('Error checking phone user:', error);
@@ -247,7 +244,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onNavigate, onBack }) => 
       } else {
         // Register new user
         await verifySMSCode(confirmationResult, verificationCode);
-        await setPasswordForPhoneUser(password);
+        await setPasswordForPhoneUser(phone, password);
         setStep('input');
         setVerificationCode('');
         setPhone('');
@@ -402,8 +399,14 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onNavigate, onBack }) => 
 
   const handleLogout = async () => {
     try {
+      // Clear stored auth data for auto login
+      await clearStoredAuthData();
+      
+      // Logout from Firebase
       await logoutUser();
       setEditMode(false);
+      
+      Alert.alert('הצלחה', 'התנתקת בהצלחה');
     } catch (error: any) {
       Alert.alert('שגיאה', 'לא ניתן להתנתק');
     }
@@ -1180,13 +1183,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     flex: 1,
-    textAlign: 'left',
+    textAlign: 'right',
   },
   detailValue: {
     fontSize: 16,
     color: '#222',
     flex: 2,
-    textAlign: 'left',
+    textAlign: 'right',
   },
   detailInput: {
     fontSize: 16,
@@ -1196,7 +1199,7 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
     borderRadius: 8,
     padding: 8,
-    textAlign: 'left',
+    textAlign: 'right',
   },
   saveButton: {
     backgroundColor: '#4CAF50',

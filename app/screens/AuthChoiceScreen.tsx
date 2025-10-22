@@ -11,8 +11,162 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import BottomNav from '../components/BottomNav';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+
+export default function AuthChoiceScreen() {
+  const router = useRouter();
+  const [showTerms, setShowTerms] = useState(false);
+
+  const handleLogin = () => {
+    router.navigate('/screens/AuthPhoneScreen?mode=login');
+  };
+
+  const handleRegister = () => {
+    router.navigate('/screens/AuthPhoneScreen?mode=register');
+  };
+
+  const handleNavigate = (screen: string) => {
+    switch (screen) {
+      case 'home':
+        router.navigate('/(tabs)');
+        break;
+      case 'team':
+        router.navigate('/(tabs)/team');
+        break;
+      case 'booking':
+        router.navigate('/(tabs)/booking');
+        break;
+      case 'profile':
+        // Already on profile tab
+        break;
+      case 'settings':
+        router.navigate('/(tabs)/settings');
+        break;
+      default:
+        router.navigate('/(tabs)');
+    }
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.content}>
+        {/* Logo Section */}
+        <View style={styles.logoSection}>
+      <Image
+            source={require('../../assets/images/icon.png')}
+        style={styles.logo}
+        resizeMode="contain"
+      />
+          <Text style={styles.appName}>Barbers Bar</Text>
+          <Text style={styles.tagline}>המספרה המקצועית שלך</Text>
+        </View>
+
+        {/* Auth Buttons Section */}
+        <View style={styles.authSection}>
+          <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+            <Text style={styles.loginButtonText}>התחברות</Text>
+      </TouchableOpacity>
+
+          <TouchableOpacity style={styles.registerButton} onPress={handleRegister}>
+            <Text style={styles.registerButtonText}>הרשמה</Text>
+      </TouchableOpacity>
+
+          <Text style={styles.termsText}>
+            בהמשך השימוש באפליקציה, אתה מסכים ל{' '}
+            <Text style={styles.termsLink} onPress={() => setShowTerms(true)}>תנאי השימוש</Text>
+            {' '}ול{' '}
+            <Text style={styles.termsLink} onPress={() => setShowTerms(true)}>מדיניות הפרטיות</Text>
+          </Text>
+        </View>
+    </View>
+
+      {/* Terms Modal */}
+      <Modal
+        visible={showTerms}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowTerms(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>תנאי שימוש ומדיניות פרטיות</Text>
+            <ScrollView style={styles.modalScrollView}>
+              <Text style={styles.modalText}>
+                <Text style={styles.sectionTitle}>תנאי שימוש - Barbers Bar{'\n\n'}</Text>
+                
+                <Text style={styles.subsectionTitle}>1. קבלת השירות{'\n'}</Text>
+                • השירות מיועד לקביעת תורים במספרה Barbers Bar{'\n'}
+                • יש לספק מידע מדויק ומלא בעת קביעת התור{'\n'}
+                • המספרה שומרת לעצמה את הזכות לסרב לתת שירות במקרים חריגים{'\n\n'}
+                
+                <Text style={styles.subsectionTitle}>2. ביטול תורים{'\n'}</Text>
+                • ביטול תור יש לבצע לפחות 2 שעות לפני מועד התור{'\n'}
+                • ביטול מאוחר יותר מ-2 שעות עלול לחייב תשלום{'\n'}
+                • במקרה של איחור של יותר מ-15 דקות, התור עלול להתבטל{'\n\n'}
+                
+                <Text style={styles.subsectionTitle}>3. תשלומים{'\n'}</Text>
+                • התשלום מתבצע במספרה לאחר קבלת השירות{'\n'}
+                • המחירים כפי שמופיעים באפליקציה{'\n'}
+                • המספרה שומרת לעצמה את הזכות לשנות מחירים{'\n\n'}
+                
+                <Text style={styles.subsectionTitle}>4. אחריות{'\n'}</Text>
+                • המספרה מתחייבת לאיכות השירות{'\n'}
+                • במקרה של אי שביעות רצון, יש לפנות למנהל המספרה{'\n'}
+                • המספרה לא אחראית לנזקים עקיפים{'\n\n'}
+                
+                <Text style={styles.sectionTitle}>מדיניות פרטיות{'\n\n'}</Text>
+                
+                <Text style={styles.subsectionTitle}>1. איסוף מידע{'\n'}</Text>
+                • אנו אוספים: שם מלא, מספר טלפון, פרטי תורים{'\n'}
+                • המידע נאסף לצורך מתן השירות בלבד{'\n'}
+                • לא נאסוף מידע מיותר{'\n\n'}
+                
+                <Text style={styles.subsectionTitle}>2. שימוש במידע{'\n'}</Text>
+                • המידע משמש לקביעת תורים ותקשורת{'\n'}
+                • לא נשתף את המידע עם צדדים שלישיים{'\n'}
+                • לא נשלח הודעות פרסומיות ללא אישור{'\n\n'}
+                
+                <Text style={styles.subsectionTitle}>3. אבטחה{'\n'}</Text>
+                • המידע מאוחסן באופן מאובטח{'\n'}
+                • גישה למידע מוגבלת לעובדי המספרה בלבד{'\n'}
+                • נעדכן את האבטחה לפי הצורך{'\n\n'}
+                
+                <Text style={styles.subsectionTitle}>4. זכויות המשתמש{'\n'}</Text>
+                • הזכות לבקש עותק מהמידע שלך{'\n'}
+                • הזכות לבקש מחיקה של המידע{'\n'}
+                • הזכות לעדכן את המידע{'\n\n'}
+                
+                <Text style={styles.subsectionTitle}>5. עדכונים{'\n'}</Text>
+                • מדיניות זו עשויה להתעדכן{'\n'}
+                • עדכונים יפורסמו באפליקציה{'\n'}
+                • המשך השימוש מהווה הסכמה לתנאים המעודכנים{'\n\n'}
+                
+                <Text style={styles.contactInfo}>
+                  {require('../../constants/contactInfo').CONTACT_INFO.contactText}{'\n'}
+                  מייל: info@barbersbar.co.il
+                </Text>
+              </Text>
+            </ScrollView>
+            <TouchableOpacity 
+              style={styles.modalCloseButton} 
+              onPress={() => setShowTerms(false)}
+            >
+              <Text style={styles.modalCloseText}>סגור</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+      
+      {/* Bottom Navigation */}
+      <BottomNav 
+        activeTab="profile"
+        onTabPress={handleNavigate}
+      />
+    </SafeAreaView>
+  );
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -52,13 +206,13 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   loginButton: {
-    backgroundColor: '#FF00AA',
+    backgroundColor: '#3b82f6',
     height: 56,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
-    shadowColor: '#FF00AA',
+    shadowColor: '#3b82f6',
     shadowOffset: {
       width: 0,
       height: 4,
@@ -79,11 +233,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#FF00AA',
+    borderColor: '#3b82f6',
     marginBottom: 32,
   },
   registerButtonText: {
-    color: '#FF00AA',
+    color: '#3b82f6',
     fontSize: 18,
     fontWeight: '600',
   },
@@ -94,7 +248,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   termsLink: {
-    color: '#FF00AA',
+    color: '#3b82f6',
     textDecorationLine: 'underline',
   },
   modalOverlay: {
@@ -110,11 +264,6 @@ const styles = StyleSheet.create({
     width: '90%',
     maxHeight: '80%',
     alignItems: 'center',
-    minHeight: 400,
-  },
-  modalScrollView: {
-    width: '100%',
-    flex: 1,
   },
   modalTitle: {
     fontSize: 24,
@@ -142,7 +291,7 @@ const styles = StyleSheet.create({
   subsectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FF00AA',
+    color: '#3b82f6',
     marginBottom: 5,
   },
   contactInfo: {
@@ -152,7 +301,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   modalCloseButton: {
-    backgroundColor: '#FF00AA',
+    backgroundColor: '#3b82f6',
     height: 50,
     borderRadius: 10,
     justifyContent: 'center',
@@ -165,165 +314,4 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
   },
-});
-
-const TermsContent = () => (
-  <Text style={styles.modalText}>
-    <Text style={styles.sectionTitle}>תנאי שימוש - NB EYEBROWS{'\n'}</Text>
-    
-    <Text style={styles.subsectionTitle}>1. קבלת השירות{'\n'}</Text>
-    • השירות מיועד לקביעת תורים בקליניקה יש לספק מידע מדויק ומלא בעת קביעת התור{'\n'}
-    • המספרה שומרת לעצמה את הזכות לסרב לתת שירות במקרים חריגים{'\n'}
-    
-    <Text style={styles.subsectionTitle}>2. ביטול תורים{'\n'}</Text>
-    • ביטול תור יש לבצע לפחות 2 שעות לפני מועד התור{'\n'}
-    • ביטול מאוחר יותר מ-2 שעות עלול לחייב תשלום{'\n'}
-    • במקרה של איחור של יותר מ-15 דקות, התור עלול להתבטל{'\n'}
-    
-    <Text style={styles.subsectionTitle}>3. תשלומים{'\n'}</Text>
-    • התשלום מתבצע במספרה לאחר קבלת השירות{'\n'}
-    • המחירים כפי שמופיעים באפליקציה{'\n'}
-    • המספרה שומרת לעצמה את הזכות לשנות מחירים{'\n'}
-    
-    <Text style={styles.subsectionTitle}>4. אחריות{'\n'}</Text>
-    • הקליניקה מתחייבת לאיכות השירות{'\n'}
-    • במקרה של אי שביעות רצון, יש לפנות למנהל הקליניקה{'\n'}
-    • הקליניקה לא אחראית לנזקים עקיפים{'\n'}
-    
-    <Text style={styles.contactInfo}>
-      {require('../../constants/contactInfo').CONTACT_INFO.contactText}{'\n'}
-      מייל: info@NBEYEBROWS.co.il
-    </Text>
-  </Text>
-);
-
-const PrivacyContent = () => (
-  <Text style={styles.modalText}>
-    <Text style={styles.sectionTitle}>מדיניות פרטיות{'\n'}</Text>
-    
-    <Text style={styles.subsectionTitle}>1. איסוף מידע{'\n'}</Text>
-    • אנו אוספים: שם מלא, מספר טלפון, פרטי תורים{'\n'}
-    • המידע נאסף לצורך מתן השירות בלבד{'\n'}
-    • לא נאסוף מידע מיותר{'\n'}
-    
-    <Text style={styles.subsectionTitle}>2. שימוש במידע{'\n'}</Text>
-    • המידע משמש לקביעת תורים ותקשורת{'\n'}
-    • לא נשתף את המידע עם צדדים שלישיים{'\n'}
-    • לא נשלח הודעות פרסומיות ללא אישור{'\n'}
-    
-    <Text style={styles.subsectionTitle}>3. אבטחה{'\n'}</Text>
-    • המידע מאוחסן באופן מאובטח{'\n'}
-    • גישה למידע מוגבלת לעובדי הקליניקה בלבד{'\n'}
-    • נעדכן את האבטחה לפי הצורך{'\n'}
-    
-    <Text style={styles.subsectionTitle}>4. זכויות המשתמש{'\n'}</Text>
-    • הזכות לבקש עותק מהמידע שלך{'\n'}
-    • הזכות לבקש מחיקה של המידע{'\n'}
-    • הזכות לעדכן את המידע{'\n'}
-    
-    <Text style={styles.subsectionTitle}>5. עדכונים{'\n'}</Text>
-    • מדיניות זו עשויה להתעדכן{'\n'}
-    • עדכונים יפורסמו באפליקציה{'\n'}
-    • המשך השימוש מהווה הסכמה לתנאים המעודכנים{'\n'}
-    
-    <Text style={styles.contactInfo}>
-      {require('../../constants/contactInfo').CONTACT_INFO.contactText}{'\n'}
-      מייל: info@NBEYEBROWS.co.il
-    </Text>
-  </Text>
-);
-
-export default function AuthChoiceScreen() {
-  const router = useRouter();
-  const [showTerms, setShowTerms] = useState(false);
-  const [showPrivacy, setShowPrivacy] = useState(false);
-
-  const handleLogin = () => {
-    router.navigate('/screens/AuthPhoneScreen?mode=login');
-  };
-
-  const handleRegister = () => {
-    router.navigate('/screens/AuthPhoneScreen?mode=register');
-  };
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        {/* Logo Section */}
-        <View style={styles.logoSection}>
-      <Image
-            source={require('../../assets/images/icon.png')}
-        style={styles.logo}
-        resizeMode="contain"
-      />
-          <Text style={styles.appName}></Text>
-          <Text style={styles.tagline}>הקליניקה המקצועית שלך</Text>
-        </View>
-
-        {/* Auth Buttons Section */}
-        <View style={styles.authSection}>
-          <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-            <Text style={styles.loginButtonText}>התחברות</Text>
-      </TouchableOpacity>
-
-          <TouchableOpacity style={styles.registerButton} onPress={handleRegister}>
-            <Text style={styles.registerButtonText}>הרשמה</Text>
-      </TouchableOpacity>
-
-          <Text style={styles.termsText}>
-            בהמשך השימוש באפליקציה, אתה מסכים ל{' '}
-            <Text style={styles.termsLink} onPress={() => setShowTerms(true)}>תנאי השימוש</Text>
-            {' '}ול{' '}
-            <Text style={styles.termsLink} onPress={() => setShowPrivacy(true)}>מדיניות הפרטיות</Text>
-          </Text>
-        </View>
-    </View>
-
-      {/* Terms Modal */}
-      <Modal
-        visible={showTerms}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowTerms(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>תנאי שימוש</Text>
-            <ScrollView style={styles.modalScrollView}>
-              <TermsContent />
-            </ScrollView>
-            <TouchableOpacity 
-              style={styles.modalCloseButton} 
-              onPress={() => setShowTerms(false)}
-            >
-              <Text style={styles.modalCloseText}>סגור</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Privacy Policy Modal */}
-      <Modal
-        visible={showPrivacy}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowPrivacy(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>מדיניות פרטיות</Text>
-            <ScrollView style={styles.modalScrollView}>
-              <PrivacyContent />
-            </ScrollView>
-            <TouchableOpacity 
-              style={styles.modalCloseButton} 
-              onPress={() => setShowPrivacy(false)}
-            >
-              <Text style={styles.modalCloseText}>סגור</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-    </SafeAreaView>
-  );
-}
+}); 

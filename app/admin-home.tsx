@@ -19,11 +19,17 @@ export default function AdminHomeTab() {
       case 'admin-team':
         router.navigate('/admin-team');
         break;
+      case 'admin-customers':
+        router.navigate('/admin-customers');
+        break;
       case 'admin-gallery':
         router.navigate('/admin-gallery');
         break;
       case 'admin-availability':
         router.navigate('/admin-availability');
+        break;
+      case 'calendar':
+        router.navigate('/calendar');
         break;
       case 'admin-waitlist':
         router.navigate('/admin-waitlist');
@@ -34,11 +40,11 @@ export default function AdminHomeTab() {
       case 'admin-notifications':
         router.navigate('/admin-notifications');
         break;
-      case 'admin-notification-settings':
-        router.navigate('/admin-notification-settings');
-        break;
       case 'admin-settings':
         router.navigate('/admin-settings');
+        break;
+      case 'admin-notification-settings':
+        router.navigate('/admin-notification-settings');
         break;
       case 'settings':
         router.navigate('/(tabs)/settings');

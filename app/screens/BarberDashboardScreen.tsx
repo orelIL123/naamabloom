@@ -17,14 +17,12 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { auth } from '../config/firebase';
 import {
     Appointment,
     Barber,
     BarberTreatment,
     checkIsBarber,
     createAppointment,
-    createAvailability,
     getAllAvailability,
     getAllUsers,
     getBarber,
@@ -40,7 +38,6 @@ import {
     removeFromWaitlist,
     Treatment,
     updateAppointment,
-    updateAvailability,
     updateAvailabilityOptimistic,
     updateBarberWeeklyAvailabilityOptimistic,
     updateWaitlistStatus,
@@ -49,6 +46,7 @@ import {
 } from '../../services/firebase';
 import ToastMessage from '../components/ToastMessage';
 import TopNav from '../components/TopNav';
+import { auth } from '../config/firebase';
 
 const { width } = Dimensions.get('window');
 
@@ -383,28 +381,20 @@ const BarberDashboardScreen: React.FC<BarberDashboardScreenProps> = ({ onNavigat
   };
 
   const toggleAvailability = async (dayOfWeek: number, dayIndex?: number) => {
-    // Always use specific dates for this week to avoid affecting all weeks
-    const specificDate = dayIndex !== undefined ? getSpecificDateForDay(dayIndex) : getSpecificDateForDay(dayOfWeek);
-    
-    console.log('🔄 toggleAvailability called with:', { dayOfWeek, dayIndex, specificDate });
+    // Use weekly pattern for consistency with admin
+    console.log('🔄 toggleAvailability called with:', { dayOfWeek, dayIndex });
     console.log('📅 Current availability state:', availability);
     
-    await performAvailabilityToggle(dayOfWeek, specificDate);
+    await performAvailabilityToggle(dayOfWeek);
   };
 
-  const performAvailabilityToggle = async (dayOfWeek: number, specificDate?: string) => {
-    console.log('🔄 Performing availability toggle for:', { dayOfWeek, specificDate });
+  const performAvailabilityToggle = async (dayOfWeek: number) => {
+    console.log('🔄 Performing availability toggle for dayOfWeek:', dayOfWeek);
     
     try {
-      // If specificDate is provided, look for that exact date; otherwise use dayOfWeek pattern
-      let dayAvailability;
-      if (specificDate) {
-        console.log('🔍 Looking for specific date:', specificDate);
-        dayAvailability = availability.find(a => a.specificDate === specificDate);
-      } else {
-        console.log('🔍 Looking for day with dayOfWeek:', dayOfWeek);
-        dayAvailability = availability.find(a => a.dayOfWeek === dayOfWeek && !a.specificDate);
-      }
+      // Look for weekly pattern availability (not specific dates)
+      console.log('🔍 Looking for day with dayOfWeek:', dayOfWeek);
+      const dayAvailability = availability.find(a => a.dayOfWeek === dayOfWeek && !a.specificDate);
       
       console.log('📋 Found availability record:', dayAvailability);
       
@@ -447,32 +437,42 @@ const BarberDashboardScreen: React.FC<BarberDashboardScreenProps> = ({ onNavigat
         console.log('📝 No availability record found, creating new one for dayOfWeek:', dayOfWeek);
         
         if (userProfile?.barberId) {
-          const newAvailability: any = {
-            barberId: userProfile.barberId,
+          // Create weekly pattern availability (not specific dates)
+          console.log('📅 Creating weekly pattern availability for dayOfWeek:', dayOfWeek);
+          
+          // Use the same weekly update function that admin uses for consistency
+          const weeklySchedule = [{
             dayOfWeek,
             startTime: '09:00',
             endTime: '18:00',
             isAvailable: true,
-            hasBreak: false
-          };
-          
-          // If specific date is provided, add it to the record
-          if (specificDate) {
-            newAvailability.specificDate = specificDate;
-            console.log('📅 Creating date-specific availability for:', specificDate);
-          } else {
-            console.log('📅 Creating weekly pattern availability for dayOfWeek:', dayOfWeek);
-          }
+            hasBreak: false,
+            breakStartTime: null,
+            breakEndTime: null
+          }];
           
           try {
-            const newId = await createAvailability(newAvailability);
-            console.log('✅ Created new availability record with ID:', newId);
+            await updateBarberWeeklyAvailabilityOptimistic(
+              userProfile.barberId,
+              weeklySchedule,
+              (optimisticSchedule) => {
+                console.log('✅ Optimistic update applied for new availability');
+                // Update local state immediately
+                const newAvailability = {
+                  id: `temp-${dayOfWeek}`,
+                  barberId: userProfile.barberId,
+                  ...weeklySchedule[0],
+                  createdAt: new Date()
+                };
+                setAvailability(prev => [...prev, newAvailability]);
+              },
+              (error) => {
+                console.error('❌ Error in optimistic update for new availability:', error);
+                showToast('שגיאה ביצירת זמינות חדשה', 'error');
+              }
+            );
             
-            // Update local state immediately
-            setAvailability(prev => [...prev, { id: newId, ...newAvailability }]);
-            
-            const dateText = specificDate ? specificDate : `כל ימי ${daysOfWeek[dayOfWeek]}`;
-            showToast(`${dateText} הוגדר כזמין`, 'success');
+            showToast(`כל ימי ${daysOfWeek[dayOfWeek]} הוגדר כזמין`, 'success');
             
             // Reload data to ensure sync
             if (currentUserId) {
@@ -583,16 +583,14 @@ const BarberDashboardScreen: React.FC<BarberDashboardScreenProps> = ({ onNavigat
   };
 
   const updateWorkHours = async (dayOfWeek: number, startTime: string, endTime: string, hasBreak: boolean = false, breakStartTime?: string, breakEndTime?: string, dayIndex?: number) => {
-    // Always use specific dates for this week to avoid affecting all weeks
-    const specificDate = dayIndex !== undefined ? getSpecificDateForDay(dayIndex) : getSpecificDateForDay(dayOfWeek);
+    // Use weekly pattern instead of specific dates for consistency with admin
+    console.log('🕐 updateWorkHours called with:', { dayOfWeek, startTime, endTime, hasBreak, breakStartTime, breakEndTime, dayIndex });
     
-    console.log('🕐 updateWorkHours called with:', { dayOfWeek, startTime, endTime, hasBreak, breakStartTime, breakEndTime, dayIndex, specificDate });
-    
-    await performWorkHoursUpdate(dayOfWeek, startTime, endTime, hasBreak, breakStartTime, breakEndTime, specificDate);
+    await performWorkHoursUpdate(dayOfWeek, startTime, endTime, hasBreak, breakStartTime, breakEndTime);
   };
 
-  const performWorkHoursUpdate = async (dayOfWeek: number, startTime: string, endTime: string, hasBreak: boolean = false, breakStartTime?: string, breakEndTime?: string, specificDate?: string) => {
-    console.log('🔄 Performing work hours update for:', { dayOfWeek, specificDate });
+  const performWorkHoursUpdate = async (dayOfWeek: number, startTime: string, endTime: string, hasBreak: boolean = false, breakStartTime?: string, breakEndTime?: string) => {
+    console.log('🔄 Performing work hours update for dayOfWeek:', dayOfWeek);
     
     try {
       // Validate time format
@@ -691,6 +689,9 @@ const BarberDashboardScreen: React.FC<BarberDashboardScreenProps> = ({ onNavigat
       }
 
       console.log('📋 Final weekly schedule to update:', weeklySchedule);
+      console.log('📊 Schedule summary:', weeklySchedule.map(day => 
+        `Day ${day.dayOfWeek}: ${day.isAvailable ? 'Available' : 'Not Available'} ${day.isAvailable ? `(${day.startTime}-${day.endTime})` : ''}`
+      ));
 
       // Use the same weekly update function that admin uses for consistency
       await updateBarberWeeklyAvailabilityOptimistic(
@@ -1168,9 +1169,54 @@ const BarberDashboardScreen: React.FC<BarberDashboardScreenProps> = ({ onNavigat
                 <Text style={styles.emptyText}>אין תורים עדיין</Text>
               </View>
             ) : (
-              appointments.slice(0, 10).map((appointment) => (
-                <View key={appointment.id} style={styles.appointmentCard}>
-                  <View style={styles.appointmentHeader}>
+              (() => {
+                const nextAppointment = getNextAppointment();
+                const sortedAppointments = appointments
+                  .sort((a, b) => {
+                    try {
+                      let aTime: number, bTime: number;
+                      
+                      if (a.date && typeof a.date === 'object' && 'toMillis' in a.date) {
+                        aTime = a.date.toMillis();
+                      } else if (a.date instanceof Date) {
+                        aTime = a.date.getTime();
+                      } else {
+                        aTime = 0;
+                      }
+                      
+                      if (b.date && typeof b.date === 'object' && 'toMillis' in b.date) {
+                        bTime = b.date.toMillis();
+                      } else if (b.date instanceof Date) {
+                        bTime = b.date.getTime();
+                      } else {
+                        bTime = 0;
+                      }
+                      
+                      return aTime - bTime;
+                    } catch (error) {
+                      console.error('Error sorting appointments:', error);
+                      return 0;
+                    }
+                  });
+
+                return sortedAppointments.slice(0, 10).map((appointment) => {
+                  const isNextAppointment = nextAppointment && appointment.id === nextAppointment.id;
+                  
+                  return (
+                    <View 
+                      key={appointment.id} 
+                      style={[
+                        styles.appointmentCard,
+                        isNextAppointment && styles.nearestAppointmentCard
+                      ]}
+                    >
+                      {isNextAppointment && (
+                        <View style={styles.nearestAppointmentBadge}>
+                          <Ionicons name="time" size={12} color="#fff" />
+                          <Text style={styles.nearestAppointmentText}>הבא בתור</Text>
+                        </View>
+                      )}
+                      <View style={styles.appointmentHeader}>
                     <Text style={styles.appointmentDate}>
                       {appointment.date.toDate().toLocaleDateString('he-IL')}
                     </Text>
@@ -1262,7 +1308,9 @@ const BarberDashboardScreen: React.FC<BarberDashboardScreenProps> = ({ onNavigat
                     </View>
                   </View>
                 </View>
-              ))
+                  );
+                });
+              })()
             )}
           </View>
 
@@ -1403,7 +1451,7 @@ const BarberDashboardScreen: React.FC<BarberDashboardScreenProps> = ({ onNavigat
                   ) : (
                     <View style={styles.emptyTreatmentsContainer}>
                       <Text style={styles.emptyTreatmentsText}>
-                        אין טיפולים מוגדרים עבור העובד הזה
+                        אין טיפולים מוגדרים עבור הספר הזה
                       </Text>
                       <Text style={styles.emptyTreatmentsSubtext}>
                         פנה לאדמין להוספת טיפולים
@@ -2856,7 +2904,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FF00AA',
+    backgroundColor: '#3b82f6',
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 12,
@@ -2871,6 +2919,41 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     marginLeft: 8,
+  },
+  // Nearest appointment styles
+  nearestAppointmentCard: {
+    borderWidth: 3,
+    borderColor: '#28a745',
+    backgroundColor: 'rgba(40, 167, 69, 0.1)',
+    shadowColor: '#28a745',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  nearestAppointmentBadge: {
+    position: 'absolute',
+    top: -8,
+    right: 12,
+    backgroundColor: '#28a745',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  nearestAppointmentText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginLeft: 4,
+    fontFamily: 'Heebo-Bold',
   },
 });
 

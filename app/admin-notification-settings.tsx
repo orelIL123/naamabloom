@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import AdminNotificationSettingsScreen from './screens/AdminNotificationSettingsScreen';
 
-export default function AdminNotificationSettingsPage() {
+export default function AdminNotificationSettingsTab() {
   const router = useRouter();
 
   const handleNavigate = (screen: string) => {
@@ -19,7 +19,6 @@ export default function AdminNotificationSettingsPage() {
   };
 
   const handleBack = () => {
-    console.log('Admin Notification Settings going back');
     router.navigate('/admin-home');
   };
 
@@ -30,4 +29,3 @@ export default function AdminNotificationSettingsPage() {
     />
   );
 }
-

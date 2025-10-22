@@ -1,6 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
 import { useRef } from "react";
 import { Animated, Dimensions, Image, Linking, StyleSheet, TouchableOpacity, View } from "react-native";
 
@@ -66,10 +65,10 @@ export default function BottomNav({ onOrderPress, onTabPress, activeTab }: {
         </View>
       </View>
       <View style={styles.navBar}>
-        {/* Left side - Home and Call */}
+        {/* Left side - Home and Call (RTL: Home should be leftmost) */}
         <View style={styles.leftSide}>
           <TouchableOpacity style={styles.iconBtn} onPress={() => onTabPress && onTabPress('home')}>
-            <Ionicons name="home" size={26} color={activeTab === 'home' ? "#FF00AA" : "#9ca3af"} />
+            <Ionicons name="home" size={26} color={activeTab === 'home' ? "#3b82f6" : "#9ca3af"} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconBtn} onPress={handleCallPress}>
             <Ionicons name="call" size={26} color="#9ca3af" />
@@ -78,19 +77,15 @@ export default function BottomNav({ onOrderPress, onTabPress, activeTab }: {
 
         {/* Center FAB (Order) - properly centered */}
         <View style={styles.centerFab}>
-          {/* Outer neon-glow ring */}
-          <View style={styles.glow} pointerEvents="none" />
           <LinearGradient
-            colors={["#FF00AA", "#FF1493", "#FF00AA"]}
+            colors={['#3b82f6', '#60a5fa', '#3b82f6']}
             style={styles.fabGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
-            {/* Subtle glass blur overlay */}
-            <BlurView intensity={20} tint="dark" style={styles.fabBlur} pointerEvents="none" />
-            <TouchableOpacity style={styles.fab} onPress={handleOrderPress} activeOpacity={0.9}>
+            <TouchableOpacity style={styles.fab} onPress={handleOrderPress} activeOpacity={0.85}>
               <AnimatedImage
-                source={require("../../assets/images/icon_booking.png")}
+                source={require("../../assets/images/icon.booking.png")}
                 style={[styles.fabIcon, { transform: [{ rotate: spin }] }]}
                 resizeMode="cover"
               />
@@ -98,13 +93,13 @@ export default function BottomNav({ onOrderPress, onTabPress, activeTab }: {
           </LinearGradient>
         </View>
 
-        {/* Right side - Settings and Profile */}
+        {/* Right side - Team and Profile (RTL: Profile should be rightmost) */}
         <View style={styles.rightSide}>
           <TouchableOpacity style={styles.iconBtn} onPress={() => onTabPress && onTabPress('team')}>
-            <Ionicons name="people" size={26} color={activeTab === 'team' ? "#FF00AA" : "#9ca3af"} />
+            <Ionicons name="people" size={26} color={activeTab === 'team' ? "#3b82f6" : "#9ca3af"} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconBtn} onPress={() => onTabPress && onTabPress('profile')}>
-            <Ionicons name="person" size={26} color={activeTab === 'profile' ? "#FF00AA" : "#9ca3af"} />
+            <Ionicons name="person" size={26} color={activeTab === 'profile' ? "#3b82f6" : "#9ca3af"} />
           </TouchableOpacity>
         </View>
       </View>
@@ -169,7 +164,7 @@ const styles = StyleSheet.create({
     top: -36, // half of FAB height (72/2)
     transform: [{ translateX: -36 }],
     zIndex: 10,
-    shadowColor: "#FF00AA",
+    shadowColor: "#3b82f6",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
     shadowRadius: 16,
@@ -184,24 +179,11 @@ const styles = StyleSheet.create({
     borderRadius: screenWidth < 380 ? 34 : 38,
     padding: 2,
     transform: [{ translateY: -12 }],
-    shadowColor: "#FF00AA",
+    shadowColor: "#3b82f6",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.45,
-    shadowRadius: 20,
-    elevation: 8,
-  },
-  glow: {
-    position: 'absolute',
-    width: screenWidth < 380 ? 68 : 76,
-    height: screenWidth < 380 ? 68 : 76,
-    borderRadius: screenWidth < 380 ? 34 : 38,
-    backgroundColor: 'rgba(255, 0, 170, 0.18)',
-    shadowColor: '#FF00AA',
-    shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.6,
-    shadowRadius: 28,
-    transform: [{ translateY: -12 }, { scale: 1.15 }],
-    zIndex: 0,
+    shadowRadius: 12,
+    elevation: 8,
   },
   fab: {
     width: '100%',
@@ -212,21 +194,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 2,
     borderColor: "#181828",
-    overflow: 'hidden',
   },
   fabIcon: {
-    width: '130%',
-    height: '130%',
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  fabBlur: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: screenWidth < 380 ? 34 : 38,
   },
   homeIndicatorWrapper: {
     alignItems: "center",

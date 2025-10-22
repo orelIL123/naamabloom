@@ -17,7 +17,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { Barber, getBarbers, getStorageImages, uploadImageToStorage } from '../../services/firebase';
+import { Barber, getBarbers } from '../../services/firebase';
 import TopNav from '../components/TopNav';
 
 const { width, height } = Dimensions.get('window');
@@ -35,7 +35,6 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [detailsBarber, setDetailsBarber] = useState<Barber | null>(null);
   const [flippedCards, setFlippedCards] = useState<{[key: string]: Animated.Value}>({});
-  const [teamImages, setTeamImages] = useState<string[]>([]);
 
   useEffect(() => {
     loadBarbers();
@@ -43,109 +42,19 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
 
   const loadBarbers = async () => {
     try {
-      console.log('🔍 Loading barbers and images...');
-      
-      // First, let's check what's actually in the ourteam folder
-      console.log('🔍 Checking ourteam folder in Firebase Storage...');
-      const imagesData = await getStorageImages('ourteam');
-      console.log('🔍 Images from ourteam folder:', imagesData);
-      
-      // Also check other folders that might have team images
-      const allImages = await getStorageImages('workers');
-      console.log('🔍 Images from workers folder:', allImages);
-      
-      // Check if there are any images with 'naama' in the name
-      const allTeamImages = [...imagesData, ...allImages];
-      const naamaImagesFound = allTeamImages.filter(img => img.toLowerCase().includes('naama') || img.toLowerCase().includes('ourteam-naama'));
-      console.log('🔍 All team images:', allTeamImages);
-      console.log('🔍 Naama images found:', naamaImagesFound);
-      
-      // If no Naama images found, upload the local one with correct filename
-      if (naamaImagesFound.length === 0) {
-        console.log('🔍 No Naama images found in storage, uploading local image...');
-        try {
-          // Convert require to string URI for upload
-          const naamaImageUri = Image.resolveAssetSource(require('../../assets/images/naama_bloom.png')).uri;
-          console.log('🔍 Naama image URI:', naamaImageUri);
-          
-          const naamaImageUrl = await uploadImageToStorage(
-            naamaImageUri,
-            'ourteam',
-            'ourteam-naama_bloom.png'
-          );
-          console.log('✅ Naama image uploaded successfully:', naamaImageUrl);
-          allTeamImages.push(naamaImageUrl);
-        } catch (uploadError) {
-          console.error('❌ Failed to upload Naama image:', uploadError);
-        }
-      }
-      
       const barbersData = await getBarbers();
-      console.log('🔍 Barbers data:', barbersData);
-      
       // Sort barbers: main barber (רן) first, then others
       const sortedBarbers = barbersData.sort((a, b) => {
-        if ((a as any).isMainBarber) return -1;
-        if ((b as any).isMainBarber) return 1;
+        if (a.isMainBarber) return -1;
+        if (b.isMainBarber) return 1;
         if (a.name === 'רן אגלריסי') return -1;
         if (b.name === 'רן אגלריסי') return 1;
         return a.name.localeCompare(b.name);
       });
-      
-      // Force assign images from storage to barbers
-      console.log('🔍 Available images from storage:', imagesData);
-      console.log('🔍 Barbers before image assignment:', sortedBarbers);
-      console.log('🔍 Looking for Naama specifically...');
-      const naamaImages = allTeamImages.filter(img => img.toLowerCase().includes('naama'));
-      console.log('🔍 Naama images found:', naamaImages);
-      
-      const updatedBarbers = sortedBarbers.map(barber => {
-        console.log(`🔍 Processing barber: ${barber.name}, current image:`, (barber as any).image);
-        
-        // Always try to find a better image from storage
-        if (allTeamImages.length > 0) {
-          // Try to find image by name match
-          const nameMatch = allTeamImages.find(img => {
-            const imgLower = img.toLowerCase();
-            const nameLower = barber.name.toLowerCase().replace(/\s+/g, '');
-            const nameWithUnderscore = barber.name.toLowerCase().replace(/\s+/g, '_');
-            
-            // Check for exact name match (with or without underscore)
-            const hasNameMatch = imgLower.includes(nameLower) || imgLower.includes(nameWithUnderscore);
-            
-            // Special case for Naama Bloom - check for both naama and ourteam-naama
-            const hasNaamaMatch = (imgLower.includes('naama') || imgLower.includes('ourteam-naama')) && barber.name.toLowerCase().includes('נעמה');
-            
-            // Check if image starts with the name (since format is "Name_timestamp.jpg")
-            const hasPrefixMatch = imgLower.startsWith(nameLower) || imgLower.startsWith(nameWithUnderscore);
-            
-            console.log(`🔍 Checking image: ${img}`);
-            console.log(`🔍 Name: ${nameLower}, Underscore: ${nameWithUnderscore}`);
-            console.log(`🔍 Name match: ${hasNameMatch}, Naama match: ${hasNaamaMatch}, Prefix match: ${hasPrefixMatch}`);
-            
-            return hasNameMatch || hasNaamaMatch || hasPrefixMatch;
-          });
-          
-          if (nameMatch) {
-            console.log(`✅ Found image for ${barber.name}:`, nameMatch);
-            return { ...barber, image: nameMatch };
-          } else {
-            console.log(`❌ No image found for ${barber.name}, using first available image`);
-            // If no specific match, use the first available image
-            return { ...barber, image: imagesData[0] };
-          }
-        }
-        return barber;
-      });
-      
-      console.log('🔍 Final barbers with images:', updatedBarbers);
-      
-      setBarbers(updatedBarbers);
-      setTeamImages(imagesData);
-      
+      setBarbers(sortedBarbers);
       // Initialize animation values for each barber
       const animatedValues: {[key: string]: Animated.Value} = {};
-      updatedBarbers.forEach(barber => {
+      sortedBarbers.forEach(barber => {
         animatedValues[barber.id] = new Animated.Value(0);
       });
       setFlippedCards(animatedValues);
@@ -161,7 +70,7 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
     const animatedValue = flippedCards[barber.id];
     if (animatedValue) {
       Animated.timing(animatedValue, {
-        toValue: (animatedValue as any)._value === 0 ? 1 : 0,
+        toValue: animatedValue._value === 0 ? 1 : 0,
         duration: 600,
         useNativeDriver: true,
       }).start();
@@ -177,7 +86,7 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
 
   const handleWhatsAppPress = (barber: Barber) => {
     // Use whatsapp field first, fallback to phone
-    const whatsappNumber = (barber as any).whatsapp || barber.phone;
+    const whatsappNumber = barber.whatsapp || barber.phone;
     
     if (whatsappNumber) {
       const message = t('team.whatsapp_message', { name: barber.name });
@@ -213,17 +122,6 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
     }
   };
 
-  const renderStars = (rating: number) => {
-    const stars = [];
-    for (let i = 1; i <= 5; i++) {
-      stars.push(
-        <Text key={i} style={[styles.star, i <= rating ? styles.starFilled : styles.starEmpty]}>
-          ★
-        </Text>
-      );
-    }
-    return stars;
-  };
 
   if (loading) {
     return (
@@ -254,59 +152,29 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
       
       {/* Hero Section with Ran's Background */}
       <View style={styles.heroSection}>
-        <Image
-          source={require('../../assets/images/ourteam.png')}
+        <ImageBackground
+          source={require('../../assets/images/ATMOSPHERE2.jpg')}
           style={styles.heroImage}
           resizeMode="cover"
-        />
-        <View style={styles.heroOverlayContainer}>
+        >
           <LinearGradient
             colors={['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.7)', 'rgba(0,0,0,0.85)']}
             start={{ x: 0, y: 0 }}
             end={{ x: 0, y: 1 }}
             style={styles.heroOverlay}
           />
-          {/* Seamless blending effect */}
-          <LinearGradient
-            colors={[
-              'transparent', 
-              'rgba(255,255,255,0.02)', 
-              'rgba(255,255,255,0.05)', 
-              'rgba(255,255,255,0.1)', 
-              'rgba(255,255,255,0.2)', 
-              'rgba(255,255,255,0.35)', 
-              'rgba(255,255,255,0.5)', 
-              'rgba(255,255,255,0.7)', 
-              'rgba(255,255,255,0.9)'
-            ]}
-            start={{ x: 0, y: 0.3 }}
-            end={{ x: 0, y: 1 }}
-            style={styles.glossyEffect}
-          />
-          {/* Additional subtle layer for perfect blending */}
-          <LinearGradient
-            colors={[
-              'transparent', 
-              'rgba(255,255,255,0.01)', 
-              'rgba(255,255,255,0.03)', 
-              'rgba(255,255,255,0.08)', 
-              'rgba(255,255,255,0.15)'
-            ]}
-            start={{ x: 0, y: 0.6 }}
-            end={{ x: 0, y: 1 }}
-            style={styles.blurLayer}
-          />
           <View style={styles.heroContent}>
             <View style={styles.heroTextContainer}>
-              <Text style={styles.heroTitle}>כאן כדי לתת לך את השירות הטוב ביותר!</Text>
+              <Text style={styles.heroTitle}>{t('team.hero_title')}</Text>
+              <Text style={styles.heroSubtitle}>{t('team.hero_subtitle')}</Text>
             </View>
           </View>
-        </View>
+        </ImageBackground>
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.contentContainer}>
-          <Text style={styles.sectionTitle}>הצוות שלנו</Text>
+          <Text style={styles.sectionTitle}>הספרים</Text>
           
           {barbers.length === 0 ? (
             <View style={styles.emptyState}>
@@ -340,42 +208,21 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
                         { transform: [{ rotateY: frontRotation || '0deg' }] }
                       ]}>
                         <View style={styles.barberImageContainer}>
-                          {(() => {
-                            console.log(`🖼️ Rendering image for ${barber.name}:`, (barber as any).image);
-                            return (barber as any).image ? (
-                            <View style={styles.barberPhotoContainer}>
-                              <Image
-                                source={{ uri: (barber as any).image }}
-                                style={styles.barberPhoto}
-                                resizeMode="cover"
-                                onLoad={() => console.log(`✅ Image loaded successfully for ${barber.name}`)}
-                                onError={(error) => {
-                                  console.log(`❌ Image load error for ${barber.name}:`, error);
-                                  console.log(`❌ Failed URL:`, (barber as any).image);
-                                  // Show fallback when image fails to load
-                                  setBarberImageError(barber.id, true);
-                                }}
-                                onLoadStart={() => console.log(`🔄 Starting to load image for ${barber.name}`)}
-                                onLoadEnd={() => console.log(`🏁 Image load ended for ${barber.name}`)}
-                              />
-                            </View>
+                          {barber.image ? (
+                            <Image
+                              source={{ uri: barber.image }}
+                              style={styles.barberPhoto}
+                              resizeMode="cover"
+                            />
                           ) : (
                             <View style={styles.barberPhotoPlaceholder}>
                               <Ionicons name="person-outline" size={40} color="#666" />
-                              <Text style={{fontSize: 10, color: '#999', marginTop: 4}}>No image</Text>
                             </View>
-                          );
-                          })()}
+                          )}
                         </View>
                         <View style={styles.barberBasicInfo}>
                           <Text style={styles.barberName}>{barber.name}</Text>
-                          <Text style={styles.barberTitle}>{t('team.professional_artist')}</Text>
-                          <View style={styles.ratingContainer}>
-                            <View style={styles.stars}>
-                              {renderStars(barber.rating)}
-                            </View>
-                            <Text style={styles.ratingText}>({barber.rating})</Text>
-                          </View>
+                          <Text style={styles.barberTitle}>{t('team.professional_barber')}</Text>
                         </View>
                       </Animated.View>
 
@@ -387,7 +234,6 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
                       ]}>
                         <View style={styles.barberDetails}>
                           <Text style={styles.detailsTitle}>{t('team.additional_details')}</Text>
-                          <Text style={styles.barberExperience}>{barber.experience}</Text>
                           
                           <View style={styles.specialtiesContainer}>
                             {barber.specialties && barber.specialties.slice(0, 2).map((specialty, idx) => (
@@ -407,7 +253,7 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
                               }}
                             >
                               <LinearGradient
-                                colors={['#FF00AA', '#1d4ed8']}
+                                colors={['#3b82f6', '#1d4ed8']}
                                 style={styles.buttonGradient}
                               >
                                 <Ionicons name="calendar" size={14} color="#fff" />
@@ -475,15 +321,8 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
                     )}
                   </View>
                   <Text style={styles.modalBarberName}>{selectedBarber.name}</Text>
-                  <Text style={styles.modalBarberExperience}>{selectedBarber.experience}</Text>
                 </View>
 
-                <View style={styles.modalRating}>
-                  <View style={styles.stars}>
-                    {renderStars(selectedBarber.rating)}
-                  </View>
-                  <Text style={styles.ratingText}>{selectedBarber.rating}/5</Text>
-                </View>
 
                 <View style={styles.modalSpecialties}>
                   <Text style={styles.modalSpecialtiesTitle}>{t('team.specialties')}:</Text>
@@ -525,9 +364,8 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
               <Image source={{ uri: detailsBarber.image }} style={{ width: 100, height: 100, borderRadius: 50, marginBottom: 12 }} />
             )}
             <Text style={{ fontSize: 22, fontWeight: 'bold', marginBottom: 6 }}>{detailsBarber?.name}</Text>
-            <Text style={{ fontSize: 16, color: '#666', marginBottom: 8 }}>{detailsBarber?.experience}</Text>
             {detailsBarber?.phone && (
-              <Text style={{ fontSize: 16, color: '#FF00AA', marginBottom: 8 }}>{t('profile.phone')}: {detailsBarber.phone}</Text>
+              <Text style={{ fontSize: 16, color: '#3b82f6', marginBottom: 8 }}>{t('profile.phone')}: {detailsBarber.phone}</Text>
             )}
             <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
               {/* אייקון וואטסאפ */}
@@ -536,7 +374,7 @@ const TeamScreen: React.FC<TeamScreenProps> = ({ onNavigate, onBack }) => {
               </View>
             </View>
             <TouchableOpacity onPress={() => setDetailsBarber(null)} style={{ marginTop: 18 }}>
-              <Text style={{ color: '#FF00AA', fontWeight: 'bold' }}>{t('common.close')}</Text>
+              <Text style={{ color: '#3b82f6', fontWeight: 'bold' }}>{t('common.close')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -567,34 +405,9 @@ const styles = StyleSheet.create({
   heroImage: {
     width: '100%',
     height: '100%',
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-  },
-  heroOverlayContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
   },
   heroOverlay: {
     ...StyleSheet.absoluteFillObject,
-  },
-  glossyEffect: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: '70%',
-  },
-  blurLayer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: '40%',
   },
   heroContent: {
     position: 'absolute',
@@ -602,7 +415,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     paddingHorizontal: 24,
-    paddingBottom: 16,
+    paddingBottom: 32,
   },
   heroTextContainer: {
     alignItems: 'center',
@@ -627,6 +440,31 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.6)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 3,
+  },
+  heroStats: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 40,
+  },
+  heroStat: {
+    alignItems: 'center',
+  },
+  heroStatNumber: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
+  },
+  heroStatLabel: {
+    fontSize: 12,
+    color: '#fff',
+    opacity: 0.8,
+    marginTop: 4,
+    textShadowColor: 'rgba(0, 0, 0, 0.6)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   scrollView: {
     flex: 1,
@@ -673,10 +511,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
     backfaceVisibility: 'hidden',
   },
   cardFront: {
@@ -694,26 +532,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginBottom: 8,
   },
-  barberPhotoContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    overflow: 'hidden',
-    position: 'relative',
-  },
   barberPhoto: {
     width: '100%',
     height: '100%',
-  },
-  barberPhotoFallback: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#f0f0f0',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   barberPhotoPlaceholder: {
     width: '100%',
@@ -754,7 +575,7 @@ const styles = StyleSheet.create({
   },
   barberTitle: {
     fontSize: 12,
-    color: '#FF00AA',
+    color: '#3b82f6',
     fontWeight: '500',
     marginBottom: 4,
     textAlign: 'center',
